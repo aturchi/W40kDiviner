@@ -1,0 +1,18 @@
+### Assault Intercessor Squad vs Terminator Squad
+  ranged:Weapon 01 | 0.4938 | 0
+  melee:Weapon 02 | 0.7407 | 1
+### Redemptor Dreadnought vs Riptide Battlesuit
+  ranged:Weapon 09 | 4.5 | 3
+  melee:Weapon 10 | 4.1667 | 3
+### Hammerhead Gunship vs Assault Intercessor Squad
+  ranged:Weapon 20 | 2.5 | 0
+  ranged:Weapon 21 | 1.3333 | 1
+  melee:Weapon 22 | 0.3333 | 0
+### Ballistus Dreadnought vs Crisis Sunforge
+  ranged:Weapon 11 | 5.0 | 6
+  ranged:Weapon 12 | 1.5 | 1
+  melee:Weapon 13 | 1.3333 | 2
+### leaders=1 others=8
+ATTACH Captain -> Assault Intercessor Squad | models=6 pts=155
+
+DIGEST 31d8391ba389dcf0  (16 lines)

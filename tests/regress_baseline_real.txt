@@ -1,0 +1,37 @@
+### Assault Intercessor Squad vs Terminator Squad
+  melee:Astartes chainsword | 2.963 | 3
+### Redemptor Dreadnought vs Riptide Battlesuit
+  ranged:Heavy flamer | 0.3889 | 0
+  ranged:Heavy onslaught gatling cannon | 1.5556 | 1
+  ranged:Icarus rocket pod | 0.7407 | 0
+  ranged:Macro plasma incinerator (standard) | 1.0 | 0
+  ranged:Macro plasma incinerator (supercharge) | 2.25 | 3
+  ranged:Macro plasma incinerator (supercharge) [HAZARDOUS] | 4.0 | 4
+  ranged:Onslaught gatling cannon | 1.037 | 1
+  ranged:Twin fragstorm grenade launcher | 0.1188 | 0
+  ranged:Twin storm bolter | 0.0679 | 0
+  melee:Redemptor fist | 3.3333 | 3
+### Hammerhead Gunship vs Assault Intercessor Squad
+  ranged:Accelerator burst cannon | 0.6667 | 1
+  ranged:Ion cannon (standard) | 2.5 | 2
+  ranged:Ion cannon (overcharge) | 6.25 | 6
+  ranged:Ion cannon (overcharge) [HAZARDOUS] | 10.4167 | 8
+  ranged:Railgun | 3.9583 | 0
+  ranged:Seeker missile | 1.5625 | 0
+  ranged:Smart missile system | 0.3333 | 0
+  ranged:Twin pulse carbine | 0.2963 | 0
+  melee:Armoured hull | 0.2222 | 0
+### Ballistus Dreadnought vs Crisis Sunforge Battlesuits
+  ranged:Ballistus lascannon | 2.5 | 0
+  ranged:Ballistus missile launcher (frag) | 0.7778 | 1
+  ranged:Ballistus missile launcher (krak) | 1.9444 | 0
+  ranged:Twin storm bolter | 0.2469 | 0
+  melee:Armoured feet | 0.7407 | 1
+### leaders=14 others=70
+ATTACH Captain -> Assault Intercessor Squad | models=6 pts=155
+ATTACH Captain in Gravis Armour -> Aggressor Squad | models=4 pts=160
+ATTACH Captain in Phobos Armour -> Eliminator Squad | models=4 pts=145
+ATTACH Captain in Terminator Armour -> Terminator Assault Squad | models=6 pts=240
+ATTACH Captain with Jump Pack -> Assault Intercessors with Jump Packs | models=6 pts=160
+
+DIGEST 7dfb2b7bf29cc9a0  (35 lines)

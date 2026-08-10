@@ -1,0 +1,662 @@
+{
+  "format": "w40k-sim/6",
+  "armies": [
+    {
+      "name": "Test Marines",
+      "units": [
+        {
+          "name": "Assault Intercessor Squad",
+          "profile_name": "Assault Intercessor Squad",
+          "points": 75,
+          "keywords": [
+            "Assault Intercessor Squad"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 01",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            },
+            {
+              "name": "Ability 02",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Body A",
+              "model_count": 5,
+              "M": 6,
+              "T": 4,
+              "Sv": 3,
+              "W": 2,
+              "LD": 6,
+              "OC": 1,
+              "invuln": null,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 01",
+                  "type": "Ranged",
+                  "RNG": 24,
+                  "A": 2,
+                  "S": 4,
+                  "AP": -1,
+                  "D": 1,
+                  "count": 5,
+                  "keywords": [
+                    "Rapid Fire 1"
+                  ],
+                  "abilities": [],
+                  "BS": 3
+                },
+                {
+                  "name": "Weapon 02",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 3,
+                  "S": 4,
+                  "AP": -1,
+                  "D": 1,
+                  "count": 5,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Bladeguard Veteran Squad",
+          "profile_name": "Bladeguard Veteran Squad",
+          "points": 90,
+          "keywords": [
+            "Bladeguard Veteran Squad"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 03",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            },
+            {
+              "name": "Ability 04",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Body B",
+              "model_count": 3,
+              "M": 6,
+              "T": 4,
+              "Sv": 3,
+              "W": 3,
+              "LD": 6,
+              "OC": 1,
+              "invuln": 4,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 03",
+                  "type": "Ranged",
+                  "RNG": 12,
+                  "A": 1,
+                  "S": 4,
+                  "AP": 0,
+                  "D": 1,
+                  "count": 3,
+                  "keywords": [],
+                  "abilities": [],
+                  "BS": 3
+                },
+                {
+                  "name": "Weapon 04",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 4,
+                  "S": 5,
+                  "AP": -2,
+                  "D": 2,
+                  "count": 3,
+                  "keywords": [
+                    "Cleave 1"
+                  ],
+                  "abilities": [],
+                  "WS": 3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Intercessor Squad",
+          "profile_name": "Intercessor Squad",
+          "points": 80,
+          "keywords": [
+            "Intercessor Squad"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 05",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Body C",
+              "model_count": 5,
+              "M": 6,
+              "T": 4,
+              "Sv": 3,
+              "W": 2,
+              "LD": 6,
+              "OC": 1,
+              "invuln": null,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 05",
+                  "type": "Ranged",
+                  "RNG": 30,
+                  "A": 2,
+                  "S": 4,
+                  "AP": -1,
+                  "D": 1,
+                  "count": 5,
+                  "keywords": [
+                    "Sustained Hits 1"
+                  ],
+                  "abilities": [],
+                  "BS": 3
+                },
+                {
+                  "name": "Weapon 06",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 2,
+                  "S": 4,
+                  "AP": 0,
+                  "D": 1,
+                  "count": 5,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Terminator Squad",
+          "profile_name": "Terminator Squad",
+          "points": 185,
+          "keywords": [
+            "Terminator Squad"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 06",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            },
+            {
+              "name": "Ability 07",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Body D",
+              "model_count": 5,
+              "M": 6,
+              "T": 5,
+              "Sv": 2,
+              "W": 3,
+              "LD": 6,
+              "OC": 1,
+              "invuln": 4,
+              "fnp": 5,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 07",
+                  "type": "Ranged",
+                  "RNG": 24,
+                  "A": 2,
+                  "S": 4,
+                  "AP": -1,
+                  "D": 2,
+                  "count": 5,
+                  "keywords": [
+                    "Devastating Wounds"
+                  ],
+                  "abilities": [],
+                  "BS": 3
+                },
+                {
+                  "name": "Weapon 08",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 3,
+                  "S": 8,
+                  "AP": -2,
+                  "D": 2,
+                  "count": 5,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Redemptor Dreadnought",
+          "profile_name": "Redemptor Dreadnought",
+          "points": 210,
+          "keywords": [
+            "Redemptor Dreadnought"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 08",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Redemptor Hull",
+              "model_count": 1,
+              "M": 6,
+              "T": 9,
+              "Sv": 2,
+              "W": 12,
+              "LD": 6,
+              "OC": 1,
+              "invuln": 5,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 09",
+                  "type": "Ranged",
+                  "RNG": 48,
+                  "A": 6,
+                  "S": 8,
+                  "AP": -3,
+                  "D": 3,
+                  "count": 1,
+                  "keywords": [
+                    "Lethal Hits"
+                  ],
+                  "abilities": [],
+                  "BS": 3
+                },
+                {
+                  "name": "Weapon 10",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 5,
+                  "S": 12,
+                  "AP": -2,
+                  "D": 3,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Ballistus Dreadnought",
+          "profile_name": "Ballistus Dreadnought",
+          "points": 150,
+          "keywords": [
+            "Ballistus Dreadnought"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 09",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Ballistus Hull",
+              "model_count": 1,
+              "M": 6,
+              "T": 9,
+              "Sv": 2,
+              "W": 10,
+              "LD": 6,
+              "OC": 1,
+              "invuln": 5,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 11",
+                  "type": "Ranged",
+                  "RNG": 48,
+                  "A": 3,
+                  "S": 12,
+                  "AP": -4,
+                  "D": 6,
+                  "count": 1,
+                  "keywords": [
+                    "Melta 2"
+                  ],
+                  "abilities": [],
+                  "BS": 3
+                },
+                {
+                  "name": "Weapon 12",
+                  "type": "Ranged",
+                  "RNG": 36,
+                  "A": 6,
+                  "S": 5,
+                  "AP": -1,
+                  "D": 1,
+                  "count": 1,
+                  "keywords": [
+                    "Twin-linked"
+                  ],
+                  "abilities": [],
+                  "BS": 3
+                },
+                {
+                  "name": "Weapon 13",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 3,
+                  "S": 6,
+                  "AP": -1,
+                  "D": 2,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 3
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Captain",
+          "profile_name": "Captain",
+          "points": 80,
+          "keywords": [
+            "Captain"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 10",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            },
+            {
+              "name": "Ability 11",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Captain Model",
+              "model_count": 1,
+              "M": 6,
+              "T": 4,
+              "Sv": 3,
+              "W": 5,
+              "LD": 6,
+              "OC": 1,
+              "invuln": 4,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 14",
+                  "type": "Ranged",
+                  "RNG": 18,
+                  "A": 4,
+                  "S": 4,
+                  "AP": -1,
+                  "D": 1,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "BS": 2
+                },
+                {
+                  "name": "Weapon 15",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 6,
+                  "S": 6,
+                  "AP": -2,
+                  "D": 2,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 2
+                }
+              ]
+            }
+          ],
+          "leadership": [
+            "Assault Intercessor Squad",
+            "Bladeguard Veteran Squad",
+            "Intercessor Squad"
+          ]
+        },
+        {
+          "name": "Bladeguard Ancient",
+          "profile_name": "Bladeguard Ancient",
+          "points": 65,
+          "keywords": [
+            "Bladeguard Ancient"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 12",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Ancient Model",
+              "model_count": 1,
+              "M": 6,
+              "T": 4,
+              "Sv": 3,
+              "W": 4,
+              "LD": 6,
+              "OC": 1,
+              "invuln": 4,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 16",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 4,
+                  "S": 5,
+                  "AP": -2,
+                  "D": 2,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 3
+                }
+              ]
+            }
+          ],
+          "support": [
+            "Bladeguard Veteran Squad",
+            "Assault Intercessor Squad"
+          ]
+        },
+        {
+          "name": "Ancient",
+          "profile_name": "Ancient",
+          "points": 60,
+          "keywords": [
+            "Ancient"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 13",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Ancient Base",
+              "model_count": 1,
+              "M": 6,
+              "T": 4,
+              "Sv": 3,
+              "W": 4,
+              "LD": 6,
+              "OC": 1,
+              "invuln": null,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 17",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 3,
+                  "S": 4,
+                  "AP": -1,
+                  "D": 1,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 3
+                }
+              ]
+            }
+          ],
+          "support": [
+            "Bladeguard Veteran Squad",
+            "Assault Intercessor Squad"
+          ]
+        }
+      ]
+    }
+  ]
+}

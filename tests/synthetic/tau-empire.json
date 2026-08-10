@@ -1,0 +1,227 @@
+{
+  "format": "w40k-sim/6",
+  "armies": [
+    {
+      "name": "Test Tau",
+      "units": [
+        {
+          "name": "Riptide Battlesuit",
+          "profile_name": "Riptide Battlesuit",
+          "points": 180,
+          "keywords": [
+            "Riptide Battlesuit"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 14",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Riptide Chassis",
+              "model_count": 1,
+              "M": 6,
+              "T": 6,
+              "Sv": 2,
+              "W": 14,
+              "LD": 6,
+              "OC": 1,
+              "invuln": 4,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 18",
+                  "type": "Ranged",
+                  "RNG": 36,
+                  "A": 6,
+                  "S": 8,
+                  "AP": -2,
+                  "D": 3,
+                  "count": 1,
+                  "keywords": [
+                    "Blast"
+                  ],
+                  "abilities": [],
+                  "BS": 4
+                },
+                {
+                  "name": "Weapon 19",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 3,
+                  "S": 6,
+                  "AP": -1,
+                  "D": 2,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 4
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Hammerhead Gunship",
+          "profile_name": "Hammerhead Gunship",
+          "points": 160,
+          "keywords": [
+            "Hammerhead Gunship"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 15",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Hammerhead Hull",
+              "model_count": 1,
+              "M": 6,
+              "T": 9,
+              "Sv": 3,
+              "W": 13,
+              "LD": 6,
+              "OC": 1,
+              "invuln": 5,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 20",
+                  "type": "Ranged",
+                  "RNG": 48,
+                  "A": 1,
+                  "S": 10,
+                  "AP": -4,
+                  "D": 6,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "BS": 4
+                },
+                {
+                  "name": "Weapon 21",
+                  "type": "Ranged",
+                  "RNG": 18,
+                  "A": 6,
+                  "S": 5,
+                  "AP": 0,
+                  "D": 1,
+                  "count": 1,
+                  "keywords": [
+                    "Torrent"
+                  ],
+                  "abilities": [],
+                  "BS": 4
+                },
+                {
+                  "name": "Weapon 22",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 3,
+                  "S": 6,
+                  "AP": 0,
+                  "D": 1,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 4
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "Crisis Sunforge",
+          "profile_name": "Crisis Sunforge",
+          "points": 150,
+          "keywords": [
+            "Crisis Sunforge"
+          ],
+          "abilities": [
+            {
+              "name": "Ability 16",
+              "description": "",
+              "enabled": false,
+              "share_with_unit": false,
+              "conditions": [],
+              "effect": {
+                "type": "special",
+                "data": {}
+              }
+            }
+          ],
+          "leader_effects": [],
+          "models": [
+            {
+              "name": "Crisis Chassis",
+              "model_count": 3,
+              "M": 6,
+              "T": 5,
+              "Sv": 3,
+              "W": 5,
+              "LD": 6,
+              "OC": 1,
+              "invuln": 4,
+              "fnp": null,
+              "keywords": [],
+              "abilities": [],
+              "weapons": [
+                {
+                  "name": "Weapon 23",
+                  "type": "Ranged",
+                  "RNG": 18,
+                  "A": 2,
+                  "S": 9,
+                  "AP": -3,
+                  "D": 2,
+                  "count": 3,
+                  "keywords": [
+                    "Melta 1"
+                  ],
+                  "abilities": [],
+                  "BS": 4
+                },
+                {
+                  "name": "Weapon 24",
+                  "type": "Melee",
+                  "RNG": null,
+                  "A": 2,
+                  "S": 5,
+                  "AP": 0,
+                  "D": 1,
+                  "count": 3,
+                  "keywords": [],
+                  "abilities": [],
+                  "WS": 4
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
