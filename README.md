@@ -63,7 +63,7 @@ are welcome!
 | **Profile Editor** | `profile_editor.py` | GUI | Create/edit army rosters, units, models, weapons and abilities; import & save native JSON; **compare & selectively merge** a second roster (*Merge JSON*). |
 | **Attack Analyzer** | `attack_analyzer.py` | GUI | Exact mean/median damage of one attacker vs one or more defenders, with full modifier context. |
 | **Game Assistant** | `game_assistant.py` | GUI | In-game attack resolution with real dice rolls; per-model wound tracking and masking. |
-| **Join Armies** | `join_armies.py` | CLI | Merge several units from different armies into one single army file. |
+| **Join Armies** | `join_armies.py` | CLI | Combine several JSON files into one — as separate armies (`multi`) or merged into a single army (`single`). |
 
 All three GUIs share the same object model (`src/unit_model.py`), the same
 modifier engine (`src/modifier_engine.py`), the leader/support attachment logic
@@ -100,8 +100,10 @@ python3 profile_editor.py      # or attack_analyzer.py / game_assistant.py
    one by hand. Consider that ArmyFetcher create unit's abilities which have 
    only the description. You still must edit the JSON files by hand to properly 
    create the abilities.
-2. **Analyze** matchups before the game with the Attack Analyzer.
-3. **Play** with the Game Assistant, which rolls the dice and helps you track wounds and other variables.
+2. *(Optional)* **Merge factions** into a single file with `join_armies.py` so
+   both armies of a game live in one JSON (for your convenience).
+3. **Analyze** matchups before the game with the Attack Analyzer.
+4. **Play** with the Game Assistant, which rolls the dice and helps you track wounds and other variables.
 
 ---
 
@@ -391,20 +393,35 @@ Resolves attacks with **real dice rolls** during a game.
 **Run:**
 
 ```bash
-python3 join_armies.py tau.json wolves.json -o combined.json -n "My Alliance"
+# multi (default): keep each input as its own army in one file
+python3 join_armies.py tau.json wolves.json -o combined.json
+
+# single: merge every unit into ONE army named with -n
+python3 join_armies.py tau.json wolves.json --join single -n "My Alliance" \
+        -o combined.json
 ```
 
-Merge several units from different JSON files into one single army file.
+Combine several native JSON files into one. Two modes:
 
-- **Duplicate army names are rejected** — rename them before joining.
-- After merging, every ability is re-stamped with a globally unique id so ids
-  from different files can’t collide.
+- **`--join multi`** *(default)* — keep each input file as its **own army** in a
+  multi-army output file.
+- **`--join single`** — merge **every unit into one army**, named with `-n`.
+  Units whose names collide across sources are suffixed with their source army
+  (e.g. `pippo` from `pluto` and `topolino` → `pippo_pluto`, `pippo_topolino`)
+  so both survive with a traceable origin.
+
+Both modes:
+
+- **Reject duplicate army names** — rename them before joining.
+- After merging, re-stamp every ability with a globally unique id so ids from
+  different files can’t collide.
 
 | Option | Meaning |
 |---|---|
 | `inputs...` | one or more input JSON files (positional) |
 | `-o`, `--output` | output path (default `combined.json`) |
-| `-n`, `--name` | name for the joined army (default `NewArmy`) |
+| `-j`, `--join` | `multi` (default) or `single` — see above |
+| `-n`, `--name` | name for the joined army; **only used with `--join single`** (default `NewArmy`) |
 
 ---
 

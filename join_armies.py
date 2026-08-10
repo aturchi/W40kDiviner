@@ -1,8 +1,17 @@
 #!/usr/bin/env python3
-"""Join several native JSON files into one multi-army file.
+"""Join several native JSON files into one file.
+
+Two modes:
+    --join multi   (default) keep each input as its own army in a
+                   multi-army file.
+    --join single  merge every unit into ONE army, named with -n; units
+                   whose names collide across sources are suffixed with
+                   their source army for traceability.
 
 Usage:
     python3 join_armies.py tau.json wolves.json -o combined.json
+    python3 join_armies.py tau.json wolves.json --join single -n Allies \\
+            -o combined.json
 
 Inputs may be v1 (auto-migrated, army named 'Unnamed army') or v2.
 Duplicate army names are rejected: rename them before joining.
@@ -25,14 +34,21 @@ def main():
     ap.add_argument("inputs", nargs="+", help="input JSON files")
     ap.add_argument("-o", "--output", default="combined.json",
                     help="output path (default: combined.json)")
+    ap.add_argument("-j", "--join", choices=("single", "multi"), default="multi",
+                    help="join mode: 'multi' keeps each input as its own "
+                         "army in a multi-army file (default); 'single' "
+                         "merges every unit into ONE army named via -n")
     ap.add_argument("-n", "--name", default="NewArmy",
-                    help="New name for joined army (default: NewArmy)")
+                    help="name for the joined army; only used with "
+                         "--join single (default: NewArmy)")
     args = ap.parse_args()
 
     try:
-        newname=args.name
         datasets = [native_format.load(p) for p in args.inputs]
-        joined = native_format.join_raw(datasets,newname)
+        if args.join == "single":
+            joined = native_format.join_raw(datasets, args.name)
+        else:
+            joined = native_format.join(datasets)
         # After merging, guarantee every ability has a globally unique
         # id (collisions between files are re-stamped).
         n_ids = ability_ids.ensure_ids(joined)
