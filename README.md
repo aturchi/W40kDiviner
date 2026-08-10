@@ -146,6 +146,8 @@ A GUI to build and maintain rosters. The left pane is a tree
 `army → units → models → weapons → abilities`; the right pane edits the selected
 node.
 
+![Profile Editor](img/profile_editor.png)
+
 **Workflow**
 
 - **Import JSON / Save JSON** — load an existing native file, edit, save back.
@@ -330,6 +332,9 @@ Computes **exact** statistics for **one attacker unit vs one or more defender
 units** (each defender opens its own result popup, so several can be compared
 side by side).
 
+![Attack Analyzer](img/attack_analyzer.png)
+![Attack Analyzer - Results](img/analyzer_results.png)
+
 **Panels.** Each army panel is split into a small **“Leaders & Supports”** list
 and the **units** list:
 
@@ -363,6 +368,8 @@ percentiles are all exact.
 **Run:** `python3 game_assistant.py`
 
 Resolves attacks with **real dice rolls** during a game.
+
+![Game Assistant](img/game_assistant.png)
 
 **Workflow**
 
