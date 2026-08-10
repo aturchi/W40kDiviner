@@ -5,7 +5,7 @@ you build and edit army rosters, compute **exact** attack statistics (mean,
 median) of one unit against another, and resolve attacks with real dice during a
 game while tracking some variables.
 
-I know that there are many such programs that to mostly the same, but this one
+I know that there are many such programs that do mostly the same, but this one
 implements things a little differently from most programs out there that run
 Monte-Carlo simulations.
 
