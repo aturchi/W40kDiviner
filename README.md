@@ -333,7 +333,7 @@ units** (each defender opens its own result popup, so several can be compared
 side by side).
 
 ![Attack Analyzer](img/attack_analyzer.png)
-![Attack Analyzer - Results](img/analyzer_results.png)
+![Attack Analyzer - Results](img/results.png)
 
 **Panels.** Each army panel is split into a small **“Leaders & Supports”** list
 and the **units** list:
