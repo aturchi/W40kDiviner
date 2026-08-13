@@ -26,6 +26,7 @@ import native_format          # noqa: E402
 import analyzer_core          # noqa: E402
 import leader_core as lc      # noqa: E402
 import inspect_dialog         # noqa: E402
+import session_io             # noqa: E402
 from unit_model import units_from_native  # noqa: E402
 from setup_panel import SetupPanel, show_options_dialog, show_font_dialog  # noqa: E402
 from search_widget import attach_search    # noqa: E402
@@ -43,6 +44,7 @@ class AnalyzerApp(tk.Tk):
         super().__init__()
         self.title("W40k Attack Analyzer")
         self.geometry("1020x620")
+        self.data = None             # native dict currently loaded
         self.units = []              # Unit objects from the loaded file
         # per-panel state: leaders/others/joined Unit lists + widgets
         self.panels = {}
@@ -57,6 +59,8 @@ class AnalyzerApp(tk.Tk):
         bar.pack(side=tk.TOP, fill=tk.X)
         ttk.Button(bar, text="Load JSON",
                    command=self.cmd_load).pack(side=tk.LEFT, padx=3, pady=3)
+        ttk.Button(bar, text="Save / load session",
+                   command=self.cmd_session).pack(side=tk.LEFT, padx=3)
         ttk.Button(bar, text="Analyze",
                    command=self.cmd_analyze).pack(side=tk.LEFT, padx=3)
         ttk.Button(bar, text="Inspect",
@@ -172,6 +176,7 @@ class AnalyzerApp(tk.Tk):
         except Exception as exc:
             messagebox.showerror("Load failed", str(exc))
             return
+        self.data = data             # kept for the session file
         armies = sorted({u.army for u in self.units if u.army})
         for p in self.panels.values():
             p["army"].configure(values=armies)
@@ -374,6 +379,55 @@ class AnalyzerApp(tk.Tk):
                                             ability_dicts=pairs)
                 return
         messagebox.showinfo("Inspect", "Select a unit first.")
+
+    # ---------- session save / load ----------
+
+    def cmd_session(self):
+        """Single Save/load button: store the loaded armies, the army
+        chosen in each panel and the joins already built, or restore a
+        previously saved session."""
+        session_io.run(self, "attack_analyzer", self._session_state,
+                       self._apply_session, "Analyzer session")
+
+    def _session_state(self):
+        """State written to the session file (None aborts the save)."""
+        if self.data is None:
+            messagebox.showinfo("Session", "Load a roster first.")
+            return None
+        return {"data": self.data,
+                "panels": {key: {"army": p["army"].get(),
+                                 "joined": session_io.joined_records(
+                                     p["joined"])}
+                           for key, p in self.panels.items()}}
+
+    def _apply_session(self, state):
+        """Rebuild the units from the embedded roster, then restore each
+        panel's army and joins. Joins whose parts no longer exist (or no
+        longer fit) are reported and skipped."""
+        data = state.get("data")
+        units = units_from_native(data)
+        self.data, self.units = data, units
+        armies = sorted({u.army for u in self.units if u.army})
+        panels = state.get("panels") or {}
+        missing = []
+        for key, p in self.panels.items():
+            saved = panels.get(key) or {}
+            p["army"].configure(values=armies)
+            want = saved.get("army")
+            p["army"].set(want if want in armies
+                          else (armies[0] if armies else ""))
+            self._rebuild_panel(key)          # resets the joined list
+            p["joined"], gone = session_io.rebuild_joins(
+                saved.get("joined"), p["leaders"], p["others"],
+                p["supports"])
+            missing += gone
+            self._refresh_lists(key)
+        self.status.config(text=f"{len(self.units)} units, "
+                                f"{len(armies)} armies | session")
+        if missing:
+            messagebox.showwarning(
+                "Session", "These joins could not be restored:\n"
+                           + "\n".join(sorted(set(missing))))
 
     # ---------- analysis ----------
 

@@ -5,7 +5,7 @@ self.result is the new list, or None on cancel."""
 
 import tkinter as tk
 from tkinter import ttk
-from ui_utils import scrollable_listbox
+from ui_utils import scrollable_listbox, multi_select_hint
 
 from keywords_config import vocabulary_for  # noqa: F401
 # (re-exported: profile_editor imports it from list_dialog)
@@ -29,17 +29,21 @@ class StringListDialog(tk.Toplevel):
         self.rowconfigure(0, weight=1)
         for c in range(3):
             self.columnconfigure(c, weight=1)
+        # Row 1 is the multi-selection reminder (Remove takes several
+        # entries at once); the controls sit below it.
+        multi_select_hint(self, "Remove deletes every selected entry").grid(
+            row=1, column=0, columnspan=3, sticky="w", padx=6)
         self.entry = ttk.Combobox(self, width=26,
                                   values=sorted(vocabulary or []))
-        self.entry.grid(row=1, column=0, padx=6, sticky=tk.W)
+        self.entry.grid(row=2, column=0, padx=6, sticky=tk.W)
         ttk.Button(self, text="Add",
-                   command=self.cmd_add).grid(row=1, column=1)
+                   command=self.cmd_add).grid(row=2, column=1)
         ttk.Button(self, text="Remove",
-                   command=self.cmd_remove).grid(row=1, column=2, padx=4)
+                   command=self.cmd_remove).grid(row=2, column=2, padx=4)
         ttk.Button(self, text="OK",
-                   command=self.cmd_ok).grid(row=2, column=1, pady=8)
+                   command=self.cmd_ok).grid(row=3, column=1, pady=8)
         ttk.Button(self, text="Cancel",
-                   command=self.destroy).grid(row=2, column=2, pady=8)
+                   command=self.destroy).grid(row=3, column=2, pady=8)
         self.entry.bind("<Return>", lambda e: self.cmd_add())
         self._refresh()
 

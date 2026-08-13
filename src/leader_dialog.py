@@ -17,7 +17,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 import leader_core as lc
-from ui_utils import scrollable_listbox
+from ui_utils import scrollable_listbox, multi_select_hint
 
 _GREY = "#aaaaaa"
 
@@ -210,6 +210,8 @@ class TwoArmyJoinDialog(tk.Toplevel):
 
         ok = ttk.Frame(self)
         ok.grid(row=2, column=0, pady=6)
+        # One reminder for all the source lists (they are all multi-select).
+        multi_select_hint(ok).pack(side=tk.LEFT, padx=12)
         ttk.Button(ok, text="OK", command=self.cmd_ok).pack(side=tk.LEFT,
                                                             padx=12)
         ttk.Button(ok, text="Cancel",

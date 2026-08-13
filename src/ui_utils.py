@@ -5,13 +5,23 @@
 - attach_yscroll(): same auto-hiding scrollbar for an existing yview widget.
 - make_resizable(): give a Toplevel a single weighted grid cell so its
   content expands when the window is enlarged.
+- multi_select_hint(): the shared "Ctrl+click" reminder label used by every
+  dialog holding a multi-selection list.
 
 Kept dependency-free (tkinter only) so every GUI module can reuse it
 instead of wiring scrollbars by hand.
 """
 
+import sys
 import tkinter as tk
 from tkinter import ttk
+
+# Modifier key used to extend a selection: Command on macOS, Control
+# everywhere else. Shift+click extends to a range on all platforms.
+_MULTI_KEY = "Cmd" if sys.platform == "darwin" else "Ctrl"
+MULTI_SELECT_HINT = (f"{_MULTI_KEY}+click to select more than one entry, "
+                     "Shift+click for a range")
+HINT_COLOR = "#666666"
 
 
 class _AutoScrollbar(ttk.Scrollbar):
@@ -64,3 +74,12 @@ def make_resizable(toplevel, child, minsize=None):
     child.grid(row=0, column=0, sticky="nsew")
     if minsize:
         toplevel.minsize(*minsize)
+
+
+def multi_select_hint(parent, extra=""):
+    """Small grey label reminding that a list accepts multiple selections
+    (Ctrl+click, Cmd+click on macOS). Returns the Label WITHOUT geometry
+    management, so the caller pack()s or grid()s it where it fits; 'extra'
+    appends a dialog-specific note."""
+    text = MULTI_SELECT_HINT + (f" - {extra}" if extra else "")
+    return ttk.Label(parent, text=text, foreground=HINT_COLOR)

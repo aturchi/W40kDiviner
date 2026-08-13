@@ -13,7 +13,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 
 import native_format as nf
-from ui_utils import scrollable_listbox
+from ui_utils import scrollable_listbox, multi_select_hint
 from army_load_core import ArmyLoadState
 
 
@@ -40,8 +40,10 @@ class ArmyLoadDialog(tk.Toplevel):
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 
+        multi_select_hint(self).grid(row=2, column=0, columnspan=2,
+                                     sticky="w", padx=6)
         bar = ttk.Frame(self)
-        bar.grid(row=2, column=0, columnspan=2, pady=4)
+        bar.grid(row=3, column=0, columnspan=2, pady=4)
         ttk.Button(bar, text="Join selected",
                    command=self.cmd_join).pack(side=tk.LEFT, padx=4)
         ttk.Button(bar, text="Open",

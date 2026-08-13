@@ -33,8 +33,9 @@ from unit_model import units_from_native      # noqa: E402
 from editor_widgets import PickerDialog       # noqa: E402
 import leader_core as lc                      # noqa: E402
 import inspect_dialog                         # noqa: E402
+import session_io                             # noqa: E402
 from search_widget import attach_search       # noqa: E402
-from ui_utils import scrollable_listbox        # noqa: E402
+from ui_utils import scrollable_listbox, multi_select_hint  # noqa: E402
 from setup_panel import SetupPanel, show_options_dialog, show_font_dialog   # noqa: E402
 
 MASK_TAG = "masked"
@@ -72,6 +73,9 @@ class ArmySetupDialog(tk.Toplevel):
         self.src_tree.configure(yscrollcommand=sb.set)
         sb.pack(side=tk.RIGHT, fill=tk.Y)
         self.src_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # "Add to A/B" takes the whole selection, so flag the modifier key.
+        multi_select_hint(self, "Add to A/B takes every selected unit").grid(
+            row=2, column=0, columnspan=3, sticky="w", padx=6, pady=(0, 4))
         self._tree_units = {}       # tree iid -> (label, unit_dict)
         for a in sorted(data["armies"], key=lambda x: str(x["name"]).lower()):
             parent_iid = self.src_tree.insert("", "end", text=a["name"],
@@ -169,6 +173,8 @@ class GameAssistantApp(tk.Tk):
         bar.pack(side=tk.TOP, fill=tk.X)
         ttk.Button(bar, text="Load JSON",
                    command=self.cmd_load).pack(side=tk.LEFT, padx=3, pady=3)
+        ttk.Button(bar, text="Save / load session",
+                   command=self.cmd_session).pack(side=tk.LEFT, padx=3)
         ttk.Button(bar, text="Options",
                    command=lambda: show_options_dialog(self)).pack(
             side=tk.LEFT, padx=3)
@@ -388,6 +394,77 @@ class GameAssistantApp(tk.Tk):
             return
         messagebox.showinfo("Inspect", "Select a unit first.")
 
+    # ---------- session save / load ----------
+
+    def cmd_session(self):
+        """Single Save/load button: store both rosters (joins, ability
+        toggles) together with the table state - masked models/weapons
+        and the edited wounds/count cells - or restore a saved session."""
+        session_io.run(self, "game_assistant", self._session_state,
+                       self._apply_session, "Game session")
+
+    def _table_state(self, side):
+        """{row iid: {'masked': True, 'wounds': text}} for every row that
+        carries either. The iids are rebuilt identically by _fill_tree
+        from the same roster, so they are stable keys."""
+        tree = self.trees[side]
+        out = {}
+
+        def walk(parent):
+            for iid in tree.get_children(parent):
+                rec = {}
+                if self._is_masked(side, iid):
+                    rec["masked"] = True
+                value = str(tree.set(iid, "wounds"))
+                if value:
+                    rec["wounds"] = value
+                if rec:
+                    out[iid] = rec
+                walk(iid)
+
+        walk("")
+        return out
+
+    def _restore_table(self, side, table):
+        tree = self.trees[side]
+        for iid, rec in (table or {}).items():
+            if not tree.exists(iid):
+                continue                    # roster changed: skip the row
+            if rec.get("masked"):
+                tree.item(iid, tags=tuple(set(tree.item(iid, "tags"))
+                                          | {MASK_TAG}))
+            if "wounds" in rec:
+                tree.set(iid, "wounds", rec["wounds"])
+
+    def _session_state(self):
+        """State written to the session file (None aborts the save)."""
+        if not self.rosters["A"] and not self.rosters["B"]:
+            messagebox.showinfo("Session", "Set up the armies first.")
+            return None
+        return {"fmt": self.fmt,
+                "attacking_side": self.att_side.get(),
+                "rosters": self.rosters,
+                "table": {s: self._table_state(s) for s in ("A", "B")}}
+
+    def _apply_session(self, state):
+        """Restore both rosters and the table state."""
+        self.fmt = state.get("fmt", self.fmt)
+        rosters = state.get("rosters") or {}
+        for side in ("A", "B"):
+            self.rosters[side] = list(rosters.get(side) or [])
+            self._fill_tree(side)
+            self._restore_table(side, (state.get("table") or {}).get(side))
+        side = state.get("attacking_side")
+        if side in ("A", "B"):
+            self.att_side.set(side)
+        self._refresh_melee()
+        pts = {s: sum(lc.entry_points(e) for e in self.rosters[s])
+               for s in ("A", "B")}
+        self.status.config(text=f"Army A: {len(self.rosters['A'])} units, "
+                                f"{pts['A']} pts | Army B: "
+                                f"{len(self.rosters['B'])} units, "
+                                f"{pts['B']} pts | session")
+
     # ---------- attack resolution ----------
 
     def _selected_unit(self, side):
@@ -488,8 +565,15 @@ class GameAssistantApp(tk.Tk):
                                                  flags, mods)
         opts = analyzer_core.reference_options(dview)
         if len(opts) > 1:
-            dlg = PickerDialog(self, f"Reference model in {defender.name}",
-                               opts)
+            # Only UNMASKED models reach this point (the defender is built
+            # by _build_unit, which drops masked copies and never attaches
+            # a fully masked leader/support). The profile the rules fix for
+            # the wound roll - highest Toughness among the bodyguard models
+            # - is shown in bold, but any profile can be chosen.
+            sugg = analyzer_core.suggested_references(dview, opts)
+            dlg = PickerDialog(self, f"Reference model in {defender.name}"
+                               " (bold = rules default for the wound roll)",
+                               opts, bold=[opts[i][1] for i in sugg])
             self.wait_window(dlg)
             if dlg.choice is None:
                 return

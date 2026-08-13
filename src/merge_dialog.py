@@ -23,7 +23,7 @@ import copy
 import tkinter as tk
 from tkinter import ttk
 
-from ui_utils import scrollable_listbox
+from ui_utils import scrollable_listbox, multi_select_hint
 import profile_diff as pd
 
 
@@ -66,6 +66,9 @@ class MergeDialog(tk.Toplevel):
                           ("changed", "modified")]:
             tk.Label(legend, text=pd.PREFIX[tag] + text,
                      fg=pd.COLORS[tag]).pack(side=tk.LEFT, padx=6)
+        # All three boxes are multi-select (Merge/Delete/Accept selected
+        # act on the whole selection): one reminder next to the legend.
+        multi_select_hint(legend).pack(side=tk.LEFT, padx=(18, 0))
 
         # Box 1: units of both armies.
         ttk.Label(root, text="Units").grid(row=1, column=0, sticky="w")

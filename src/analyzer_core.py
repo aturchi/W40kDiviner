@@ -3,7 +3,13 @@ the exact attack mathematics. GUI-free and fully testable headless.
 
 Flow:
   aview, dview = build_views(attacker, defender, flags)
-  opts = reference_options(dview)        # >1 -> ask the user to pick
+  opts = reference_options(dview)        # one entry per distinct
+                                         # defensive profile; the
+                                         # analyzer reports them
+                                         # all, the game assistant
+                                         # asks which one to use
+  sugg = suggested_references(dview, opts)  # advisory: the profile the
+                                         # rules fix for the wound roll
   results = run_analysis(aview, dview, ref, flags, mode, melee, manual)
 """
 
@@ -43,31 +49,75 @@ def build_views(attacker, defender, flags: dict, mods: dict = None):
     return aview, dview
 
 
+def _ref_key(ref):
+    """Dedup/comparison key of a reference profile: the characteristics
+    and keywords that change the attack maths."""
+    return (ref["T"], ref["Sv"], ref["W"], ref["invuln"], ref["fnp"],
+            frozenset(ref["keywords"]))
+
+
+def _model_ref(model, dview, n_models):
+    """(label, ref) for one model group of the defender view.
+    Defender keywords for ANTI-X N+: the model's EFFECTIVE keywords
+    (inherited unit keywords + the model's own, minus '-TOKEN'
+    suppressions), using the CURRENT unit-view keywords as the base so
+    combat-time modifications (setKeyword) are reflected."""
+    kws = {k.upper() for k in model.effective_keywords(dview.keywords)}
+    ref = {"T": model.T.value(), "Sv": model.Sv.value(),
+           "W": model.W.value(), "invuln": model.invuln,
+           "fnp": model.fnp, "models": n_models, "keywords": kws}
+    inv = f" inv{ref['invuln']}+" if ref["invuln"] else ""
+    fnp = f" fnp{ref['fnp']}+" if ref["fnp"] else ""
+    return (f"{model.name}  (T{ref['T']} Sv{ref['Sv']}+ "
+            f"W{ref['W']}{inv}{fnp})", ref)
+
+
 def reference_options(dview):
     """Distinct defensive profiles in the defender unit:
-    [(label, ref_dict)]. One entry -> no popup needed."""
+    [(label, ref_dict)]. One entry -> no popup needed. Each distinct
+    defensive profile (stats + keywords) yields one reference."""
     seen, out = set(), []
     n_models = sum(m.model_count for m in dview.models())
-    # Defender keywords for ANTI-X N+: the model's EFFECTIVE keywords
-    # (inherited unit keywords + the model's own, minus '-TOKEN'
-    # suppressions), using the CURRENT unit-view keywords as the base so
-    # combat-time modifications (setKeyword) are reflected. Each distinct
-    # defensive profile (stats + keywords) yields one reference.
     for m in dview.models():
-        kws = {k.upper() for k in m.effective_keywords(dview.keywords)}
-        ref = {"T": m.T.value(), "Sv": m.Sv.value(), "W": m.W.value(),
-               "invuln": m.invuln, "fnp": m.fnp, "models": n_models,
-               "keywords": kws}
-        key = (ref["T"], ref["Sv"], ref["W"], ref["invuln"], ref["fnp"],
-               frozenset(kws))
+        label, ref = _model_ref(m, dview, n_models)
+        key = _ref_key(ref)
         if key in seen:
             continue
         seen.add(key)
-        inv = f" inv{ref['invuln']}+" if ref["invuln"] else ""
-        fnp = f" fnp{ref['fnp']}+" if ref["fnp"] else ""
-        out.append((f"{m.name}  (T{ref['T']} Sv{ref['Sv']}+ "
-                    f"W{ref['W']}{inv}{fnp})", ref))
+        out.append((label, ref))
     return out
+
+
+def suggested_references(dview, opts=None):
+    """Indices in 'opts' of the profile(s) the rules prescribe for the
+    WOUND roll: the highest Toughness among the unit's BODYGUARD models
+    (its own models, ignoring an attached leader or support), or among
+    all models when nothing is attached. More than one index comes back
+    when several bodyguard profiles share that Toughness - they differ
+    in save/wounds only, which the rules settle when the attack is
+    allocated, not when the target is selected. Empty set if unknown.
+
+    Advisory only: the caller still lets the user pick any profile.
+    """
+    opts = reference_options(dview) if opts is None else opts
+    n_models = sum(m.model_count for m in dview.models())
+    getter = getattr(dview, "bodyguard_models", None)
+    pool = list(getter()) if getter is not None else list(dview.models())
+    pool = pool or list(dview.models())
+    tough = {}
+    for m in pool:
+        _label, ref = _model_ref(m, dview, n_models)
+        t = ref["T"] if isinstance(ref["T"], (int, float)) else None
+        if t is None:
+            continue
+        key = _ref_key(ref)
+        tough[key] = max(t, tough.get(key, t))
+    if not tough:
+        return set()
+    best = max(tough.values())
+    wanted = {k for k, t in tough.items() if t == best}
+    return {i for i, (_label, ref) in enumerate(opts)
+            if _ref_key(ref) in wanted}
 
 
 def select_weapons(aview, mode: str, melee_name: str = None):

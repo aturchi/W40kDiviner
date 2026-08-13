@@ -241,6 +241,13 @@ class Unit:
             out += self.attached_support.models()
         return out
 
+    def bodyguard_models(self):
+        """The unit's OWN model groups, i.e. models() without those of an
+        attached leader or support. For a unit with nothing attached this
+        is the same list as models(). The rules use this set to fix the
+        unit's Toughness characteristic when a leader is attached."""
+        return list(self._models)
+
     def __iter__(self):
         return iter(self.models())
 

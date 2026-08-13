@@ -2,21 +2,27 @@
 
 PickerDialog: modal filterable list. Items are (label, payload) pairs;
 special items (e.g. "<New empty unit>") can be pinned on top, exempt
-from filtering. The chosen payload ends up in dialog.choice (None if
-cancelled). Payloads are returned as-is: callers decide whether to
-clone them.
+from filtering. Rows are drawn in a one-column Treeview so a subset of
+them can be rendered in bold ('bold' argument) to flag a suggested
+choice without restricting the selection. The chosen payload ends up in
+dialog.choice (None if cancelled). Payloads are returned as-is: callers
+decide whether to clone them.
 """
 
 import tkinter as tk
 from tkinter import ttk
-from ui_utils import scrollable_listbox
+from tkinter import font as tkfont
+
+SUGGESTED_TAG = "suggested"
 
 
 class PickerDialog(tk.Toplevel):
     """Modal, filterable list picker. Items are (label, payload) pairs; the chosen payload lands in self.choice (None if cancelled)."""
-    def __init__(self, master, title, items, specials=()):
+    def __init__(self, master, title, items, specials=(), bold=()):
         """items: [(label, payload)]; specials: [(label, payload)] pinned
-        on top and always visible regardless of the filter text."""
+        on top and always visible regardless of the filter text; bold:
+        payloads (matched by IDENTITY, so unhashable dicts are fine) whose
+        row is drawn in bold - a hint, never a restriction."""
         super().__init__(master)
         self.title(title)
         self.geometry("560x420")
@@ -24,6 +30,7 @@ class PickerDialog(tk.Toplevel):
         self.choice = None
         self.specials = list(specials)
         self.items = list(items)
+        self.bold = list(bold)
         self.filtered = []           # current (label, payload) shown
 
         self.filter_var = tk.StringVar()
@@ -31,9 +38,23 @@ class PickerDialog(tk.Toplevel):
         entry = ttk.Entry(self, textvariable=self.filter_var)
         entry.pack(fill=tk.X, padx=6, pady=4)
         entry.focus_set()
-        lb_frame, self.listbox = scrollable_listbox(self)
-        lb_frame.pack(fill=tk.BOTH, expand=True, padx=6)
-        self.listbox.bind("<Double-Button-1>", lambda e: self.cmd_ok())
+        frame = ttk.Frame(self)
+        frame.pack(fill=tk.BOTH, expand=True, padx=6)
+        self.tree = ttk.Treeview(frame, columns=("label",), show="",
+                                 selectmode="browse")
+        self.tree.column("label", anchor=tk.W, stretch=True)
+        bar = ttk.Scrollbar(frame, orient=tk.VERTICAL,
+                            command=self.tree.yview)
+        self.tree.configure(yscrollcommand=bar.set)
+        bar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Bold font kept on the instance: a Tk font object is destroyed
+        # when garbage collected, which would silently drop the tag.
+        self._bold_font = tkfont.Font(
+            font=tkfont.nametofont("TkDefaultFont"))
+        self._bold_font.configure(weight="bold")
+        self.tree.tag_configure(SUGGESTED_TAG, font=self._bold_font)
+        self.tree.bind("<Double-Button-1>", lambda e: self.cmd_ok())
         row = ttk.Frame(self)
         row.pack(pady=4)
         ttk.Button(row, text="OK", command=self.cmd_ok).pack(side=tk.LEFT,
@@ -43,15 +64,22 @@ class PickerDialog(tk.Toplevel):
         self.refresh()
         self.grab_set()
 
+    def _is_bold(self, payload):
+        """Identity test: payloads are often unhashable dicts."""
+        return any(payload is b for b in self.bold)
+
     def refresh(self):
         text = self.filter_var.get().lower()
         self.filtered = self.specials + [
             (lab, p) for lab, p in self.items if text in lab.lower()]
-        self.listbox.delete(0, tk.END)
-        for lab, _p in self.filtered:
-            self.listbox.insert(tk.END, lab)
+        self.tree.delete(*self.tree.get_children())
+        for i, (lab, p) in enumerate(self.filtered):
+            self.tree.insert("", tk.END, iid=str(i), values=(lab,),
+                             tags=(SUGGESTED_TAG,) if self._is_bold(p)
+                             else ())
 
     def cmd_ok(self):
-        if self.listbox.curselection():
-            self.choice = self.filtered[self.listbox.curselection()[0]][1]
+        sel = self.tree.selection()
+        if sel:
+            self.choice = self.filtered[int(sel[0])][1]
         self.destroy()
