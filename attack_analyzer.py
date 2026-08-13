@@ -27,7 +27,6 @@ import analyzer_core          # noqa: E402
 import leader_core as lc      # noqa: E402
 import inspect_dialog         # noqa: E402
 from unit_model import units_from_native  # noqa: E402
-from editor_widgets import PickerDialog   # noqa: E402
 from setup_panel import SetupPanel, show_options_dialog, show_font_dialog  # noqa: E402
 from search_widget import attach_search    # noqa: E402
 from ui_utils import scrollable_listbox     # noqa: E402
@@ -401,42 +400,68 @@ class AnalyzerApp(tk.Tk):
             self._analyze_one(att, defender, flags, mode, melee_name, mods)
 
     def _analyze_one(self, att, defender, flags, mode, melee_name, mods):
+        """Analyze the attack against EVERY distinct defensive profile of
+        the defender unit (a combined unit mixes bodyguard, leader and
+        support models with different stats/keywords): one result page per
+        profile, so no reference model has to be picked."""
         aview, dview = analyzer_core.build_views(att, defender, flags, mods)
-        opts = analyzer_core.reference_options(dview)
-        if len(opts) > 1:
-            dlg = PickerDialog(self, f"Reference model in {defender.name}",
-                               opts)
-            self.wait_window(dlg)
-            if dlg.choice is None:
+        entries = []
+        for label, ref in analyzer_core.reference_options(dview):
+            results = analyzer_core.run_analysis(aview, dview, ref, flags,
+                                                 mode, melee_name, mods)
+            if not results["weapons"]:
+                # The weapon selection does not depend on the reference,
+                # so one empty result means all of them are empty.
+                messagebox.showinfo("Analyze",
+                                    f"No weapons match the '{mode}' "
+                                    "selection.")
                 return
-            ref = dlg.choice
-        else:
-            ref = opts[0][1]
-        results = analyzer_core.run_analysis(aview, dview, ref, flags,
-                                             mode, melee_name, mods)
-        if not results["weapons"]:
-            messagebox.showinfo("Analyze",
-                                f"No weapons match the '{mode}' selection.")
-            return
-        self._show_results(att, defender, ref, results)
+            entries.append((label, ref, results))
+        if entries:
+            self._show_results(att, defender, entries)
 
     # ---------- results popup ----------
 
-    def _show_results(self, att, defender, ref, results):
+    def _show_results(self, att, defender, entries):
+        """Result window for one defender. entries = [(label, ref,
+        results)], one per distinct defensive profile. A single profile
+        keeps the plain layout; several are stacked in a notebook with one
+        tab per profile."""
         win = tk.Toplevel(self)
         win.title(f"{att.name}  vs  {defender.name}")
-        win.geometry("760x420")
-        inv = f" inv{ref['invuln']}+" if ref.get("invuln") else ""
-        fnp = f" fnp{ref['fnp']}+" if ref.get("fnp") else ""
-        ttk.Label(win, text=f"Reference defender: T{ref['T']} Sv{ref['Sv']}+"
-                            f" W{ref['W']}{inv}{fnp}  |  values are "
-                            "exact (analytic)").pack(anchor=tk.W,
-                                                     padx=6, pady=4)
+        win.geometry("780x470")
+        if len(entries) == 1:
+            label, ref, results = entries[0]
+            self._result_page(win, label, ref, results)
+            return
+        ttk.Label(win, text=f"{defender.name}: {len(entries)} distinct "
+                            "model profiles - one tab each (attack "
+                            "resolved against that model)").pack(
+            anchor=tk.W, padx=6, pady=(4, 0))
+        nb = ttk.Notebook(win)
+        nb.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+        used = {}
+        for label, ref, results in entries:
+            # Tab title = model name (the part before the stat block),
+            # numbered if two profiles share the same model name.
+            short = label.split("  (")[0].strip() or "model"
+            used[short] = used.get(short, 0) + 1
+            if used[short] > 1:
+                short = f"{short} #{used[short]}"
+            page = ttk.Frame(nb)
+            nb.add(page, text=short)
+            self._result_page(page, label, ref, results)
+
+    def _result_page(self, parent, label, ref, results):
+        """Per-weapon table plus totals for one defensive profile."""
+        ttk.Label(parent, text=f"Defender profile: {label}  |  values are "
+                               "exact (analytic)").pack(anchor=tk.W,
+                                                        padx=6, pady=4)
         cols = ("count", "att_m", "w_mean", "w_med", "d_mean", "d_med",
                 "self")
-        heads = ("xN", "Attacks μ", "Wounds μ", "Wounds med", "Damage μ",
-                 "Damage med", "Self-dmg μ")
-        tree = ttk.Treeview(win, columns=cols, show="tree headings",
+        heads = ("xN", "Attacks μ", "Wounds μ", "Wounds med",
+                 "Damage μ", "Damage med", "Self-dmg μ")
+        tree = ttk.Treeview(parent, columns=cols, show="tree headings",
                             height=10)
         tree.heading("#0", text="Weapon")
         tree.column("#0", width=240)
@@ -453,7 +478,7 @@ class AnalyzerApp(tk.Tk):
         tree.pack(fill=tk.BOTH, expand=True, padx=6)
 
         t = results["totals"]
-        ttk.Label(win, text=(
+        ttk.Label(parent, text=(
             f"TOTAL gross damage: mean {t['damage']['mean']:.2f}, "
             f"median {t['damage']['median']}   |   "
             f"net (per wound capped at W={ref['W']}): "
@@ -462,7 +487,7 @@ class AnalyzerApp(tk.Tk):
             font=("TkDefaultFont", 10, "bold")).pack(anchor=tk.W,
                                                      padx=6, pady=4)
         if results["warnings"]:
-            ttk.Label(win, foreground="#a40",
+            ttk.Label(parent, foreground="#a40",
                       text="Not modelled: "
                            + "; ".join(results["warnings"])[:300],
                       wraplength=720).pack(anchor=tk.W, padx=6, pady=2)
