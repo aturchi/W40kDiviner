@@ -241,6 +241,16 @@ def reroll_low_damage(pmf: list, lo: int, hi: int) -> list:
 class WeaponMechanics:
     """Flags/values extracted from weapon keywords + ability effects."""
 
+    def copy(self):
+        """Shallow copy with the mutable containers duplicated, so a
+        what-if variant cannot write back into the original."""
+        other = WeaponMechanics()
+        other.__dict__.update(self.__dict__)
+        other.ignore_malus = set(self.ignore_malus)
+        other.anti = list(self.anti)
+        other.warnings = list(self.warnings)
+        return other
+
     def __init__(self):
         self.sustained = 0          # extra hits per critical hit
         self.lethal = False         # crit hit auto-wounds
@@ -312,6 +322,60 @@ _KW_FLAGS = {"LETHAL HITS": "lethal", "DEVASTATING WOUNDS": "devastating",
              "HEAVY": "heavy", "LANCE": "lance",
              "IGNORES COVER": "ignores_cover", "HAZARDOUS": "hazardous",
              "INDIRECT FIRE": "indirect"}
+# Weapon abilities the attacker (or a defender ability) can switch off,
+# and the value that means "off". Keyed by the datasheet name, so the
+# same vocabulary drives the attack-setup dialogs and the 'DISABLE X'
+# effect string emitted by disableMechanic.
+OPTIONAL_ABILITIES = {
+    "LETHAL HITS": ("lethal", False),
+    "DEVASTATING WOUNDS": ("devastating", False),
+    "SUSTAINED HITS": ("sustained", 0),
+    "TWIN-LINKED": ("twin_linked", False),
+    "HEAVY": ("heavy", False),
+    "LANCE": ("lance", False),
+    "IGNORES COVER": ("ignores_cover", False),
+    "MELTA": ("melta", 0),
+    "RAPID FIRE": ("rapid_fire", 0),
+    "BLAST": ("blast", 0),
+    "CLEAVE": ("cleave", 0),
+    "TORRENT": ("torrent", False),
+    "HAZARDOUS": ("hazardous", False),
+    "INDIRECT FIRE": ("indirect", False),
+    "ANTI": ("anti", []),
+}
+
+# Abilities offered as "add to every attack" in the attack setup: the
+# token is what parse_weapon_keywords() will read, so numeric ones carry
+# their default X.
+ADDABLE_ABILITIES = ["LETHAL HITS", "DEVASTATING WOUNDS", "SUSTAINED HITS 1",
+                     "TWIN-LINKED", "HEAVY", "LANCE", "IGNORES COVER",
+                     "TORRENT", "MELTA 2", "RAPID FIRE 1", "BLAST 1",
+                     "PSYCHIC"]
+
+
+def disable_abilities(mech, names, warn=None):
+    """Switch the named weapon abilities off on 'mech'. Names are matched
+    on the datasheet spelling and may carry their X ("SUSTAINED HITS 2",
+    "ANTI-VEHICLE 4+"): only the ability part is used."""
+    for raw in names or ():
+        key = str(raw).upper().strip()
+        for label, (attr, off) in OPTIONAL_ABILITIES.items():
+            if key == label or key.startswith(label):
+                setattr(mech, attr, list(off) if isinstance(off, list)
+                        else off)
+                break
+        else:
+            if warn:
+                warn(f"cannot switch off unknown ability '{raw}'")
+
+
+def add_abilities(mech, tokens):
+    """Give every attack the listed weapon abilities (attack setup),
+    exactly as if the datasheet carried the keyword."""
+    if tokens:
+        parse_weapon_keywords(list(tokens), mech)
+
+
 # PSYCHIC is handled explicitly (ignore-malus on the hit roll), not here.
 _KW_IGNORED = {"PISTOL", "EXTRA ATTACKS", "ASSAULT", "ONE SHOT",
                "PRECISION"}
@@ -507,6 +571,10 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             mech.dmg_set_zero = True
         elif tok[0] == "EXTRAATTACKS":
             pass                    # selection-level keyword, no maths
+        elif tok[0] == "DISABLE":
+            # disableMechanic: switch a weapon ability off for this attack
+            disable_abilities(mech, [" ".join(tok[1:])],
+                              lambda m: mech.warnings.append(m))
         else:
             return False
         return True
@@ -841,6 +909,30 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         out[key] = pmf_stats(total)
     out["warnings"] = list(mech.warnings)
     return out
+
+
+def analyze_weapon_best(weapon, defender_ref: dict, ctx: dict, mech):
+    """analyze_weapon(), but taking the better side of the ONE choice the
+    11th-ed. rules leave the attacker mid-sequence: LETHAL HITS is
+    optional ("you can"), and using it turns a critical hit into an
+    ordinary automatic wound - which LOSES damage when the weapon also
+    has ANTI-X or DEVASTATING WOUNDS, because an automatic wound is not
+    a critical wound.
+
+    Returns (result, note): 'note' is None when nothing was declined,
+    otherwise a short string naming the ability that was passed up and
+    what it was worth. Callers that must follow the user's selection
+    literally should keep calling analyze_weapon()."""
+    res = analyze_weapon(weapon, defender_ref, ctx, mech)
+    if not mech.lethal:
+        return res, None
+    alt_mech = mech.copy()
+    alt_mech.lethal = False
+    alt = analyze_weapon(weapon, defender_ref, ctx, alt_mech)
+    gain = alt["damage"]["mean"] - res["damage"]["mean"]
+    if gain > 1e-9:
+        return alt, f"LETHAL HITS declined (+{gain:.2f} damage without it)"
+    return res, None
 
 
 def hazardous_damage_per_fail(keywords) -> int:

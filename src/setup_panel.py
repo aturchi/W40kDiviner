@@ -6,9 +6,55 @@ by both the attack analyzer (program 2) and the game assistant
 import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import ttk, messagebox
+import ui_utils as ui
 from ui_utils import scrollable_listbox
 
+import attack_math
 import rules_config
+
+def _multi_select(parent, title, prompt, items, selected=(),
+                  extra_check=None, note=None):
+    """Modal multi-selection list. Returns the chosen items in the order
+    of 'items', or None if cancelled. 'extra_check' is an optional
+    (label, BooleanVar) checkbox shown under the list; 'note' an
+    explanatory paragraph above it."""
+    win = tk.Toplevel(parent)
+    win.title(title)
+    win.transient(parent)
+    win.geometry("460x400")
+    ttk.Label(win, text=prompt).pack(anchor=tk.W, padx=6, pady=(6, 0))
+    if note:
+        ttk.Label(win, text=note, wraplength=430,
+                  foreground=ui.HINT_COLOR).pack(anchor=tk.W, padx=6,
+                                                 pady=(2, 0))
+    frame, listbox = scrollable_listbox(win, height=10,
+                                        selectmode=tk.EXTENDED,
+                                        exportselection=False)
+    frame.pack(fill=tk.BOTH, expand=True, padx=6, pady=4)
+    for i, name in enumerate(items):
+        listbox.insert(tk.END, name)
+        if name in selected:
+            listbox.selection_set(i)
+    ui.multi_select_hint(win).pack(anchor=tk.W, padx=6)
+    if extra_check:
+        ttk.Checkbutton(win, text=extra_check[0],
+                        variable=extra_check[1]).pack(anchor=tk.W, padx=6,
+                                                      pady=2)
+    out = {"value": None}
+
+    def ok():
+        out["value"] = [items[i] for i in listbox.curselection()]
+        win.destroy()
+
+    row = ttk.Frame(win)
+    row.pack(pady=6)
+    ttk.Button(row, text="OK", command=ok).pack(side=tk.LEFT, padx=6)
+    ttk.Button(row, text="Cancel",
+               command=win.destroy).pack(side=tk.LEFT, padx=6)
+    win.grab_set()
+    parent.wait_window(win)
+    return out["value"]
+
 
 FLAGS = [("half_range", "Within half range"),
          ("stationary", "Attacker remained stationary"),
@@ -102,6 +148,22 @@ class SetupPanel(ttk.LabelFrame):
         ttk.Button(self, text="Remove",
                    command=self.cmd_remove_mod).pack(anchor=tk.W, padx=4)
 
+        ttk.Separator(self).pack(fill=tk.X, pady=4)
+        # Ability selection: which of the attacker's optional abilities
+        # are used, and which extra ones every attack gets.
+        self.disabled_abilities = []      # switched off for this attack
+        self.extra_abilities = []         # added to EVERY attack
+        self.optimise_abilities = tk.BooleanVar(value=True)
+        arow = ttk.Frame(self)
+        arow.pack(anchor=tk.W, padx=4, pady=2)
+        ttk.Button(arow, text="Attack abilities...",
+                   command=self.cmd_pick_abilities).pack(side=tk.LEFT)
+        ttk.Button(arow, text="Extra abilities...",
+                   command=self.cmd_pick_extra).pack(side=tk.LEFT, padx=4)
+        self.ability_label = ttk.Label(self, text="all abilities used",
+                                       foreground=ui.HINT_COLOR)
+        self.ability_label.pack(anchor=tk.W, padx=4)
+
     # ---------- manual modifiers ----------
 
     def cmd_add_mod(self):
@@ -131,6 +193,52 @@ class SetupPanel(ttk.LabelFrame):
         del self.mods[sel[0]]
         self.mod_list.delete(sel[0])
 
+    # ---------- ability selection ----------
+
+    def _refresh_ability_label(self):
+        bits = []
+        if self.disabled_abilities:
+            bits.append("off: " + ", ".join(self.disabled_abilities))
+        if self.extra_abilities:
+            bits.append("added: " + ", ".join(self.extra_abilities))
+        if not self.optimise_abilities.get():
+            bits.append("literal selection")
+        self.ability_label.configure(
+            text="; ".join(bits) if bits else "all abilities used")
+
+    def cmd_pick_abilities(self):
+        """Which of the attacker's optional abilities to use. Everything
+        is used by default; unselect to switch an ability off."""
+        chosen = _multi_select(
+            self, "Attack abilities",
+            "Abilities in use (unselect to switch off):",
+            list(attack_math.OPTIONAL_ABILITIES),
+            selected=[a for a in attack_math.OPTIONAL_ABILITIES
+                      if a not in self.disabled_abilities],
+            extra_check=("Optimise: decline an optional ability when it "
+                         "costs damage", self.optimise_abilities),
+            note="Lethal Hits and Devastating Wounds are competing: a "
+                 "Lethal auto-wound is not a critical wound, so with "
+                 "both in use Devastating never triggers. With Optimise "
+                 "on, the better of the two is taken and reported.")
+        if chosen is None:
+            return
+        self.disabled_abilities = [a for a in attack_math.OPTIONAL_ABILITIES
+                                   if a not in chosen]
+        self._refresh_ability_label()
+
+    def cmd_pick_extra(self):
+        """Abilities granted to EVERY attack (stratagems, auras, what-if)."""
+        chosen = _multi_select(
+            self, "Extra abilities",
+            "Give these to every attack:",
+            list(attack_math.ADDABLE_ABILITIES),
+            selected=self.extra_abilities)
+        if chosen is None:
+            return
+        self.extra_abilities = chosen
+        self._refresh_ability_label()
+
     # ---------- accessors ----------
 
     def get_mode(self) -> str:
@@ -152,8 +260,13 @@ class SetupPanel(ttk.LabelFrame):
             self.melee_combo.configure(state="disabled")
 
     def get_flags(self) -> dict:
-        """The current context flags as a dict (in_cover, charged, etc.)."""
-        return {k: v.get() for k, v in self.flag_vars.items()}
+        """The current context flags as a dict (in_cover, charged, etc.),
+        plus the ability selection (see analyzer_core.ability_selection)."""
+        out = {k: v.get() for k, v in self.flag_vars.items()}
+        out["disabled_abilities"] = list(self.disabled_abilities)
+        out["extra_abilities"] = list(self.extra_abilities)
+        out["optimise_abilities"] = bool(self.optimise_abilities.get())
+        return out
 
     def set_flag_enabled(self, key: str, enabled: bool):
         """Enable/disable one flag checkbox. When disabling, the flag is

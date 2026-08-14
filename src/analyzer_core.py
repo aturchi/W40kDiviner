@@ -123,6 +123,18 @@ def suggested_references(dview, opts=None):
 INDIRECT_SKIP = "inapplicable due to indirect fire"
 
 
+def ability_selection(flags: dict) -> dict:
+    """The attack-setup ability selection carried in the flags dict:
+    {'extra': [...], 'disabled': [...], 'optimise': bool}. 'optimise'
+    defaults to True - where the rules leave a real choice (Lethal Hits
+    is optional in 11th ed.) the better side is taken and reported;
+    switch it off to follow the selection literally."""
+    flags = flags or {}
+    return {"extra": list(flags.get("extra_abilities") or []),
+            "disabled": list(flags.get("disabled_abilities") or []),
+            "optimise": flags.get("optimise_abilities", True)}
+
+
 def select_weapons(aview, mode: str, melee_name: str = None,
                    indirect: bool = False):
     """Weapons taking part in the attack.
@@ -165,6 +177,14 @@ def select_weapons_split(aview, mode: str, melee_name: str = None,
     return kept, skipped
 
 
+def mechanics_for_attack(weapon, dview, attack_type, manual, flags=None):
+    """Public wrapper of _mechanics_for that also applies the attack-setup
+    ability selection carried in 'flags' (used by the game assistant,
+    which resolves weapons one by one with the dice engine)."""
+    return _mechanics_for(weapon, dview, attack_type, manual,
+                          ability_selection(flags))
+
+
 def melee_choices(aview):
     """Names of melee weapons selectable as the main fight weapon."""
     return sorted({w.name for m in aview.models() for w in m.weapons
@@ -182,11 +202,19 @@ def _hazardous_variant(weapon):
     return v
 
 
-def _mechanics_for(weapon, dview, attack_type, manual):
+def _mechanics_for(weapon, dview, attack_type, manual, abilities=None):
+    """Weapon mechanics for one attack. 'abilities' is the attack-setup
+    ability selection: {'extra': [tokens added to EVERY attack],
+    'disabled': [abilities switched off]}. Extras are added first and
+    can then be switched off like any datasheet ability."""
     mech = am.WeaponMechanics()
     am.parse_weapon_keywords(weapon.keywords, mech)
     am.parse_effect_strings(weapon.effects, attack_type, mech, weapon)
     am.parse_effect_strings(dview.effects, attack_type, mech, weapon)
+    abilities = abilities or {}
+    am.add_abilities(mech, abilities.get("extra"))
+    am.disable_abilities(mech, abilities.get("disabled"),
+                         lambda m: mech.warnings.append(m))
     rolls = (manual or {}).get("rolls") or {}
     mech.hit_mod += rolls.get("hit", 0)
     mech.wound_mod += rolls.get("wound", 0)
@@ -229,8 +257,10 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
     gross, net = am.delta(0), am.delta(0)
     kept, skipped = select_weapons_split(aview, mode, melee_name,
                                          bool(flags.get("indirect")))
+    abilities = ability_selection(flags)
+    optimise = abilities.get("optimise", True)
     for w in kept:
-        mech = _mechanics_for(w, dview, attack_type, manual)
+        mech = _mechanics_for(w, dview, attack_type, manual, abilities)
         variants = [(w.name, w, None)]
         if mech.hazardous:
             variants.append((f"{w.name} [HAZARDOUS]",
@@ -238,7 +268,12 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
                              am.hazardous_self_damage_mean(w.count,
                                                            haz_damage)))
         for i, (label, wv, selfdmg) in enumerate(variants):
-            res = am.analyze_weapon(wv, ref, ctx, mech)
+            if optimise:
+                res, note = am.analyze_weapon_best(wv, ref, ctx, mech)
+            else:
+                res, note = am.analyze_weapon(wv, ref, ctx, mech), None
+            if note:
+                label = f"{label}  [{note}]"
             rows.append({"name": label, "count": wv.count,
                          "attacks": res["attacks"],
                          "wounds": res["wounds"],

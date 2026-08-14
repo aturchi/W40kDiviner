@@ -595,7 +595,8 @@ class GameAssistantApp(tk.Tk):
         haz_damage = attack_math.hazardous_damage_per_fail(attacker.keywords)
         results = []
         for w in weapons:
-            mech = analyzer_core._mechanics_for(w, dview, attack_type, mods)
+            mech = analyzer_core.mechanics_for_attack(w, dview, attack_type,
+                                                      mods, flags)
             hazardous = mech.hazardous and messagebox.askyesno(
                 "Hazardous", f"Use the HAZARDOUS profile for {w.name}?")
             res = attack_resolve.resolve_weapon(w, ref, ctx, mech,
