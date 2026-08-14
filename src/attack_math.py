@@ -223,6 +223,33 @@ def save_fail_prob(sv, ap, invuln,
     return 1.0 - max(p_arm, p_inv)
 
 
+def effective_fnp(defender_ref: dict, mech, mw: bool):
+    """(fnp_target, roll_modifier) actually in force for one damage
+    stream. Sources, in order:
+      * the defender's own FNP;
+      * an ability GRANTING one (mech.fnp_grant, or mech.fnp_mw for
+        mortal wounds only): the BEST value wins, FNP never stacks;
+      * an ability OVERRIDING it (mech.fnp_set / fnp_set_mw): forced,
+        even when it is worse - 7 means "no FNP at all";
+      * roll modifiers (mech.fnp_mod, plus fnp_mod_mw on mortal wounds).
+    Returns (None, 0) when no FNP applies."""
+    fnp = defender_ref.get("fnp")
+    if mech.fnp_grant is not None:
+        fnp = mech.fnp_grant if fnp is None else min(fnp, mech.fnp_grant)
+    if mw and mech.fnp_mw is not None:
+        fnp = mech.fnp_mw if fnp is None else min(fnp, mech.fnp_mw)
+    if mech.fnp_set is not None:
+        fnp = mech.fnp_set
+    if mw and mech.fnp_set_mw is not None:
+        fnp = mech.fnp_set_mw
+    if not fnp:
+        return None, 0
+    mod = mech.fnp_mod + (mech.fnp_mod_mw if mw else 0)
+    if "fnp" in mech.ignore_malus:
+        mod = max(0, mod)
+    return fnp, mod
+
+
 def reroll_low_damage(pmf: list, lo: int, hi: int) -> list:
     """Damage re-roll policy: results in [lo, hi] are re-rolled once
     (CAP_REROLLS permitting). Exact PMF transform."""
@@ -266,7 +293,12 @@ class WeaponMechanics:
         self.crit_mw = None         # {'value','match','end'} on crit wound
         self.hitroll_mw = None      # {'thr','value','match'} same-die MW
         self.crit_ap_delta = 0      # AP delta on the crit-wound branch
-        self.fnp_mw = None          # FNP applying to mortal wounds only
+        self.fnp_grant = None       # FNP GRANTED by an ability (best wins)
+        self.fnp_mw = None          # ...granted vs mortal wounds only
+        self.fnp_set = None         # FNP OVERRIDDEN for this attack
+        self.fnp_set_mw = None      # ...vs mortal wounds only
+        self.fnp_mod_mw = 0         # FNP roll modifier vs mortal wounds only
+        self.invuln_mw = None       # invulnerable save vs mortal wounds only
         self.dmg_reroll = None      # (lo, hi) damage re-roll range
         self.anti = []              # [(KEYWORD, X)] from ANTI-... X+
         self.twin_linked = False    # re-roll wound (fails)
@@ -571,6 +603,18 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             mech.dmg_set_zero = True
         elif tok[0] == "EXTRAATTACKS":
             pass                    # selection-level keyword, no maths
+        elif tok[0] == "FNP_ROLL":
+            mech.fnp_mod += int(tok[1])
+        elif tok[0] == "FNPOVERRIDE":
+            # Forced FNP for this attack, better OR worse than the
+            # defender's own (7 = no Feel No Pain at all).
+            mech.fnp_set = int(tok[1])
+        elif tok[0] == "SETFNP":
+            # Granted FNP: never stacks, the best value wins - here and
+            # against the defender's own value (see effective_fnp).
+            v = int(tok[1])
+            mech.fnp_grant = v if mech.fnp_grant is None \
+                else min(mech.fnp_grant, v)
         elif tok[0] == "DISABLE":
             # disableMechanic: switch a weapon ability off for this attack
             disable_abilities(mech, [" ".join(tok[1:])],
@@ -600,10 +644,26 @@ def _dispatch(dyn, s, tok, mech) -> bool:
         else:
             return False
         return True
-    if dyn == ["MW_ONLY"] and tok[0] == "SETFNP":
-        v = int(tok[1])
-        mech.fnp_mw = v if mech.fnp_mw is None else min(mech.fnp_mw, v)
-        return True
+    if dyn == ["MW_ONLY"]:
+        # Abilities that only bite on mortal wounds (Devastating Wounds
+        # and the like): a granted FNP (best wins), an overridden one, a
+        # modifier to that roll, or an invulnerable save - the one thing
+        # that can stop a mortal wound, since they ignore armour.
+        if tok[0] == "SETFNP":
+            v = int(tok[1])
+            mech.fnp_mw = v if mech.fnp_mw is None else min(mech.fnp_mw, v)
+            return True
+        if tok[0] == "FNPOVERRIDE":
+            mech.fnp_set_mw = int(tok[1])
+            return True
+        if tok[0] == "FNP_ROLL":
+            mech.fnp_mod_mw += int(tok[1])
+            return True
+        if tok[0] == "SETINVULN":
+            v = int(tok[1])
+            mech.invuln_mw = v if mech.invuln_mw is None \
+                else min(mech.invuln_mw, v)
+            return True
     if roll_m and roll_m.group(4) == "UNMOD" and roll_m.group(3) == "+":
         step, thr = roll_m.group(1), int(roll_m.group(2))
         if step == "WOUND" and s == "OVERRIDE WOUND ALWAYS CRIT":
@@ -831,13 +891,9 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                      else delta(mech.hitroll_mw["value"] or 1))
 
     def fnp_thin(pmf, mw: bool):
-        fnp = defender_ref.get("fnp")
-        if mw and mech.fnp_mw is not None:
-            fnp = mech.fnp_mw if fnp is None else min(fnp, mech.fnp_mw)
+        fnp, fnp_mod = effective_fnp(defender_ref, mech, mw)
         if not fnp:
             return pmf
-        fnp_mod = (max(0, mech.fnp_mod) if "fnp" in mech.ignore_malus
-                   else mech.fnp_mod)
         eff = fnp - fnp_mod               # FNP: no cap (like saves, 11th)
         p_ig = min(5.0 / 6.0, max(0.0, (7 - eff) / 6.0))
         times = rules_config.CAP_REROLLS
@@ -850,13 +906,25 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
             p_ig = min(P, 5.0 / 6.0)
         return binomial_thin(pmf, 1.0 - p_ig)
 
+    def mw_save_thin(pmf):
+        """An invulnerable save that applies to mortal wounds (they
+        ignore armour, so nothing else can stop them bar Feel No Pain).
+        Rolled per mortal wound, the way they are allocated, and before
+        FNP."""
+        if mech.invuln_mw is None:
+            return pmf
+        p_ok = _p_save_roll(
+            rules_config.clamp_characteristic("invuln", mech.invuln_mw),
+            invuln_mod, mech.reroll_invuln, rules_config.CAP_REROLLS)
+        return binomial_thin(pmf, 1.0 - p_ok)
+
     w_ref = defender_ref.get("W") or 1
     streams = {}
     for name, raw, is_mw in (("n", dmg_raw, False), ("mw", mw_raw, True),
                              ("hmw", hitmw_raw, True)):
         if raw is None:
             continue
-        thinned = fnp_thin(raw, is_mw)
+        thinned = fnp_thin(mw_save_thin(raw) if is_mw else raw, is_mw)
         streams[name] = {
             "damage": thinned,
             "damage_net": transform(thinned, lambda v: min(v, w_ref)),

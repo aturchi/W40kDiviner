@@ -314,10 +314,22 @@ def _e_override_reqs(d, env):
 
 
 def _e_feel_no_pain(d, env):
+    """Grant / override / modify a Feel No Pain roll.
+    'grant' keeps the historical behaviour: it sets the model attribute,
+    so the best value wins and FNP never stacks. 'override' and 'modify'
+    are attack-scoped, so they are always exported as effect strings -
+    which also gives them the IF-prefixes for free, i.e. a conditional
+    FNP (e.g. only against mortal wounds)."""
     try:
-        return [("mset", "fnp", int(d.get("value")))]
+        n = int(d.get("value"))
     except (TypeError, ValueError):
         return []
+    op = _key(d.get("operator")) or "grant"
+    if op == "override":
+        return [("ueffect", f"FNPOVERRIDE {n}")]
+    if op == "modify":
+        return [("ueffect", f"FNP_ROLL {n:+d}")]
+    return [("mset", "fnp", n)]
 
 
 def _e_invuln(d, env):

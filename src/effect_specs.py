@@ -14,7 +14,8 @@ from spec_kinds import CHOICE, ENUM, TEXT, BOOL, COMBO  # noqa: F401
 import keywords_config
 
 _APPLICATIONS = [("Hit roll", "hitRoll"), ("Wound roll", "woundRoll"),
-                 ("Save roll", "saveRoll"), ("BS", "bs"), ("WS", "ws"),
+                 ("Save roll", "saveRoll"), ("Feel No Pain roll", "fnpRoll"),
+                 ("BS", "bs"), ("WS", "ws"),
                  ("AP", "ap"), ("Damage", "damage"), ("Attacks", "attacks"),
                  ("Strength", "strength"), ("Movement (M)", "m"),
                  ("Leadership (LD)", "ld"),
@@ -99,8 +100,19 @@ EFFECT_SPECS = {
     },
     "feelNoPain": {
         "text": "Feel no pain",
-        "description": "Ignore wounds on a roll of N+.",
-        "fields": [("value", TEXT, "FNP value (N+)", None)],
+        "description": "Grant, override or modify a Feel No Pain roll. "
+                       "'Grant' never stacks (the best value wins); "
+                       "'override' forces the value even if it is worse "
+                       "(7 = no FNP at all); 'modify' shifts the roll by "
+                       "+/-N. Add an 'only vs mortal wounds' condition to "
+                       "restrict any of them to that damage.",
+        "fields": [
+            ("operator", CHOICE, "Operator",
+             [("Grant (best wins)", "grant"), ("Override", "override"),
+              ("Modify roll (+/-N)", "modify")]),
+            ("value", TEXT, "FNP value (N+), or modifier for 'modify'",
+             None),
+        ],
     },
     "invulnSave": {
         "text": "Invulnerable save",

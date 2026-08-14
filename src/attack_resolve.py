@@ -100,14 +100,30 @@ def _roll_damage(rng, d_char, mech, half: bool) -> int:
     return total
 
 
+def _mw_save_keep(rng, dmg: int, mech) -> int:
+    """Mortal wounds surviving an invulnerable save that applies to them
+    (11th ed.: mortal wounds ignore armour, so only such an ability - or
+    Feel No Pain - can stop them). Rolled per mortal wound, the way they
+    are allocated; the invulnerable modifiers and re-rolls apply."""
+    if mech.invuln_mw is None or dmg <= 0:
+        return dmg
+    target = rules_config.clamp_characteristic("invuln", mech.invuln_mw)
+    mod = (max(0, mech.invuln_mod) if "invuln" in mech.ignore_malus
+           else mech.invuln_mod)
+    kept = 0
+    for _ in range(dmg):
+        r = _roll_success(rng, lambda x: x > 1 and x + mod >= target,
+                          mech.reroll_invuln)
+        if not (r > 1 and r + mod >= target):
+            kept += 1
+    return kept
+
+
 def _fnp_keep(rng, dmg: int, fnp, mech, mw: bool) -> int:
     """Points kept after Feel No Pain (with modifier and re-roll)."""
-    if mw and mech.fnp_mw is not None:
-        fnp = mech.fnp_mw if fnp is None else min(fnp, mech.fnp_mw)
+    fnp, fnp_mod = am.effective_fnp({"fnp": fnp}, mech, mw)
     if not fnp:
         return dmg
-    fnp_mod = (max(0, mech.fnp_mod) if "fnp" in mech.ignore_malus
-               else mech.fnp_mod)
     eff = fnp - fnp_mod                   # FNP: no cap (like saves, 11th)
     kept = 0
     for _ in range(dmg):
@@ -252,7 +268,8 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         if wound_crit and crit_mw:
             raw = (_roll_damage(rng, weapon.D, mech, half)
                    if crit_mw["match"] else (crit_mw["value"] or 1))
-            kept = _fnp_keep(rng, raw, fnp, mech, mw=True)
+            kept = _fnp_keep(rng, _mw_save_keep(rng, raw, mech), fnp,
+                             mech, mw=True)
             if kept > 0:
                 events.append({"kind": "mortal", "amount": kept})
             go_on = not crit_mw["end"]
@@ -282,7 +299,8 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                 raw = (_roll_damage(rng, weapon.D, mech, half)
                        if mech.hitroll_mw["match"]
                        else (mech.hitroll_mw["value"] or 1))
-                kept = _fnp_keep(rng, raw, fnp, mech, mw=True)
+                kept = _fnp_keep(rng, _mw_save_keep(rng, raw, mech), fnp,
+                                 mech, mw=True)
                 if kept > 0:
                     events.append({"kind": "mortal", "amount": kept})
                 continue
