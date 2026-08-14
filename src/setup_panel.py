@@ -108,8 +108,7 @@ class SetupPanel(ttk.LabelFrame):
                          # cannot see the table. PISTOL is the 10th-ed.
                          # spelling of CLOSE-QUARTERS, so there is no
                          # separate pistol mode any more.
-                         ("close_quarters", "Close quarters (engaged "
-                                            "target)"),
+                         ("close_quarters", "Close quarters"),
                          ("melee", "Melee")]:
             ttk.Radiobutton(self, text=lab, value=val, variable=self.mode,
                             command=self._on_mode_change).pack(
@@ -138,7 +137,7 @@ class SetupPanel(ttk.LabelFrame):
         row = ttk.Frame(self)
         row.pack(anchor=tk.W, padx=4)
         self.flag_vars["overwatch"] = tk.BooleanVar()
-        ttk.Checkbutton(row, text="Overwatch: hits only on unmodified",
+        ttk.Checkbutton(row, text="Overwatch: hits on",
                         variable=self.flag_vars["overwatch"]).pack(
             side=tk.LEFT)
         lo, hi = attack_math.OVERWATCH_RANGE
