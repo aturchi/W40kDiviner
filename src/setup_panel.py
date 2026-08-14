@@ -67,8 +67,8 @@ FLAGS = [("half_range", "Within half range"),
          # lost and an unmodified 1-5 always fails ("spotter" relaxes
          # that to 1-3; tick it only when the unit also Remained
          # Stationary, which the rule requires on top of the spotter).
-         ("indirect", "Indirect fire (INDIRECT FIRE weapons only)"),
-         ("spotter", "  ...with spotter and stationary (4+ instead of 6)"),
+         ("indirect", "Indirect fire"),
+         ("spotter", "  ...with spotter and stationary"),
          ("attacker_below_half", "Attacker below half strength"),
          ("defender_below_half", "Defender below half strength"),
          ("defender_below_full", "Defender below full strength")]
@@ -101,8 +101,14 @@ class SetupPanel(ttk.LabelFrame):
         super().__init__(parent, text="Attack setup")
         self._on_mode_change = on_mode_change or (lambda: None)
         self.mode = tk.StringVar(value="ranged")
-        for val, lab in [("ranged", "Ranged (all non-pistol)"),
-                         ("pistol", "Pistols only"),
+        for val, lab in [("ranged", "Ranged"),
+                         # Close-quarters shooting (11th ed.): firing at
+                         # the enemy unit this one is engaged with. Being
+                         # engaged is the user's call - the program
+                         # cannot see the table. PISTOL is the 10th-ed.
+                         # spelling of CLOSE-QUARTERS, so there is no
+                         # separate pistol mode any more.
+                         ("close_quarters", "Close quarters"),
                          ("melee", "Melee")]:
             ttk.Radiobutton(self, text=lab, value=val, variable=self.mode,
                             command=self._on_mode_change).pack(
@@ -120,6 +126,11 @@ class SetupPanel(ttk.LabelFrame):
             cb.pack(anchor=tk.W, padx=4)
             self.flag_vars[key] = var
             self._flag_checks[key] = cb
+        # The spotter clause only exists inside indirect fire, so its box
+        # stays greyed out (and unticked) until 'indirect' is selected.
+        self.flag_vars["indirect"].trace_add(
+            "write", lambda *a: self._sync_spotter())
+        self._sync_spotter()
 
         ttk.Separator(self).pack(fill=tk.X, pady=4)
         # Manual modifiers: only the HIT and WOUND roll modifiers are
@@ -193,6 +204,11 @@ class SetupPanel(ttk.LabelFrame):
         del self.mods[sel[0]]
         self.mod_list.delete(sel[0])
 
+    def _sync_spotter(self):
+        """Enable the spotter box only while indirect fire is selected."""
+        self.set_flag_enabled("spotter", bool(self.flag_vars["indirect"]
+                                              .get()))
+
     # ---------- ability selection ----------
 
     def _refresh_ability_label(self):
@@ -242,7 +258,8 @@ class SetupPanel(ttk.LabelFrame):
     # ---------- accessors ----------
 
     def get_mode(self) -> str:
-        """The selected attack mode ("ranged" or "melee")."""
+        """The selected attack mode: 'ranged', 'pistol', 'close_quarters'
+        or 'melee'."""
         return self.mode.get()
 
     def get_melee(self):

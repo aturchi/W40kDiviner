@@ -62,7 +62,8 @@ def _model_ref(model, dview, n_models):
     (inherited unit keywords + the model's own, minus '-TOKEN'
     suppressions), using the CURRENT unit-view keywords as the base so
     combat-time modifications (setKeyword) are reflected."""
-    kws = {k.upper() for k in model.effective_keywords(dview.keywords)}
+    kws = {str(k).strip().upper()
+           for k in model.effective_keywords(dview.keywords)}
     ref = {"T": model.T.value(), "Sv": model.Sv.value(),
            "W": model.W.value(), "invuln": model.invuln,
            "fnp": model.fnp, "models": n_models, "keywords": kws}
@@ -121,6 +122,23 @@ def suggested_references(dview, opts=None):
 
 
 INDIRECT_SKIP = "inapplicable due to indirect fire"
+CQ_BLAST_SKIP = "BLAST cannot target an engaged unit"
+CQ_NOT_CQ_SKIP = "not a CLOSE-QUARTERS weapon"
+CQ_ONLY_SKIP = "CLOSE-QUARTERS: fires only in close quarters"
+CQ_KEYWORDS = {"MONSTER", "VEHICLE"}
+# PISTOL is the 10th-ed. spelling of CLOSE-QUARTERS: rosters fetched
+# before the rename still carry it, so both are accepted everywhere.
+CLOSE_QUARTERS_KW = {"CLOSE-QUARTERS", "CLOSE QUARTERS", "PISTOL"}
+
+
+def close_quarters_attacker(aview) -> bool:
+    """True when the attacking unit is a MONSTER or a VEHICLE, which is
+    what decides the close-quarters shooting rule: those models may fire
+    everything (at -1 to hit unless the weapon is CLOSE-QUARTERS, and
+    never with BLAST), everyone else may fire CLOSE-QUARTERS weapons
+    only."""
+    return bool({str(k).strip().upper()
+                 for k in (aview.keywords or ())} & CQ_KEYWORDS)
 
 
 def ability_selection(flags: dict) -> dict:
@@ -138,9 +156,12 @@ def ability_selection(flags: dict) -> dict:
 def select_weapons(aview, mode: str, melee_name: str = None,
                    indirect: bool = False):
     """Weapons taking part in the attack.
-    mode 'ranged': all Ranged weapons except PISTOL;
-    mode 'pistol': only PISTOL weapons;
-    mode 'melee' : the chosen weapon plus EXTRA ATTACKS melee weapons.
+    mode 'ranged'        : every Ranged weapon, minus the CLOSE-QUARTERS
+                           ones unless the unit is a MONSTER/VEHICLE;
+    mode 'close_quarters': shooting at a unit the attacker is engaged
+                           with (11th ed.) - see select_weapons_split;
+    mode 'melee'         : the chosen weapon plus EXTRA ATTACKS melee
+                           weapons.
 
     With indirect=True the unit is using the 11th-ed. indirect shooting
     mode: ONLY weapons with the INDIRECT FIRE keyword are fired. The
@@ -153,17 +174,42 @@ def select_weapons_split(aview, mode: str, melee_name: str = None,
                          indirect: bool = False):
     """(kept, skipped) where 'skipped' is [(weapon, reason)] - weapons
     that would normally take part but are excluded by the attack setup,
-    so the caller can show them greyed out instead of hiding them."""
+    so the caller can show them greyed out instead of hiding them.
+
+    In 'close_quarters' mode the unit is shooting the enemy unit it is
+    engaged with. A MONSTER or VEHICLE attacker fires everything except
+    BLAST weapons (which may never target an engaged unit); any other
+    attacker may only fire CLOSE-QUARTERS weapons - PISTOL counts as the
+    same keyword (see CLOSE_QUARTERS_KW). Whether the unit is really
+    engaged is the user's call - the program cannot see the table.
+
+    The restriction runs the other way too: a model that is not a
+    MONSTER/VEHICLE must choose between its CLOSE-QUARTERS weapons and
+    its other ranged weapons, so in the plain 'ranged' mode its
+    CLOSE-QUARTERS weapons stay silent. MONSTER/VEHICLE models are
+    exempt and fire everything.
+
+    Keyword matching is case-insensitive throughout: rosters spell the
+    same keyword as 'Pistol', 'PISTOL' or 'pistol' depending on where
+    they were fetched from."""
     kept, skipped = [], []
+    cq = mode == "close_quarters"
+    big = close_quarters_attacker(aview)
     for model in aview.models():
         for w in model.weapons:
-            kw = {k.upper() for k in w.keywords}
-            if mode == "ranged" and w.type == "Ranged" \
-                    and "PISTOL" not in kw:
-                pass
-            elif mode == "pistol" and w.type == "Ranged" \
-                    and "PISTOL" in kw:
-                pass
+            kw = {str(k).strip().upper() for k in w.keywords}
+            is_cq = bool(kw & CLOSE_QUARTERS_KW)
+            if mode == "ranged" and w.type == "Ranged":
+                if is_cq and not big:
+                    skipped.append((w, CQ_ONLY_SKIP))
+                    continue
+            elif cq and w.type == "Ranged":
+                if big and "BLAST" in kw:
+                    skipped.append((w, CQ_BLAST_SKIP))
+                    continue
+                if not big and not is_cq:
+                    skipped.append((w, CQ_NOT_CQ_SKIP))
+                    continue
             elif mode == "melee" and w.type == "Melee" \
                     and (w.name == melee_name or "EXTRA ATTACKS" in kw):
                 pass
@@ -189,7 +235,7 @@ def melee_choices(aview):
     """Names of melee weapons selectable as the main fight weapon."""
     return sorted({w.name for m in aview.models() for w in m.weapons
                    if w.type == "Melee"
-                   and "EXTRA ATTACKS" not in {k.upper()
+                   and "EXTRA ATTACKS" not in {str(k).strip().upper()
                                                for k in w.keywords}})
 
 
@@ -252,7 +298,9 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
            "plunging": flags.get("plunging"),
            "damaged": flags.get("damaged"),
            "indirect": flags.get("indirect"),
-           "spotter": flags.get("spotter")}
+           "spotter": flags.get("spotter"),
+           "close_quarters_penalty": (mode == "close_quarters"
+                                      and close_quarters_attacker(aview))}
     rows, warnings = [], []
     gross, net = am.delta(0), am.delta(0)
     kept, skipped = select_weapons_split(aview, mode, melee_name,

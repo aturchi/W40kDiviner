@@ -178,7 +178,10 @@ EFFECT_SPECS = {
               ("Torrent", "torrent"), ("Twin-linked", "twinLinked"),
               ("Hazardous", "hazardous"), ("Precision", "precision"),
               ("Lance", "lance"), ("Indirect fire", "indirectFire"),
-              ("One shot", "oneShot"), ("Pistol", "pistol"),
+              ("One shot", "oneShot"),
+              # 11th ed. renamed Pistol to Close-quarters; the old key is
+              # kept so abilities saved before the rename still resolve.
+              ("Close-quarters", "closeQuarters"), ("Pistol", "pistol"),
               ("Assault", "assault"), ("Heavy", "heavy")]),
         ],
     },

@@ -314,6 +314,10 @@ class WeaponMechanics:
         self.ignores_cover = False
         self.indirect = False       # INDIRECT FIRE: usable in indirect
         #                             shooting mode, with its penalties
+        self.close_quarters = False  # CLOSE-QUARTERS (ex PISTOL): can be
+        #                              fired at a unit the attacker is
+        #                              engaged with, and is exempt from
+        #                              the close-quarters -1 to hit
         # Per-attack Damage-characteristic modifiers from DMGREDUX /
         # DMGSETZERO effect strings (defender abilities, evaluated against
         # the attacking weapon). They are applied to the Damage D of each
@@ -353,7 +357,12 @@ _KW_FLAGS = {"LETHAL HITS": "lethal", "DEVASTATING WOUNDS": "devastating",
              "TORRENT": "torrent", "TWIN-LINKED": "twin_linked",
              "HEAVY": "heavy", "LANCE": "lance",
              "IGNORES COVER": "ignores_cover", "HAZARDOUS": "hazardous",
-             "INDIRECT FIRE": "indirect"}
+             "INDIRECT FIRE": "indirect",
+             "CLOSE-QUARTERS": "close_quarters",
+             "CLOSE QUARTERS": "close_quarters",
+             # PISTOL is the 10th-ed. name of the same keyword: rosters
+             # fetched before the rename must behave identically.
+             "PISTOL": "close_quarters"}
 # Weapon abilities the attacker (or a defender ability) can switch off,
 # and the value that means "off". Keyed by the datasheet name, so the
 # same vocabulary drives the attack-setup dialogs and the 'DISABLE X'
@@ -409,15 +418,14 @@ def add_abilities(mech, tokens):
 
 
 # PSYCHIC is handled explicitly (ignore-malus on the hit roll), not here.
-_KW_IGNORED = {"PISTOL", "EXTRA ATTACKS", "ASSAULT", "ONE SHOT",
-               "PRECISION"}
+_KW_IGNORED = {"EXTRA ATTACKS", "ASSAULT", "ONE SHOT", "PRECISION"}
 _ANTI_RE = re.compile(r"^ANTI[- ]([A-Z' ]+?)\s+(\d)\+?$")
 
 
 def parse_weapon_keywords(keywords, mech: WeaponMechanics):
     """Parse weapon keywords (e.g. Sustained Hits, Lethal Hits, Devastating Wounds, Torrent, Blast) into the WeaponMechanics flags that drive the damage maths."""
     for kw in keywords or []:
-        kw = kw.strip().upper()
+        kw = str(kw).strip().upper()      # rosters vary in casing
         m = _ANTI_RE.match(kw)
         if m:
             mech.anti.append((m.group(1).strip(), int(m.group(2))))
@@ -760,6 +768,13 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                               else 0)
     if ctx.get("damaged"):
         hit_mod -= 1
+    # Close-quarters shooting: a MONSTER/VEHICLE model firing at the unit
+    # it is engaged with takes -1 to hit with everything EXCEPT its
+    # CLOSE-QUARTERS weapons. The caller sets the flag only for such an
+    # attacker (non-MONSTER/VEHICLE models may only fire CLOSE-QUARTERS
+    # weapons in the first place, and take no penalty).
+    if ctx.get("close_quarters_penalty") and not mech.close_quarters:
+        hit_mod -= 1
     # INDIRECT FIRE (11th ed. indirect shooting mode): the target always
     # counts as being in Cover, the hit roll cannot be re-rolled, and an
     # unmodified result below 6 always fails - 4 instead of 6 when the
@@ -828,8 +843,11 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         wound_mod = max(0, wound_mod)
     wound_mod = _cap(wound_mod)
     crit_wound_on = mech.crit_wound_on
+    # ANTI-X: the defender keywords may arrive in any casing.
+    dkw = {str(k).strip().upper()
+           for k in (defender_ref.get("keywords") or ())}
     for kw, x in mech.anti:
-        if kw in (defender_ref.get("keywords") or set()):
+        if str(kw).strip().upper() in dkw:
             crit_wound_on = min(crit_wound_on, x)
     reroll_wound = combine_reroll("fails" if mech.twin_linked else None,
                                   mech.reroll_wound)

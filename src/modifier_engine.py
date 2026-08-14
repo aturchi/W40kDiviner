@@ -82,15 +82,19 @@ def _c_keywords_only(d, env):
     # Assumed semantics: at least one keyword on the DEFENDER unit
     if env.defender is None:
         return False
-    kws = {k.upper() for k in d.get("keywords", [])}
-    return bool(kws & set(env.defender.keywords))
+    kws = {str(k).strip().upper() for k in d.get("keywords", [])}
+    # Both sides upper-cased: roster keywords are spelled 'Vehicle',
+    # 'VEHICLE' or 'vehicle' depending on the source.
+    return bool(kws & {str(k).strip().upper()
+                       for k in (env.defender.keywords or ())})
 
 
 def _c_keywords_excludes(d, env):
     if env.defender is None:
         return True
-    kws = {k.upper() for k in d.get("keywords", [])}
-    return not (kws & set(env.defender.keywords))
+    kws = {str(k).strip().upper() for k in d.get("keywords", [])}
+    return not (kws & {str(k).strip().upper()
+                       for k in (env.defender.keywords or ())})
 
 
 def _c_range(d, env):
@@ -383,9 +387,23 @@ def _e_ignore_malus(d, env):
     return [("weffect", f"IGNOREMALUS {roll.upper()}")] if roll else []
 
 
+# Option keys are camelCase, weapon keywords are spelled out: map the
+# ones whose spelling differs, so a setKeyword ability really lands on
+# the keyword the attack maths looks for.
+_KEYWORD_SPELLING = {
+    "LETHALHITS": "LETHAL HITS", "DEVASTATINGWOUNDS": "DEVASTATING WOUNDS",
+    "SUSTAINEDHITS": "SUSTAINED HITS", "RAPIDFIRE": "RAPID FIRE",
+    "IGNORECOVER": "IGNORES COVER", "IGNORESCOVER": "IGNORES COVER",
+    "TWINLINKED": "TWIN-LINKED", "INDIRECTFIRE": "INDIRECT FIRE",
+    "ONESHOT": "ONE SHOT", "EXTRAATTACKS": "EXTRA ATTACKS",
+    "CLOSEQUARTERS": "CLOSE-QUARTERS", "PISTOL": "CLOSE-QUARTERS",
+}
+
+
 def _e_set_keyword(d, env):
+    kw = str(d.get("keyword", "")).upper()
     return [("kw", _key(d.get("target")), _key(d.get("operation")),
-             str(d.get("keyword", "")).upper())]
+             _KEYWORD_SPELLING.get(kw, kw))]
 
 
 def _e_critical_threshold(d, env):
@@ -568,10 +586,16 @@ def _apply_ops(ops, prefixes, weapon_view, model_view, unit_view, deltas):
             else:
                 targets = [unit_view]
             for tgt in targets:
-                if op_ == "add" and kw_ not in tgt.keywords:
+                # Case-insensitive membership: a keyword already there as
+                # 'Vehicle' must not be added again as 'VEHICLE', and a
+                # removal must find it whatever its casing.
+                present = [k for k in tgt.keywords
+                           if str(k).strip().upper() == kw_]
+                if op_ == "add" and not present:
                     tgt.keywords.append(kw_)
-                elif op_ == "remove" and kw_ in tgt.keywords:
-                    tgt.keywords.remove(kw_)
+                elif op_ == "remove":
+                    for k in present:
+                        tgt.keywords.remove(k)
 
 
 def build_view(unit: Unit, defender, context, role: str = "attacker"):

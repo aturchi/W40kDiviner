@@ -203,6 +203,11 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                               else 0)
     if ctx.get("damaged"):
         hit_mod -= 1
+    # Close-quarters shooting: -1 to hit for a MONSTER/VEHICLE attacker
+    # with everything except its CLOSE-QUARTERS weapons (see
+    # analyze_weapon).
+    if ctx.get("close_quarters_penalty") and not mech.close_quarters:
+        hit_mod -= 1
     # INDIRECT FIRE, mirroring analyze_weapon: target always in Cover,
     # no hit re-rolls, and an unmodified die below unmod_min always
     # fails (6, or 4 with a spotter while stationary).
@@ -236,8 +241,10 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         wound_mod = max(0, wound_mod)
     wound_mod = am._cap(wound_mod)
     crit_on = mech.crit_wound_on
-    for kw, x in mech.anti:
-        if kw in (defender_ref.get("keywords") or set()):
+    dkw = {str(k).strip().upper()
+           for k in (defender_ref.get("keywords") or ())}
+    for kw, x in mech.anti:                # case-insensitive, as the maths
+        if str(kw).strip().upper() in dkw:
             crit_on = min(crit_on, x)
     reroll_wound = am.combine_reroll("fails" if mech.twin_linked else None,
                                      mech.reroll_wound)

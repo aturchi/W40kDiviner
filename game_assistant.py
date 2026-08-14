@@ -591,6 +591,11 @@ class GameAssistantApp(tk.Tk):
                                          "charged", "cover",
                                          "plunging", "damaged",
                                          "indirect", "spotter")}
+        # Close quarters: only a MONSTER/VEHICLE attacker takes the -1,
+        # and only with weapons that are not CLOSE-QUARTERS.
+        ctx["close_quarters_penalty"] = (
+            mode == "close_quarters"
+            and analyzer_core.close_quarters_attacker(aview))
         attack_type = "Melee" if mode == "melee" else "Ranged"
         haz_damage = attack_math.hazardous_damage_per_fail(attacker.keywords)
         results = []
