@@ -119,28 +119,33 @@ def _fnp_keep(rng, dmg: int, fnp, mech, mw: bool) -> int:
 
 def _save_made(rng, ref, ap_eff, mech) -> bool:
     """Defender rolls the better save (armour vs invuln), each with its
-    own modifiers and re-rolls; unmodified 1 always fails.
-    NOTE (11th ed.): cover no longer affects the save (it is a -1
-    to-hit penalty applied at the hit stage)."""
+    own modifiers and re-rolls; unmodified 1 always fails. Mirrors
+    attack_math.save_fail_prob, limits included: the Sv and invulnerable
+    characteristics are clamped at 2+ BEFORE AP applies, and save-roll
+    modifiers are NOT capped (only hit and wound are). Cover no longer
+    affects the save in 11th ed. - it is a -1 BS penalty at the hit
+    stage."""
     sv = ref.get("Sv")
     arm_t = None
     if sv is not None:
-        arm_t = sv + abs(ap_eff)
-    smod, imod = mech.save_mod, mech.invuln_mod   # saves: no cap (11th)
+        arm_t = rules_config.clamp_characteristic("Sv", sv) + abs(ap_eff)
+    inv_t = ref.get("invuln")
+    if inv_t is not None:
+        inv_t = rules_config.clamp_characteristic("invuln", inv_t)
+    smod, imod = mech.save_mod, mech.invuln_mod
     if "save" in mech.ignore_malus:
         smod = max(0, smod)
     if "invuln" in mech.ignore_malus:
         imod = max(0, imod)
     times = rules_config.CAP_REROLLS
     p_arm = am._p_save_roll(arm_t, smod, mech.reroll_save, times)
-    p_inv = am._p_save_roll(ref.get("invuln"), imod,
-                            mech.reroll_invuln, times)
+    p_inv = am._p_save_roll(inv_t, imod, mech.reroll_invuln, times)
     if max(p_arm, p_inv) == 0.0:
         return False
     if p_arm >= p_inv:
         target, mod, rr = arm_t, smod, mech.reroll_save
     else:
-        target, mod, rr = ref.get("invuln"), imod, mech.reroll_invuln
+        target, mod, rr = inv_t, imod, mech.reroll_invuln
     r = _roll_success(rng, lambda x: x > 1 and x + mod >= target, rr)
     return r > 1 and r + mod >= target
 
@@ -175,20 +180,28 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         n_att += (weapon.A.value(rng) or 0) + extra_a
 
     # static roll parameters (mirror analyze_weapon)
+    # 11th ed.: BS/WS CHARACTERISTIC modifiers (cover, plunging fire) and
+    # HIT ROLL modifiers (Heavy, damaged bracket, abilities) are capped
+    # separately - see analyze_weapon, which this mirrors.
     hit_mod = mech.hit_mod + (1 if (mech.heavy and ctx.get("stationary"))
                               else 0)
-    # 11th ed. context hit modifiers (see analyze_weapon for the rules).
-    if weapon.type == "Ranged":
-        if ctx.get("cover") and not mech.ignores_cover:
-            hit_mod -= 1
-        if ctx.get("plunging"):
-            hit_mod += 1
     if ctx.get("damaged"):
         hit_mod -= 1
+    skill_mod = 0
+    if weapon.type == "Ranged":
+        if ctx.get("cover") and not mech.ignores_cover:
+            skill_mod -= 1
+        if ctx.get("plunging"):
+            skill_mod += 1
     if "hit" in mech.ignore_malus:
         hit_mod = max(0, hit_mod)
-    hit_mod = am._cap(hit_mod)
+        skill_mod = max(0, skill_mod)
+    hit_mod = am._cap(hit_mod)          # the ROLL modifier is capped,
     skill = weapon.WS if weapon.type == "Melee" else weapon.BS
+    # the CHARACTERISTIC modifier is not: uncapped, only bounded by its
+    # absolute limits (BS/WS between 2+ and 6+), clamped before hit_mod.
+    skill_target = rules_config.clamp_characteristic(
+        "BS", (skill.value() or 0) - skill_mod)
     auto = mech.torrent or mech.auto_hit or skill.is_none()
     s_val = weapon.S.value() or 0
     wt = am.wound_target(s_val, defender_ref["T"])
@@ -249,7 +262,8 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         if auto:
             resolve_hit_chain(False)
             continue
-        tgt = skill.value()
+        # +1 BS makes the target easier; a characteristic never beats 1+.
+        tgt = skill_target
         if mech.hitroll_mw:
             thr = mech.hitroll_mw["thr"]
             ok = lambda r: (r >= thr

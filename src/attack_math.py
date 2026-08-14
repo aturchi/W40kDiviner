@@ -202,13 +202,18 @@ def save_fail_prob(sv, ap, invuln,
     modifiers/re-rolls) and the best success probability wins; an
     unmodified 1 always fails.
 
-    NOTE (11th ed.): the Benefit of Cover no longer improves the save -
-    it is now a -1 to-hit penalty, applied at the hit stage."""
+    11th-ed. limits: the Sv and invulnerable CHARACTERISTICS can never be
+    better than 2+, so both are clamped BEFORE AP is applied - a 1+ save
+    hit by AP-1 saves on 2+, not on 1+. Save-roll modifiers are NOT
+    capped (only hit and wound are), and the Benefit of Cover no longer
+    improves the save: it is a -1 BS penalty applied at the hit stage."""
     times = rules_config.CAP_REROLLS
     p_arm = 0.0
     if sv is not None:
-        target = sv + abs(ap)
+        target = rules_config.clamp_characteristic("Sv", sv) + abs(ap)
         p_arm = _p_save_roll(target, save_mod, save_reroll, times)
+    if invuln is not None:
+        invuln = rules_config.clamp_characteristic("invuln", invuln)
     p_inv = _p_save_roll(invuln, invuln_mod, invuln_reroll, times)
     return 1.0 - max(p_arm, p_inv)
 
@@ -542,8 +547,9 @@ def _dispatch(dyn, s, tok, mech) -> bool:
 
 
 def _cap(mod: int) -> int:
-    cap = rules_config.CAP_ROLL_MOD
-    return mod if cap is None else max(-cap, min(cap, mod))
+    """Clamp a net HIT or WOUND roll modifier (11th ed.: +/-1). Saving
+    throws, invulnerable saves and Feel No Pain are NOT capped."""
+    return rules_config.cap_roll(mod)
 
 
 def has_damage_modifiers(mech) -> bool:
@@ -606,25 +612,41 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         attacks_pmf = convolve(attacks_pmf, per_copy)
 
     # ---- hit stage ----
+    # 11th ed. splits the two groups of modifiers, each capped on its own
+    # (see rules_config): HIT ROLL modifiers...
+    #   - Heavy: +1 when the attacker moved less than 3" ('stationary').
+    #   - Damaged bracket: -1 on ALL of this model's attacks.
+    # ...and BS/WS CHARACTERISTIC modifiers:
+    #   - Benefit of Cover: -1 BS on RANGED attacks (unless the weapon
+    #     Ignores Cover). Replaces the 10th-ed. +1-to-save rule.
+    #   - Plunging Fire: +1 BS on RANGED attacks.
     hit_mod = mech.hit_mod + (1 if (mech.heavy and ctx.get("stationary"))
                               else 0)
-    # 11th ed. context modifiers to the hit roll, routed through hit_mod
-    # so the global cap and PSYCHIC's ignore-malus apply uniformly:
-    #   - Benefit of Cover: -1 to hit on RANGED attacks (unless the
-    #     weapon Ignores Cover). Replaces the 11th-ed. +1-to-save rule.
-    #   - Plunging Fire: +1 to hit on RANGED attacks.
-    #   - Damaged bracket: -1 to hit on ALL of this model's attacks.
-    if weapon.type == "Ranged":
-        if ctx.get("cover") and not mech.ignores_cover:
-            hit_mod -= 1
-        if ctx.get("plunging"):
-            hit_mod += 1
     if ctx.get("damaged"):
         hit_mod -= 1
+    skill_mod = 0
+    if weapon.type == "Ranged":
+        if ctx.get("cover") and not mech.ignores_cover:
+            skill_mod -= 1
+        if ctx.get("plunging"):
+            skill_mod += 1
     if "hit" in mech.ignore_malus:
+        # PSYCHIC: "ignore any or all modifiers to that attack's BS or WS
+        # characteristic and any or all modifiers to the hit roll" - the
+        # best use of "any or all" is to drop the negatives and keep the
+        # positives, in BOTH groups.
         hit_mod = max(0, hit_mod)
-    hit_mod = _cap(hit_mod)
+        skill_mod = max(0, skill_mod)
+    hit_mod = _cap(hit_mod)             # the ROLL modifier is capped...
     skill = weapon.WS if weapon.type == "Melee" else weapon.BS
+    # ...the CHARACTERISTIC modifier is not: it is uncapped and only
+    # bounded by the absolute limits (BS/WS never better than 2+, never
+    # worse than 6+). A BS/WS modifier shifts the target number the other
+    # way (+1 BS = easier). Clamping here and not after adding hit_mod is
+    # deliberate: the rules limit the characteristic, then the roll
+    # modifier applies on top of the clamped value.
+    skill_target = rules_config.clamp_characteristic(
+        "BS", (skill.value() or 0) - skill_mod)
     p_mw_hit = 0.0
     if mech.torrent or mech.auto_hit or skill.is_none():
         p_hit, p_crit_hit = 1.0, 0.0      # auto-hit: no roll, no crits
@@ -632,7 +654,8 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
             warn("hit-roll mechanic combined with auto-hit: ignored")
     elif mech.hitroll_mw:
         p_mw_hit, p_hit = hit_threshold_mw_probs(
-            skill.value(), hit_mod, mech.reroll_hit, mech.hitroll_mw["thr"])
+            skill_target, hit_mod, mech.reroll_hit,
+            mech.hitroll_mw["thr"])
         p_crit_hit = 0.0                   # the natural 6 feeds the MW branch
     elif mech.hit_unmod_only:
         # hits only on an unmodified X+, irrespective of modifiers
@@ -640,7 +663,7 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                                        mech.reroll_hit,
                                        crit_on=mech.crit_hit_on)
     else:
-        p_hit, p_crit_hit = roll_probs(skill.value(), hit_mod,
+        p_hit, p_crit_hit = roll_probs(skill_target, hit_mod,
                                        mech.reroll_hit,
                                        crit_on=mech.crit_hit_on)
     p_norm_hit = p_hit - p_crit_hit
@@ -668,10 +691,11 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
 
     # ---- saves (normal and crit-wound branch) ----
     ap = weapon.AP.value() or 0
+    # Saving-throw modifiers are NOT capped (only hit and wound are).
     save_mod = (max(0, mech.save_mod) if "save" in mech.ignore_malus
                 else mech.save_mod)
-    invuln_mod = (max(0, mech.invuln_mod) if "invuln" in mech.ignore_malus
-                  else mech.invuln_mod)
+    invuln_mod = (max(0, mech.invuln_mod)
+                  if "invuln" in mech.ignore_malus else mech.invuln_mod)
     common = (defender_ref["Sv"], save_mod, invuln_mod,
               mech.reroll_save, mech.reroll_invuln)
 

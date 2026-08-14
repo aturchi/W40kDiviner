@@ -69,11 +69,12 @@ class SetupPanel(ttk.LabelFrame):
             self._flag_checks[key] = cb
 
         ttk.Separator(self).pack(fill=tk.X, pady=4)
-        # Manual modifiers: hit/wound roll modifiers are capped by
-        # CAP_ROLL_MOD in the attack maths (save mods are uncapped per
-        # 11th ed.); characteristic modifiers join the ability deltas
-        # inside the combat views (uncapped, floored); re-rolls are
-        # limited by CAP_REROLLS ('fails' supersedes '1s').
+        # Manual modifiers: only the HIT and WOUND roll modifiers are
+        # capped (CAP_ROLL_MOD) in the attack maths - save, invuln and
+        # FNP modifiers apply in full. Characteristic modifiers join the
+        # ability deltas inside the combat views and are uncapped, bound
+        # only by the absolute limits (BS/WS 2+..6+, Sv 2+, AP <= 0);
+        # re-rolls are limited by CAP_REROLLS ('fails' supersedes '1s').
         ttk.Label(self, text="Manual modifiers:").pack(anchor=tk.W, padx=4)
         mrow = ttk.Frame(self)
         mrow.pack(anchor=tk.W, padx=4)
@@ -250,8 +251,12 @@ def show_options_dialog(parent):
     ttk.Label(win, text="Modifier caps (empty = no cap):").grid(
         row=0, column=0, columnspan=2, sticky=tk.W, padx=6, pady=4)
     entries = {}
+    # Only the HIT and WOUND roll modifiers are capped in 11th ed.
+    # Saves, invulns and FNP take their modifiers in full, and
+    # characteristics are bounded by absolute limits, not by a cap.
     for r, (label, cur) in enumerate(
-            [("Roll modifier cap (hit/wound)", rules_config.CAP_ROLL_MOD),
+            [("Hit/wound roll modifier cap",
+              rules_config.CAP_ROLL_MOD),
              ("Re-roll cap (per die)", rules_config.CAP_REROLLS)],
             start=1):
         ttk.Label(win, text=label).grid(row=r, column=0, sticky=tk.W,

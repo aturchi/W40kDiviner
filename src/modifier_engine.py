@@ -437,18 +437,19 @@ _ATTR_NAMES = {"_skill": "SKILL", "AP": "AP", "D": "D", "A": "A", "S": "S"}
 
 
 def _floor_char(attr, ch):
-    """Apply the 11th-edition characteristic limits to a modified
-    Characteristic: AP can never rise above 0 (datasheet convention:
-    negative is stronger), M and OC floor at 0, everything else at 1.
-    Dice-based values are left untouched (the limits are about flat
-    characteristics; dice results are resolved at roll time)."""
+    """Apply the 11th-edition ABSOLUTE characteristic limits to a
+    modified Characteristic (see rules_config.CHARACTERISTIC_LIMITS):
+    BS/WS stay between 2+ and 6+, Sv never better than 2+, AP never
+    above 0 (datasheet convention: negative is stronger), M and OC never
+    below 0, everything else never below 1. There is NO cap on the
+    modifier itself - only these limits on the result. Dice-based values
+    are left untouched (the limits are about flat characteristics; dice
+    results are resolved at roll time)."""
     if ch.is_none() or ch.is_dice():
         return ch
     v = ch.value_avg()
-    if attr == "AP":
-        return ch if v <= 0 else Characteristic(0)
-    floor = rules_config.characteristic_floor(attr)
-    return ch if v >= floor else Characteristic(floor)
+    limited = rules_config.clamp_characteristic(attr, v)
+    return ch if limited == v else Characteristic(limited)
 
 
 def _apply_ops(ops, prefixes, weapon_view, model_view, unit_view, deltas):
@@ -682,15 +683,19 @@ def build_view(unit: Unit, defender, context, role: str = "attacker"):
         for model in all_models:
             ch = getattr(model, attr, None)
             if isinstance(ch, Characteristic):
-                setattr(model, attr, _floor_char(attr, ch.with_delta(n)))
+                setattr(model, attr,
+                        _floor_char(attr, ch.with_delta(n)))
 
-    # Apply accumulated characteristic deltas (uncapped, floored)
+    # Apply the accumulated characteristic deltas. Characteristic
+    # modifiers are NOT capped in 11th ed. - only the hit and wound ROLL
+    # modifiers are (see rules_config) - so the net delta applies in
+    # full and only the absolute limits bound the result.
     for model in view.models():
         for weapon in model.weapons:
             for attr in set(a for (wid, a) in deltas if wid == id(weapon)):
-                d = deltas[(id(weapon), attr)]
                 floor_key = "BS" if attr == "_skill" else attr
                 setattr(weapon, attr,
                         _floor_char(floor_key,
-                                    getattr(weapon, attr).with_delta(d)))
+                                    getattr(weapon, attr).with_delta(
+                                        deltas[(id(weapon), attr)])))
     return view
