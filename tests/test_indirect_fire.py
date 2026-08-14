@@ -13,12 +13,10 @@ When the indirect shooting mode is selected:
 Also checks that the dice resolver reproduces the exact figures.
 No tkinter needed.
 """
-import random
-
 import testpaths                      # sets up sys.path to the engine src/
 import analyzer_core as ac
 import attack_math as am
-import attack_resolve as ar
+import mc_support as mcs
 from unit_model import Weapon
 
 TOL = 1e-9
@@ -39,13 +37,6 @@ def mech_for(w, **kw):
     for k, v in kw.items():
         setattr(m, k, v)
     return m
-
-
-def clone(m):
-    n = am.WeaponMechanics()
-    n.__dict__.update(m.__dict__)
-    n.ignore_malus, n.anti, n.warnings = set(m.ignore_malus), list(m.anti), []
-    return n
 
 
 def close(a, b, what):
@@ -123,16 +114,13 @@ assert len(kept) == 2 and not skipped
 print("indirect mode fires only INDIRECT FIRE weapons, the rest are flagged")
 
 # --- the dice resolver agrees -----------------------------------------
-rng = random.Random(5)
+# Statistical tolerance from mc_support: SIGMA standard errors on the
+# mean and on the whole distribution, the error taken from the exact
+# variance rather than guessed.
 for ctx in ({"indirect": True}, {"indirect": True, "spotter": True}):
-    exact = dmg(mortar, ctx)
-    trials, tot = 60000, 0
-    base = mech_for(mortar)
-    for _ in range(trials):
-        res = ar.resolve_weapon(mortar, REF, ctx, clone(base), rng)
-        tot += sum(e["amount"] for e in res["events"])
-    mc = tot / trials
-    assert abs(mc - exact) < 0.05 * exact, (ctx, mc, exact)
+    ok, msg = mcs.check_weapon(f"indirect {sorted(ctx)}", mortar, REF, ctx,
+                               mech_for(mortar))
+    assert ok, msg
 print("exact and Monte-Carlo agree under indirect fire")
 
 print("ALL INDIRECT-FIRE TESTS PASS")

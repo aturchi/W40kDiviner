@@ -14,12 +14,11 @@ applies on top), and that the dice resolver agrees with the exact maths
 once both groups stack. No tkinter needed.
 """
 import json
-import random
 
 import testpaths                      # sets up sys.path to the engine src/
 import analyzer_core as ac
 import attack_math as am
-import attack_resolve as ar
+import mc_support as mcs
 import rules_config as rc
 import unit_model as um
 from unit_model import Weapon
@@ -151,14 +150,9 @@ assert first_ranged({"weapon": {"S": 3}}, "S") == plain_s + 3
 print("characteristic deltas apply in full, bounded only by the limits")
 
 # --- the dice resolver agrees once the two groups stack ----------------
-rng = random.Random(11)
-m = mech(hit_mod=-1)
-trials, tot = 60000, 0
-for _ in range(trials):
-    res = ar.resolve_weapon(WEAPON, REF, {"cover": True}, clone(m), rng)
-    tot += sum(e["amount"] for e in res["events"])
-mc = tot / trials
-assert abs(mc - both) < 0.05 * both, (mc, both)
+ok, msg = mcs.check_weapon("cover + hit -1", WEAPON, REF, {"cover": True},
+                           mech(hit_mod=-1))
+assert ok, msg
 print("exact and Monte-Carlo agree with both groups stacked")
 
 print("ALL MODIFIER-CAP TESTS PASS")

@@ -11,15 +11,12 @@ Expected values are written in closed form, independently of the engine,
 and every case is cross-checked against the dice resolver.
 No tkinter needed.
 """
-import random
-
 import testpaths                      # sets up sys.path to the engine src/
 import attack_math as am
-import attack_resolve as ar
+import mc_support as mcs
 from unit_model import Weapon
 
 TOL = 1e-9
-MC_TRIALS = 60000
 
 
 def close(a, b, what):
@@ -46,18 +43,12 @@ def dmg(ref, m):
     return am.analyze_weapon(W, ref, {}, m.copy())["damage"]["mean"]
 
 
-def mc(ref, m, seed=17):
-    rng = random.Random(seed)
-    tot = 0
-    for _ in range(MC_TRIALS):
-        res = ar.resolve_weapon(W, ref, {}, m.copy(), rng)
-        tot += sum(e["amount"] for e in res["events"])
-    return tot / MC_TRIALS
-
-
-def agree(ref, m, what):
-    exact, got = dmg(ref, m), mc(ref, m)
-    assert abs(got - exact) < max(0.02, 0.04 * exact), (what, got, exact)
+def agree(ref, m, what, weapon=None):
+    """Exact vs dice, with the statistical tolerance of mc_support (the
+    standard error comes from the exact variance; mc_support.SIGMA is
+    the knob) on both the mean and the whole distribution."""
+    ok, msg = mcs.check_weapon(what, weapon or W, ref, {}, m)
+    assert ok, msg
 
 
 # --- effective_fnp: the three operators --------------------------------
@@ -138,14 +129,8 @@ close(dmg_d(DREF, dev_both),
       A * P_HIT * ((Q_W - Q_CRIT) * UNSAVED
                    + Q_CRIT * (1 - 3 / 6) * (1 - 2 / 6)),
       "invuln then FNP, both vs mortal wounds only")
-rng = random.Random(23)
 for m, name in ((dev, "dev"), (dev_inv, "dev+inv"), (dev_both, "dev+inv+fnp")):
-    exact = dmg_d(DREF, m)
-    tot = sum(sum(e["amount"] for e in
-                  ar.resolve_weapon(WD, DREF, {}, m.copy(), rng)["events"])
-              for _ in range(MC_TRIALS))
-    got = tot / MC_TRIALS
-    assert abs(got - exact) < max(0.02, 0.04 * exact), (name, got, exact)
+    agree(DREF, m, name, weapon=WD)
 print("mortal wounds: no save, only FNP or a mortal-wound invulnerable")
 
 print("ALL FNP / MORTAL-WOUND TESTS PASS")

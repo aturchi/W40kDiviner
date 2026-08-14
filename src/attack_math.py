@@ -3,8 +3,15 @@
 Computes the EXACT probability distribution (PMF) of the outcome of a
 shooting/fight sequence, by composing the per-attack outcome tree and
 convolving over the number of attacks. No Monte Carlo is involved;
-medians and any percentile are read off the exact CDF. Monte Carlo is
-used only in the test suite as a cross-validation oracle.
+medians and any percentile are read off the exact CDF. The dice engine
+(attack_resolve) is used by the game assistant to roll real attacks, and
+in the test suite as a cross-validation oracle: tests/test_mc_parity.py
+sweeps every mechanic and compares this PMF with the sampled one, mean
+and whole distribution, within a tolerance derived from the exact
+variance (tests/mc_support.py). That proves the two engines AGREE; the
+rules-level checks, against values worked out in closed form, live in
+test_critical_triggers, test_modifier_caps, test_fnp_and_mortals,
+test_indirect_fire and test_close_quarters.
 
 Scope (agreed simplifications): no model removal tracking, a single
 defender reference model (T, Sv, W, invuln, fnp), gross damage as the

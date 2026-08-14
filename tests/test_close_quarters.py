@@ -20,12 +20,10 @@ Whether the unit is actually engaged is the user's call - the program
 cannot see the table - so the mode is simply selected in the attack
 setup. No tkinter needed.
 """
-import random
-
 import testpaths                      # sets up sys.path to the engine src/
 import analyzer_core as ac
 import attack_math as am
-import attack_resolve as ar
+import mc_support as mcs
 from unit_model import Weapon
 
 TOL = 1e-9
@@ -206,16 +204,13 @@ close(am.analyze_weapon(bolter, REF, PEN, m.copy())["damage"]["mean"],
 print("the close-quarters -1 hits everything except CLOSE-QUARTERS weapons")
 
 # --- the dice resolver agrees -----------------------------------------
-rng = random.Random(9)
+# Statistical tolerance from mc_support (SIGMA standard errors on the
+# mean and on the whole distribution), not a hand-picked percentage.
 for w in (bolter, pistol):
     base = am.WeaponMechanics()
     am.parse_weapon_keywords(w.keywords, base)
-    exact = dmg(w, PEN)
-    tot = sum(sum(e["amount"] for e in
-                  ar.resolve_weapon(w, REF, PEN, base.copy(), rng)["events"])
-              for _ in range(60000))
-    got = tot / 60000
-    assert abs(got - exact) < 0.04 * exact, (w.name, got, exact)
+    ok, msg = mcs.check_weapon(f"close quarters {w.name}", w, REF, PEN, base)
+    assert ok, msg
 print("exact and Monte-Carlo agree under close quarters")
 
 print("ALL CLOSE-QUARTERS TESTS PASS")

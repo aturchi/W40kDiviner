@@ -134,8 +134,26 @@ ArmyFetcher tree with `--real_data` (or the env flags above).
 - `test_armyload.py` — `ArmyLoadState`: join a subset, discard-on-unselect, union.
 - `test_kwmatch.py` — keyword matcher (whole-entry vs word-by-word, plurals).
 - `test_damage_modifiers.py` — defender Damage modifiers (set/mult/add/floor,
-  set-to-zero) and exact-maths vs dice-resolver parity. No external data.
+  set-to-zero) and exact-maths vs dice-resolver parity on that chain, using the
+  shared statistical tolerance. No external data.
 - `test_extra_abilities.py` — ability effect/condition parsing and application.
   No external data.
 - `test_profile_diff.py` — profile comparison / selective-merge logic. No
   external data.
+- `test_mc_parity.py` — the permanent exact-vs-dice parity sweep: ~50
+  configurations covering the hit branches, the critical branches, the mortal
+  streams, the damage chain, the defensive side and the context flags. For each
+  one the analytic PMF is compared with the sampled one on the **mean** and on
+  the **whole distribution**. The tolerance is statistical, not a guessed
+  percentage: the standard error comes from the exact variance, and
+  `mc_support.SIGMA` says how many standard errors are allowed (the CDF limit is
+  that same SIGMA corrected for the number of points compared). Tune
+  `mc_support.SIGMA`, `TRIALS` and `SEED` in one place — every MC check in the
+  suite uses them. No external data.
+- `mc_support.py` — not a test: the shared Monte-Carlo helpers described above.
+  Parity proves the two engines AGREE; it cannot prove either matches the rules,
+  which is what the closed-form tests below are for.
+- `test_critical_triggers.py`, `test_modifier_caps.py`, `test_fnp_and_mortals.py`,
+  `test_indirect_fire.py`, `test_close_quarters.py` — rules-level checks with the
+  expected values worked out **in closed form**, independently of the engine.
+  No external data.
