@@ -321,6 +321,12 @@ class WeaponMechanics:
         self.ignores_cover = False
         self.indirect = False       # INDIRECT FIRE: usable in indirect
         #                             shooting mode, with its penalties
+        self.conversion = False     # CONVERSION: critical hits on 4+ when
+        #                             the target is at least half the
+        #                             weapon's range away
+        self.hunter = []            # HUNTER X: may only be fired at units
+        #                             with keyword X (targeting rule, not
+        #                             maths - see analyzer_core)
         self.close_quarters = False  # CLOSE-QUARTERS (ex PISTOL): can be
         #                              fired at a unit the attacker is
         #                              engaged with, and is exempt from
@@ -369,7 +375,8 @@ _KW_FLAGS = {"LETHAL HITS": "lethal", "DEVASTATING WOUNDS": "devastating",
              "CLOSE QUARTERS": "close_quarters",
              # PISTOL is the 10th-ed. name of the same keyword: rosters
              # fetched before the rename must behave identically.
-             "PISTOL": "close_quarters"}
+             "PISTOL": "close_quarters",
+             "CONVERSION": "conversion"}
 # Weapon abilities the attacker (or a defender ability) can switch off,
 # and the value that means "off". Keyed by the datasheet name, so the
 # same vocabulary drives the attack-setup dialogs and the 'DISABLE X'
@@ -390,6 +397,8 @@ OPTIONAL_ABILITIES = {
     "HAZARDOUS": ("hazardous", False),
     "INDIRECT FIRE": ("indirect", False),
     "ANTI": ("anti", []),
+    "CONVERSION": ("conversion", False),
+    "HUNTER": ("hunter", []),
 }
 
 # Abilities offered as "add to every attack" in the attack setup: the
@@ -398,7 +407,16 @@ OPTIONAL_ABILITIES = {
 ADDABLE_ABILITIES = ["LETHAL HITS", "DEVASTATING WOUNDS", "SUSTAINED HITS 1",
                      "TWIN-LINKED", "HEAVY", "LANCE", "IGNORES COVER",
                      "TORRENT", "MELTA 2", "RAPID FIRE 1", "BLAST 1",
-                     "PSYCHIC"]
+                     "PSYCHIC", "CONVERSION"]
+
+
+def add_hunter(mech, keyword: str):
+    """Record a HUNTER X restriction (case- and spacing-insensitive, no
+    duplicates). The restriction is about TARGETING, not about the
+    maths: analyzer_core decides whether the weapon may fire at all."""
+    kw = str(keyword).strip().upper()
+    if kw and kw not in mech.hunter:
+        mech.hunter.append(kw)
 
 
 def disable_abilities(mech, names, warn=None):
@@ -427,6 +445,105 @@ def add_abilities(mech, tokens):
 # PSYCHIC is handled explicitly (ignore-malus on the hit roll), not here.
 _KW_IGNORED = {"EXTRA ATTACKS", "ASSAULT", "ONE SHOT", "PRECISION"}
 _ANTI_RE = re.compile(r"^ANTI[- ]([A-Z' ]+?)\s+(\d)\+?$")
+# HUNTER X names a keyword instead of a number: "HUNTER-VEHICLE".
+_HUNTER_RE = re.compile(r"^HUNTER[- ]([A-Z' ]+)$")
+
+# CONVERSION: the critical HIT threshold it grants beyond half range.
+CONVERSION_CRIT_HIT = 4
+
+# Overwatch: the unmodified roll needed to hit, and its legal range.
+OVERWATCH_DEFAULT = 6
+OVERWATCH_RANGE = (2, 6)
+
+
+def overwatch_target(ctx: dict):
+    """The unmodified roll Overwatch needs, or None when the attack is
+    not an Overwatch one. Overwatch hits ONLY on that unmodified result:
+    no hit modifiers (BS/WS ones included) and no re-rolls apply. The
+    wound roll onwards is unaffected."""
+    if not ctx.get("overwatch"):
+        return None
+    lo, hi = OVERWATCH_RANGE
+    try:
+        value = int(ctx.get("overwatch_value") or OVERWATCH_DEFAULT)
+    except (TypeError, ValueError):
+        value = OVERWATCH_DEFAULT
+    return max(lo, min(hi, value))
+
+
+def parse_x_value(text, warn=None):
+    """The X after a keyword: a flat number ("2") or a dice expression
+    ("D3", "2D6+1"), which 11th ed. allows for Rapid Fire and friends.
+    Returns an int for a flat value and a Characteristic for dice, so
+    the flat case stays exactly as cheap as it was. None on nonsense."""
+    text = str(text or "").strip()
+    if not text:
+        return 1
+    try:
+        return int(text)
+    except ValueError:
+        pass
+    try:
+        c = Characteristic(text)
+    except Exception:
+        c = None
+    if c is None or c.is_none() or (c.count == 0 and c.flat == 0):
+        if warn:
+            warn(f"bad value '{text}'")
+        return None
+    return c.flat if c.count == 0 else c
+
+
+def x_active(value) -> bool:
+    """True when an X value can contribute anything at all."""
+    if value is None:
+        return False
+    if isinstance(value, Characteristic):
+        return not value.is_none() and (value.count > 0 or value.flat > 0)
+    return value > 0
+
+
+def x_pmf(value) -> list:
+    """PMF of an X value (flat or dice)."""
+    if not x_active(value):
+        return delta(0)
+    return char_pmf(value) if isinstance(value, Characteristic) \
+        else delta(int(value))
+
+
+def _x_sum(a, b):
+    """a + b where either may be dice: two dice values are kept as a
+    Characteristic sum when possible, otherwise the flats add."""
+    if isinstance(a, Characteristic) or isinstance(b, Characteristic):
+        ca = a if isinstance(a, Characteristic) else Characteristic(int(a))
+        cb = b if isinstance(b, Characteristic) else Characteristic(int(b))
+        if ca.sides == cb.sides or ca.count == 0 or cb.count == 0:
+            out = Characteristic(0)
+            out.count = ca.count + cb.count
+            out.sides = ca.sides or cb.sides
+            out.flat = ca.flat + cb.flat
+            return out
+        return ca                      # mixed dice: keep the first
+    return int(a) + int(b)
+
+
+def x_text(value) -> str:
+    """How the value is spelled back to the user."""
+    if isinstance(value, Characteristic):
+        if not value.count:
+            return str(value.flat)
+        base = f"{value.count}D{value.sides}"
+        return base if not value.flat else f"{base}{value.flat:+d}"
+    return str(value)
+
+
+def x_value(value, rng=None) -> int:
+    """Resolve an X value to an int, rolling the dice if it is one."""
+    if not x_active(value):
+        return 0
+    if isinstance(value, Characteristic):
+        return value.value(rng) or 0
+    return int(value)
 
 
 def parse_weapon_keywords(keywords, mech: WeaponMechanics):
@@ -437,14 +554,19 @@ def parse_weapon_keywords(keywords, mech: WeaponMechanics):
         if m:
             mech.anti.append((m.group(1).strip(), int(m.group(2))))
             continue
+        m = _HUNTER_RE.match(kw)
+        if m:
+            add_hunter(mech, m.group(1))
+            continue
         matched = False
         for name, attr in _KW_NUMERIC.items():
             if kw.startswith(name):
                 tail = kw[len(name):].strip()
-                try:
-                    setattr(mech, attr, int(tail) if tail else 1)
-                except ValueError:
-                    mech.warnings.append(f"bad value in keyword '{kw}'")
+                value = parse_x_value(
+                    tail, lambda msg: mech.warnings.append(
+                        f"{msg} in keyword '{kw}'"))
+                if value is not None:
+                    setattr(mech, attr, value)
                 matched = True
         if matched:
             continue
@@ -618,6 +740,10 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             mech.dmg_set_zero = True
         elif tok[0] == "EXTRAATTACKS":
             pass                    # selection-level keyword, no maths
+        elif tok[0] == "CONVERSION":
+            mech.conversion = True
+        elif tok[0] == "HUNTER" and len(tok) >= 2:
+            add_hunter(mech, " ".join(tok[1:]))
         elif tok[0] == "FNP_ROLL":
             mech.fnp_mod += int(tok[1])
         elif tok[0] == "FNPOVERRIDE":
@@ -640,7 +766,10 @@ def _dispatch(dyn, s, tok, mech) -> bool:
     # ---- single roll-time condition ----
     if dyn == ["CRIT_HIT"]:
         if tok[0] == "EXTRA_HITS":
-            mech.sustained += int(tok[1])
+            add = parse_x_value(tok[1], warn)
+            if x_active(add):
+                mech.sustained = (add if not x_active(mech.sustained)
+                                  else _x_sum(mech.sustained, add))
         elif s == "OVERRIDE WOUND ALWAYS":
             mech.lethal = True
         elif s == "OVERRIDE WOUND ALWAYS CRIT":
@@ -749,15 +878,24 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     warn = mech.warnings.append
 
     # ---- number of attacks: A per copy (+rapid fire/blast), x count ----
-    extra_a = (mech.rapid_fire if half else 0)
+    # X may be a dice expression (11th ed.), so the extras are a PMF and
+    # not a number. For BLAST/CLEAVE the bonus is "X attacks for every 5
+    # models", which with a dice X is read as one roll PER GROUP of five
+    # rather than a single roll multiplied - for a flat X the two are the
+    # same thing.
+    extra_pmf = delta(0)
+    if half and x_active(mech.rapid_fire):
+        extra_pmf = convolve(extra_pmf, x_pmf(mech.rapid_fire))
+    groups = max(0, defender_ref.get("models", 1) // 5)
     # BLAST (ranged) and CLEAVE (melee) both add X attacks per 5 target
     # models; a weapon carries at most one of them.
-    if mech.blast or mech.cleave:
-        extra_a += (mech.blast + mech.cleave) \
-            * max(0, defender_ref.get("models", 1) // 5)
+    for src in (mech.blast, mech.cleave):
+        if groups and x_active(src):
+            for _ in range(groups):
+                extra_pmf = convolve(extra_pmf, x_pmf(src))
     per_copy = char_pmf(weapon.A)
-    if extra_a:
-        per_copy = convolve(per_copy, delta(extra_a))
+    if len(extra_pmf) > 1 or extra_pmf[0] != 1.0:
+        per_copy = convolve(per_copy, extra_pmf)
     attacks_pmf = delta(0)
     for _ in range(max(1, weapon.count)):
         attacks_pmf = convolve(attacks_pmf, per_copy)
@@ -817,6 +955,21 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     # modifier applies on top of the clamped value.
     skill_target = rules_config.clamp_characteristic(
         "BS", (skill.value() or 0) - skill_mod)
+    # CONVERSION: at least half the weapon's range away, critical hits
+    # come on 4+. The 'half_range' flag says the attack IS within half
+    # range, so an unticked flag means the bonus applies - the analyzer
+    # cannot know the real distance, and 'beyond' is the common case.
+    crit_hit_on = mech.crit_hit_on
+    if mech.conversion and not ctx.get("half_range"):
+        crit_hit_on = min(crit_hit_on, CONVERSION_CRIT_HIT)
+    # OVERWATCH: hits only on an unmodified N+ (6 by default). Every hit
+    # modifier and every re-roll is discarded - TORRENT still hits
+    # automatically, since it makes no hit roll at all - while the wound
+    # roll and everything after it are resolved normally.
+    ow = overwatch_target(ctx)
+    if ow is not None:
+        hit_mod, skill_target, reroll_hit = 0, ow, None
+        unmod_min = max(unmod_min, ow)
     p_mw_hit = 0.0
     if mech.torrent or mech.auto_hit or skill.is_none():
         p_hit, p_crit_hit = 1.0, 0.0      # auto-hit: no roll, no crits
@@ -832,11 +985,10 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     elif mech.hit_unmod_only:
         # hits only on an unmodified X+, irrespective of modifiers
         p_hit, p_crit_hit = roll_probs(max(mech.hit_unmod_only, unmod_min),
-                                       0, reroll_hit,
-                                       crit_on=mech.crit_hit_on)
+                                       0, reroll_hit, crit_on=crit_hit_on)
     else:
         p_hit, p_crit_hit = roll_probs(skill_target, hit_mod, reroll_hit,
-                                       crit_on=mech.crit_hit_on,
+                                       crit_on=crit_hit_on,
                                        unmod_min=unmod_min)
     p_norm_hit = p_hit - p_crit_hit
 
@@ -896,8 +1048,8 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         dmg_raw = char_pmf(weapon.D)
         if mech.dmg_reroll:
             dmg_raw = reroll_low_damage(dmg_raw, *mech.dmg_reroll)
-    if mech.melta and half:
-        dmg_raw = convolve(dmg_raw, delta(mech.melta))
+    if half and x_active(mech.melta):
+        dmg_raw = convolve(dmg_raw, x_pmf(mech.melta))
     # Defender Damage modifiers (set / multiply / add / floor, in that
     # fixed order - see apply_damage_modifiers): applied to the final
     # Damage of each attack. This acts on the per-attack Damage
@@ -978,8 +1130,16 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         else:
             crit_hit_base = per_hit
         crit_branch = crit_hit_base
-        for _ in range(mech.sustained):
-            crit_branch = convolve(crit_branch, per_hit)
+        if x_active(mech.sustained):
+            # The number of bonus hits may itself be a die: mix over it,
+            # the same way the total mixes over the number of attacks.
+            n_pmf, cur, parts = x_pmf(mech.sustained), crit_hit_base, []
+            for k, pk in enumerate(n_pmf):
+                if pk:
+                    parts.append((pk, cur))
+                if k < len(n_pmf) - 1:
+                    cur = convolve(cur, per_hit)
+            crit_branch = mix(parts)
         pairs = [(p_norm_hit, per_hit), (p_crit_hit, crit_branch),
                  (1 - p_hit - p_mw_hit, zero)]
         if p_mw_hit:

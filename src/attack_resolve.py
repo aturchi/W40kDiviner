@@ -93,8 +93,8 @@ def _roll_damage(rng, d_char, mech, half: bool) -> int:
             v = (_d6(rng) if d_char.sides == 6
                  else rng.randint(1, d_char.sides))
         total += v
-    if mech.melta and half:
-        total += mech.melta
+    if half and am.x_active(mech.melta):
+        total += am.x_value(mech.melta, rng)
     if am.has_damage_modifiers(mech):
         total = am.apply_damage_modifiers(total, mech)
     return total
@@ -185,14 +185,18 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         weapon.AP = weapon.AP.with_delta(-1)
         weapon.D = weapon.D.with_delta(1)
 
-    # number of attacks
-    extra_a = (mech.rapid_fire if half else 0)
-    # BLAST (ranged) and CLEAVE (melee): +X attacks per 5 target models.
-    if mech.blast or mech.cleave:
-        extra_a += (mech.blast + mech.cleave) \
-            * max(0, defender_ref.get("models", 1) // 5)
+    # number of attacks. X may be a dice expression (11th ed.), so every
+    # extra is rolled; BLAST/CLEAVE roll once per group of five models,
+    # mirroring analyze_weapon.
+    groups = max(0, defender_ref.get("models", 1) // 5)
     n_att = 0
     for _ in range(max(1, weapon.count)):
+        extra_a = (am.x_value(mech.rapid_fire, rng)
+                   if half and am.x_active(mech.rapid_fire) else 0)
+        # BLAST (ranged) and CLEAVE (melee): +X attacks per 5 target models.
+        for src in (mech.blast, mech.cleave):
+            if groups and am.x_active(src):
+                extra_a += sum(am.x_value(src, rng) for _ in range(groups))
         n_att += (weapon.A.value(rng) or 0) + extra_a
 
     # static roll parameters (mirror analyze_weapon)
@@ -232,6 +236,17 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
     # absolute limits (BS/WS between 2+ and 6+), clamped before hit_mod.
     skill_target = rules_config.clamp_characteristic(
         "BS", (skill.value() or 0) - skill_mod)
+    # CONVERSION, mirroring analyze_weapon: beyond half range the
+    # critical-hit threshold drops to 4+.
+    crit_hit_on = mech.crit_hit_on
+    if mech.conversion and not ctx.get("half_range"):
+        crit_hit_on = min(crit_hit_on, am.CONVERSION_CRIT_HIT)
+    # OVERWATCH, mirroring analyze_weapon: hits only on an unmodified N+,
+    # no hit modifiers and no re-rolls; the wound roll is normal.
+    ow = am.overwatch_target(ctx)
+    if ow is not None:
+        hit_mod, skill_target, reroll_hit = 0, ow, None
+        unmod_min = max(unmod_min, ow)
     auto = mech.torrent or mech.auto_hit or skill.is_none()
     s_val = weapon.S.value() or 0
     wt = am.wound_target(s_val, defender_ref["T"])
@@ -317,19 +332,19 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             continue
         if mech.hit_unmod_only:
             x = max(mech.hit_unmod_only, unmod_min)
-            ok = lambda r: r >= x and (r == 6 or r >= mech.crit_hit_on
+            ok = lambda r: r >= x and (r == 6 or r >= crit_hit_on
                                        or r >= x)
         else:
             ok = lambda r: (r >= unmod_min
-                            and (r == 6 or r >= mech.crit_hit_on
+                            and (r == 6 or r >= crit_hit_on
                                  or (r > 1 and r + hit_mod >= tgt)))
         r = _roll_success(rng, ok, reroll_hit)
         if not ok(r):
             continue
-        crit = (r >= mech.crit_hit_on and r >= unmod_min)
+        crit = (r >= crit_hit_on and r >= unmod_min)
         resolve_hit_chain(crit)
         if crit:
-            for _ in range(mech.sustained):
+            for _ in range(am.x_value(mech.sustained, rng)):
                 resolve_hit_chain(False)
 
     self_damage = 0

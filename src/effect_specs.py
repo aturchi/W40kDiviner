@@ -185,6 +185,15 @@ EFFECT_SPECS = {
               ("Assault", "assault"), ("Heavy", "heavy")]),
         ],
     },
+    "hunterTarget": {
+        "text": "Hunter X (target restriction)",
+        "description": "The weapon may only be fired at units with the "
+                       "given keyword (11th-ed. HUNTER X). Several of "
+                       "them stack as alternatives: the target needs any "
+                       "one of the listed keywords.",
+        "fields": [("keyword", COMBO, "Keyword (X)",
+                    keywords_config.all_keywords())],
+    },
     # ---------- Project extensions ----------
     "disableMechanic": {
         "text": "Disable mechanic",

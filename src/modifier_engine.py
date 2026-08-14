@@ -400,6 +400,14 @@ _KEYWORD_SPELLING = {
 }
 
 
+def _e_hunter_target(d, env):
+    """HUNTER X: restrict what the weapon may be fired at. Exported as an
+    effect string so it inherits the IF-prefixes, and so that a weapon
+    keyword and an ability end up on the same field."""
+    kw = str(d.get("keyword", "")).strip().upper()
+    return [("weffect", f"HUNTER {kw}")] if kw else []
+
+
 def _e_set_keyword(d, env):
     kw = str(d.get("keyword", "")).upper()
     return [("kw", _key(d.get("target")), _key(d.get("operation")),
@@ -427,6 +435,7 @@ EFFECT_APPLIERS = {
     "feelNoPain": _e_feel_no_pain,
     "invulnSave": _e_invuln,
     "increaseWeaponAttacks": _e_increase_attacks,
+    "hunterTarget": _e_hunter_target,
     "disableMechanic": _e_disable_mechanic,
     "setKeyword": _e_set_keyword,
     "modifyAbsolute": _e_modify_absolute,

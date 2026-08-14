@@ -590,7 +590,8 @@ class GameAssistantApp(tk.Tk):
         ctx = {k: flags.get(k) for k in ("half_range", "stationary",
                                          "charged", "cover",
                                          "plunging", "damaged",
-                                         "indirect", "spotter")}
+                                         "indirect", "spotter",
+                                         "overwatch", "overwatch_value")}
         # Close quarters: only a MONSTER/VEHICLE attacker takes the -1,
         # and only with weapons that are not CLOSE-QUARTERS.
         ctx["close_quarters_penalty"] = (
@@ -602,6 +603,13 @@ class GameAssistantApp(tk.Tk):
         for w in weapons:
             mech = analyzer_core.mechanics_for_attack(w, dview, attack_type,
                                                       mods, flags)
+            # HUNTER X: the weapon may only be fired at units carrying
+            # the named keyword (the restriction can come from the
+            # datasheet or from an ability, so it is checked here).
+            why = analyzer_core.hunter_skip_reason(mech, dview)
+            if why:
+                skipped = list(skipped) + [(w, why)]
+                continue
             hazardous = mech.hazardous and messagebox.askyesno(
                 "Hazardous", f"Use the HAZARDOUS profile for {w.name}?")
             res = attack_resolve.resolve_weapon(w, ref, ctx, mech,

@@ -154,6 +154,7 @@ ArmyFetcher tree with `--real_data` (or the env flags above).
   Parity proves the two engines AGREE; it cannot prove either matches the rules,
   which is what the closed-form tests below are for.
 - `test_critical_triggers.py`, `test_modifier_caps.py`, `test_fnp_and_mortals.py`,
-  `test_indirect_fire.py`, `test_close_quarters.py` — rules-level checks with the
-  expected values worked out **in closed form**, independently of the engine.
-  No external data.
+  `test_indirect_fire.py`, `test_close_quarters.py`, `test_hunter_conversion.py`,
+  `test_dice_x_and_overwatch.py` —
+  rules-level checks with the expected values worked out **in closed form**,
+  independently of the engine. No external data.

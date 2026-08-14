@@ -108,7 +108,8 @@ class SetupPanel(ttk.LabelFrame):
                          # cannot see the table. PISTOL is the 10th-ed.
                          # spelling of CLOSE-QUARTERS, so there is no
                          # separate pistol mode any more.
-                         ("close_quarters", "Close quarters"),
+                         ("close_quarters", "Close quarters (engaged "
+                                            "target)"),
                          ("melee", "Melee")]:
             ttk.Radiobutton(self, text=lab, value=val, variable=self.mode,
                             command=self._on_mode_change).pack(
@@ -131,6 +132,25 @@ class SetupPanel(ttk.LabelFrame):
         self.flag_vars["indirect"].trace_add(
             "write", lambda *a: self._sync_spotter())
         self._sync_spotter()
+
+        # Overwatch: a tick plus the unmodified roll it needs. The field
+        # is only meaningful while the tick is on, so it follows it.
+        row = ttk.Frame(self)
+        row.pack(anchor=tk.W, padx=4)
+        self.flag_vars["overwatch"] = tk.BooleanVar()
+        ttk.Checkbutton(row, text="Overwatch: hits only on unmodified",
+                        variable=self.flag_vars["overwatch"]).pack(
+            side=tk.LEFT)
+        lo, hi = attack_math.OVERWATCH_RANGE
+        self.overwatch_value = tk.StringVar(
+            value=str(attack_math.OVERWATCH_DEFAULT))
+        self.overwatch_spin = ttk.Spinbox(
+            row, from_=lo, to=hi, width=3, textvariable=self.overwatch_value)
+        self.overwatch_spin.pack(side=tk.LEFT, padx=3)
+        ttk.Label(row, text="+").pack(side=tk.LEFT)
+        self.flag_vars["overwatch"].trace_add(
+            "write", lambda *a: self._sync_overwatch())
+        self._sync_overwatch()
 
         ttk.Separator(self).pack(fill=tk.X, pady=4)
         # Manual modifiers: only the HIT and WOUND roll modifiers are
@@ -203,6 +223,12 @@ class SetupPanel(ttk.LabelFrame):
             return
         del self.mods[sel[0]]
         self.mod_list.delete(sel[0])
+
+    def _sync_overwatch(self):
+        """The roll field is editable only while Overwatch is ticked."""
+        self.overwatch_spin.configure(
+            state=(tk.NORMAL if self.flag_vars["overwatch"].get()
+                   else tk.DISABLED))
 
     def _sync_spotter(self):
         """Enable the spotter box only while indirect fire is selected."""
@@ -280,6 +306,7 @@ class SetupPanel(ttk.LabelFrame):
         """The current context flags as a dict (in_cover, charged, etc.),
         plus the ability selection (see analyzer_core.ability_selection)."""
         out = {k: v.get() for k, v in self.flag_vars.items()}
+        out["overwatch_value"] = self.overwatch_value.get()
         out["disabled_abilities"] = list(self.disabled_abilities)
         out["extra_abilities"] = list(self.extra_abilities)
         out["optimise_abilities"] = bool(self.optimise_abilities.get())

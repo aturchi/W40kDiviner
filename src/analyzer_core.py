@@ -125,6 +125,21 @@ INDIRECT_SKIP = "inapplicable due to indirect fire"
 CQ_BLAST_SKIP = "BLAST cannot target an engaged unit"
 CQ_NOT_CQ_SKIP = "not a CLOSE-QUARTERS weapon"
 CQ_ONLY_SKIP = "CLOSE-QUARTERS: fires only in close quarters"
+
+
+def hunter_skip_reason(mech, dview):
+    """Why a HUNTER X weapon may not fire at this target, or None.
+    HUNTER X weapons may only be shot at units with keyword X. The check
+    lives here rather than in select_weapons_split because the
+    restriction can also be GRANTED by an ability (a 'HUNTER X' effect
+    string), which is only known once the mechanics are built."""
+    if not mech.hunter:
+        return None
+    target = {str(k).strip().upper() for k in (dview.keywords or ())}
+    if target & set(mech.hunter):
+        return None
+    return ("HUNTER-" + "/".join(mech.hunter)
+            + ": the target does not have that keyword")
 CQ_KEYWORDS = {"MONSTER", "VEHICLE"}
 # PISTOL is the 10th-ed. spelling of CLOSE-QUARTERS: rosters fetched
 # before the rename still carry it, so both are accepted everywhere.
@@ -299,6 +314,8 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
            "damaged": flags.get("damaged"),
            "indirect": flags.get("indirect"),
            "spotter": flags.get("spotter"),
+           "overwatch": flags.get("overwatch"),
+           "overwatch_value": flags.get("overwatch_value"),
            "close_quarters_penalty": (mode == "close_quarters"
                                       and close_quarters_attacker(aview))}
     rows, warnings = [], []
@@ -309,6 +326,10 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
     optimise = abilities.get("optimise", True)
     for w in kept:
         mech = _mechanics_for(w, dview, attack_type, manual, abilities)
+        why = hunter_skip_reason(mech, dview)
+        if why:
+            skipped.append((w, why))
+            continue
         variants = [(w.name, w, None)]
         if mech.hazardous:
             variants.append((f"{w.name} [HAZARDOUS]",
