@@ -118,4 +118,36 @@ close(dev_leth, A * (P_NORM * ((Q_W - 3 / 6) * P_UNSAVED + 3 / 6)
 assert dev_leth < dev, (dev_leth, dev)
 print("Lethal auto-wounds cannot trigger Devastating (and can cost damage)")
 
-print("ALL CRITICAL-TRIGGER TESTS PASS")
+# --- 5. the UNMODIFIED die decides, before anything else ---------------
+# "Unmodified" means the raw face, read before any modifier is applied:
+# on hit and wound rolls a 1 is always a failure and a 6 always a
+# success, whatever the modifiers, the target number or the re-rolls.
+for target, mod in ((2, +3), (2, +1), (4, 0), (6, -3), (9, +5), (1, -5)):
+    faces = [r for r in range(1, 7)
+             if r == 6 or (r > 1 and r + mod >= target)]
+    p, pc = am.roll_probs(target, mod)
+    assert 1 not in faces and 6 in faces, (target, mod, faces)
+    close(p, len(faces) / 6, f"unmodified rule at {target}+ {mod:+d}")
+    close(pc, 1 / 6, f"a 6 is always the critical at {target}+ {mod:+d}")
+# a re-roll cannot rescue an unmodified 1 either: it re-rolls the die,
+# and the new face is judged by the same rule (5/6 ceiling per die).
+assert am.roll_probs(2, +3, reroll="fails")[0] <= 1 - (1 / 6) ** 2 + 1e-12
+# On SAVING throws only half the rule applies: an unmodified 1 fails,
+# but a 6 does NOT save automatically (an impossible save stays so).
+close(am._p_save_roll(2, +3, None, 0), 5 / 6, "save: 1 always fails")
+close(am._p_save_roll(7, +0, None, 0), 0.0, "save: no auto-pass on a 6")
+close(am._p_save_roll(12, +5, None, 0), 0.0, "save: modifiers do not rescue")
+print("unmodified 1s and 6s decide hit and wound rolls before modifiers")
+
+# --- 6. Indirect Fire: a floor on the UNMODIFIED die -------------------
+# The floor does not replace the roll: the modified result must still
+# beat the target, so a BS5+ weapon with a spotter hits on 5+, not 4+.
+close(am.roll_probs(4, 0, unmod_min=4)[0], 3 / 6, "indirect, spotter, BS4+")
+close(am.roll_probs(5, 0, unmod_min=4)[0], 2 / 6, "indirect, spotter, BS5+")
+close(am.roll_probs(2, 0, unmod_min=6)[0], 1 / 6, "indirect, no spotter")
+# a critical needs a face that can actually land
+close(am.roll_probs(4, 0, crit_on=5, unmod_min=6)[1], 1 / 6,
+      "crit faces are floored too")
+print("indirect fire floors the unmodified die without replacing the roll")
+
+print("ALL UNMODIFIED-ROLL TESTS PASS")

@@ -187,9 +187,18 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                               else 0)
     if ctx.get("damaged"):
         hit_mod -= 1
+    # INDIRECT FIRE, mirroring analyze_weapon: target always in Cover,
+    # no hit re-rolls, and an unmodified die below unmod_min always
+    # fails (6, or 4 with a spotter while stationary).
+    indirect = bool(ctx.get("indirect")) and mech.indirect
+    unmod_min = 1
+    reroll_hit = mech.reroll_hit
+    if indirect:
+        unmod_min = 4 if ctx.get("spotter") else 6
+        reroll_hit = None
     skill_mod = 0
     if weapon.type == "Ranged":
-        if ctx.get("cover") and not mech.ignores_cover:
+        if (ctx.get("cover") or indirect) and not mech.ignores_cover:
             skill_mod -= 1
         if ctx.get("plunging"):
             skill_mod += 1
@@ -268,7 +277,7 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             thr = mech.hitroll_mw["thr"]
             ok = lambda r: (r >= thr
                             or (r > 1 and r < thr and r + hit_mod >= tgt))
-            r = _roll_success(rng, ok, mech.reroll_hit)
+            r = _roll_success(rng, ok, reroll_hit)
             if r >= thr:
                 raw = (_roll_damage(rng, weapon.D, mech, half)
                        if mech.hitroll_mw["match"]
@@ -282,15 +291,17 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             resolve_hit_chain(False)
             continue
         if mech.hit_unmod_only:
-            x = mech.hit_unmod_only
-            ok = lambda r: r == 6 or r >= mech.crit_hit_on or r >= x
+            x = max(mech.hit_unmod_only, unmod_min)
+            ok = lambda r: r >= x and (r == 6 or r >= mech.crit_hit_on
+                                       or r >= x)
         else:
-            ok = lambda r: (r == 6 or r >= mech.crit_hit_on
-                            or (r > 1 and r + hit_mod >= tgt))
-        r = _roll_success(rng, ok, mech.reroll_hit)
+            ok = lambda r: (r >= unmod_min
+                            and (r == 6 or r >= mech.crit_hit_on
+                                 or (r > 1 and r + hit_mod >= tgt)))
+        r = _roll_success(rng, ok, reroll_hit)
         if not ok(r):
             continue
-        crit = (r >= mech.crit_hit_on)
+        crit = (r >= mech.crit_hit_on and r >= unmod_min)
         resolve_hit_chain(crit)
         if crit:
             for _ in range(mech.sustained):

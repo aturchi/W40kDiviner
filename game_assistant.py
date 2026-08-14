@@ -581,14 +581,16 @@ class GameAssistantApp(tk.Tk):
         else:
             ref = opts[0][1]
 
-        weapons = analyzer_core.select_weapons(aview, mode, melee_name)
+        weapons, skipped = analyzer_core.select_weapons_split(
+            aview, mode, melee_name, bool(flags.get("indirect")))
         if not weapons:
             messagebox.showinfo("Attack",
                                 f"No weapons match the '{mode}' selection.")
             return
         ctx = {k: flags.get(k) for k in ("half_range", "stationary",
                                          "charged", "cover",
-                                         "plunging", "damaged")}
+                                         "plunging", "damaged",
+                                         "indirect", "spotter")}
         attack_type = "Melee" if mode == "melee" else "Ranged"
         haz_damage = attack_math.hazardous_damage_per_fail(attacker.keywords)
         results = []
@@ -600,11 +602,11 @@ class GameAssistantApp(tk.Tk):
                                                 self.rng, hazardous,
                                                 haz_damage)
             results.append((w, hazardous, res))
-        self._show_results(attacker, defender, ref, results)
+        self._show_results(attacker, defender, ref, results, skipped)
 
     # ---------- results popup ----------
 
-    def _show_results(self, attacker, defender, ref, results):
+    def _show_results(self, attacker, defender, ref, results, skipped=()):
         win = tk.Toplevel(self)
         win.title(f"{attacker.name}  vs  {defender.name}")
         win.geometry("560x440")
@@ -616,6 +618,13 @@ class GameAssistantApp(tk.Tk):
         fnp = f" fnp{ref['fnp']}+" if ref.get("fnp") else ""
         txt.insert(tk.END, f"Reference defender: T{ref['T']} "
                            f"Sv{ref['Sv']}+ W{ref['W']}{inv}{fnp}\n\n")
+        txt.tag_configure("skip", foreground="#888888")
+        for w, why in skipped or ():
+            # Not fired under the current attack setup (indirect fire):
+            # listed anyway so the whole unit is accounted for.
+            txt.insert(tk.END, f"{w.name} x{w.count} - {why}\n", "skip")
+        if skipped:
+            txt.insert(tk.END, "\n")
         warnings = set()
         for w, hazardous, res in results:
             label = w.name + (" [HAZARDOUS]" if hazardous else "")

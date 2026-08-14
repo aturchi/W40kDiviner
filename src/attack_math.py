@@ -115,19 +115,24 @@ def combine_reroll(a, b):
 
 
 def roll_probs(target, mod: int, reroll: str = None, times: int = None,
-               crit_on: int = 6):
+               crit_on: int = 6, unmod_min: int = 1):
     """(p_success, p_crit) of one d6 roll needing 'target'+, with a net
     modifier (already capped by the caller), under 11th-ed rules:
     unmodified 1 always fails, unmodified 6 always succeeds, criticals
     on an unmodified crit_on+ (ANTI-style abilities lower it from 6)
     and a critical is automatically successful.
     reroll: None | '1' | 'fails'; times = max re-rolls per die
-    (default rules_config.CAP_REROLLS). Policy: failed dice only."""
+    (default rules_config.CAP_REROLLS). Policy: failed dice only.
+    unmod_min: an UNMODIFIED result below this always fails, whatever
+    the modifiers say (Indirect Fire: 6 with no spotter, 4 with one).
+    It is a floor on the die, not a replacement for the roll: the
+    modified result must still beat the target."""
     faces = [r for r in range(1, 7)
-             if r == 6 or r >= crit_on
-             or (r > 1 and r + mod >= target)]
+             if r >= unmod_min
+             and (r == 6 or r >= crit_on
+                  or (r > 1 and r + mod >= target))]
     p = len(faces) / 6.0
-    pc = (7 - max(2, crit_on)) / 6.0
+    pc = (7 - max(2, crit_on, unmod_min)) / 6.0
     if times is None:
         times = rules_config.CAP_REROLLS
     if reroll is None or times <= 0:
@@ -265,6 +270,8 @@ class WeaponMechanics:
         self.heavy = False          # +1 to hit if attacker stationary
         self.lance = False          # +1 to wound if attacker charged
         self.ignores_cover = False
+        self.indirect = False       # INDIRECT FIRE: usable in indirect
+        #                             shooting mode, with its penalties
         # Per-attack Damage-characteristic modifiers from DMGREDUX /
         # DMGSETZERO effect strings (defender abilities, evaluated against
         # the attacking weapon). They are applied to the Damage D of each
@@ -303,10 +310,11 @@ _KW_NUMERIC = {"SUSTAINED HITS": "sustained", "RAPID FIRE": "rapid_fire",
 _KW_FLAGS = {"LETHAL HITS": "lethal", "DEVASTATING WOUNDS": "devastating",
              "TORRENT": "torrent", "TWIN-LINKED": "twin_linked",
              "HEAVY": "heavy", "LANCE": "lance",
-             "IGNORES COVER": "ignores_cover", "HAZARDOUS": "hazardous"}
+             "IGNORES COVER": "ignores_cover", "HAZARDOUS": "hazardous",
+             "INDIRECT FIRE": "indirect"}
 # PSYCHIC is handled explicitly (ignore-malus on the hit roll), not here.
 _KW_IGNORED = {"PISTOL", "EXTRA ATTACKS", "ASSAULT", "ONE SHOT",
-               "PRECISION", "INDIRECT FIRE"}
+               "PRECISION"}
 _ANTI_RE = re.compile(r"^ANTI[- ]([A-Z' ]+?)\s+(\d)\+?$")
 
 
@@ -624,9 +632,21 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                               else 0)
     if ctx.get("damaged"):
         hit_mod -= 1
+    # INDIRECT FIRE (11th ed. indirect shooting mode): the target always
+    # counts as being in Cover, the hit roll cannot be re-rolled, and an
+    # unmodified result below 6 always fails - 4 instead of 6 when the
+    # unit Remained Stationary and a friendly unit can see the target
+    # ('spotter'). Applies only to weapons that HAVE the keyword; the
+    # caller decides which weapons are fired at all.
+    indirect = bool(ctx.get("indirect")) and mech.indirect
+    unmod_min = 1
+    reroll_hit = mech.reroll_hit
+    if indirect:
+        unmod_min = 4 if ctx.get("spotter") else 6
+        reroll_hit = None
     skill_mod = 0
     if weapon.type == "Ranged":
-        if ctx.get("cover") and not mech.ignores_cover:
+        if (ctx.get("cover") or indirect) and not mech.ignores_cover:
             skill_mod -= 1
         if ctx.get("plunging"):
             skill_mod += 1
@@ -654,18 +674,20 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
             warn("hit-roll mechanic combined with auto-hit: ignored")
     elif mech.hitroll_mw:
         p_mw_hit, p_hit = hit_threshold_mw_probs(
-            skill_target, hit_mod, mech.reroll_hit,
-            mech.hitroll_mw["thr"])
+            skill_target, hit_mod, reroll_hit, mech.hitroll_mw["thr"])
         p_crit_hit = 0.0                   # the natural 6 feeds the MW branch
+        if indirect:
+            warn("indirect fire combined with a hit-roll mortal-wound "
+                 "mechanic: the unmodified-roll floor is not applied")
     elif mech.hit_unmod_only:
         # hits only on an unmodified X+, irrespective of modifiers
-        p_hit, p_crit_hit = roll_probs(mech.hit_unmod_only, 0,
-                                       mech.reroll_hit,
+        p_hit, p_crit_hit = roll_probs(max(mech.hit_unmod_only, unmod_min),
+                                       0, reroll_hit,
                                        crit_on=mech.crit_hit_on)
     else:
-        p_hit, p_crit_hit = roll_probs(skill_target, hit_mod,
-                                       mech.reroll_hit,
-                                       crit_on=mech.crit_hit_on)
+        p_hit, p_crit_hit = roll_probs(skill_target, hit_mod, reroll_hit,
+                                       crit_on=mech.crit_hit_on,
+                                       unmod_min=unmod_min)
     p_norm_hit = p_hit - p_crit_hit
 
     # ---- wound stage ----

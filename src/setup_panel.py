@@ -16,6 +16,13 @@ FLAGS = [("half_range", "Within half range"),
          ("cover", "Defender in cover (-1 to hit)"),
          ("plunging", "Plunging fire (+1 to hit)"),
          ("damaged", "Attacker damaged (-1 to hit)"),
+         # Indirect shooting mode: only INDIRECT FIRE weapons are fired,
+         # the target always counts as being in Cover, hit re-rolls are
+         # lost and an unmodified 1-5 always fails ("spotter" relaxes
+         # that to 1-3; tick it only when the unit also Remained
+         # Stationary, which the rule requires on top of the spotter).
+         ("indirect", "Indirect fire (INDIRECT FIRE weapons only)"),
+         ("spotter", "  ...with spotter and stationary (4+ instead of 6)"),
          ("attacker_below_half", "Attacker below half strength"),
          ("defender_below_half", "Defender below half strength"),
          ("defender_below_full", "Defender below full strength")]

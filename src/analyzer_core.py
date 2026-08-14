@@ -120,25 +120,49 @@ def suggested_references(dview, opts=None):
             if _ref_key(ref) in wanted}
 
 
-def select_weapons(aview, mode: str, melee_name: str = None):
+INDIRECT_SKIP = "inapplicable due to indirect fire"
+
+
+def select_weapons(aview, mode: str, melee_name: str = None,
+                   indirect: bool = False):
     """Weapons taking part in the attack.
     mode 'ranged': all Ranged weapons except PISTOL;
     mode 'pistol': only PISTOL weapons;
-    mode 'melee' : the chosen weapon plus EXTRA ATTACKS melee weapons."""
-    out = []
+    mode 'melee' : the chosen weapon plus EXTRA ATTACKS melee weapons.
+
+    With indirect=True the unit is using the 11th-ed. indirect shooting
+    mode: ONLY weapons with the INDIRECT FIRE keyword are fired. The
+    others are not silently dropped - see select_weapons_split."""
+    kept, _skipped = select_weapons_split(aview, mode, melee_name, indirect)
+    return kept
+
+
+def select_weapons_split(aview, mode: str, melee_name: str = None,
+                         indirect: bool = False):
+    """(kept, skipped) where 'skipped' is [(weapon, reason)] - weapons
+    that would normally take part but are excluded by the attack setup,
+    so the caller can show them greyed out instead of hiding them."""
+    kept, skipped = [], []
     for model in aview.models():
         for w in model.weapons:
             kw = {k.upper() for k in w.keywords}
             if mode == "ranged" and w.type == "Ranged" \
                     and "PISTOL" not in kw:
-                out.append(w)
+                pass
             elif mode == "pistol" and w.type == "Ranged" \
                     and "PISTOL" in kw:
-                out.append(w)
+                pass
             elif mode == "melee" and w.type == "Melee" \
                     and (w.name == melee_name or "EXTRA ATTACKS" in kw):
-                out.append(w)
-    return out
+                pass
+            else:
+                continue
+            if indirect and w.type == "Ranged" \
+                    and "INDIRECT FIRE" not in kw:
+                skipped.append((w, INDIRECT_SKIP))
+            else:
+                kept.append(w)
+    return kept, skipped
 
 
 def melee_choices(aview):
@@ -187,7 +211,9 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
     manual = {'rolls': {...}} roll modifiers (characteristic modifiers
     are already baked into the views by build_views via the Context).
     HAZARDOUS weapons get a second entry with the +1S/-1AP/+1D profile
-    and the mean self-damage (its median is 0 and is not reported)."""
+    and the mean self-damage (its median is 0 and is not reported).
+    'skipped' lists the weapons excluded by the attack setup (indirect
+    fire), so the caller can show them greyed out with the reason."""
     manual = manual or {}
     attack_type = "Melee" if mode == "melee" else "Ranged"
     haz_damage = am.hazardous_damage_per_fail(aview.keywords)
@@ -196,10 +222,14 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
            "charged": flags.get("charged"),
            "cover": flags.get("cover"),
            "plunging": flags.get("plunging"),
-           "damaged": flags.get("damaged")}
+           "damaged": flags.get("damaged"),
+           "indirect": flags.get("indirect"),
+           "spotter": flags.get("spotter")}
     rows, warnings = [], []
     gross, net = am.delta(0), am.delta(0)
-    for w in select_weapons(aview, mode, melee_name):
+    kept, skipped = select_weapons_split(aview, mode, melee_name,
+                                         bool(flags.get("indirect")))
+    for w in kept:
         mech = _mechanics_for(w, dview, attack_type, manual)
         variants = [(w.name, w, None)]
         if mech.hazardous:
@@ -220,6 +250,8 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
                 gross = am.convolve(gross, res["damage_pmf"])
                 net = am.convolve(net, res["damage_net_pmf"])
     return {"weapons": rows,
+            "skipped": [{"name": w.name, "count": w.count, "reason": why}
+                        for w, why in skipped],
             "totals": {"damage": am.pmf_stats(gross),
                        "damage_net": am.pmf_stats(net),
                        "damage_pmf": gross, "damage_net_pmf": net},

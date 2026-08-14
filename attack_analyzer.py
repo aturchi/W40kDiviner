@@ -529,6 +529,13 @@ class AnalyzerApp(tk.Tk):
                 f"{r['damage']['mean']:.2f}", r["damage"]["median"],
                 "" if r["self_damage_mean"] is None
                 else f"{r['self_damage_mean']:.2f}"))
+        # Weapons excluded by the attack setup (indirect fire) are shown
+        # greyed out with the reason instead of disappearing, so the
+        # table still accounts for the whole unit.
+        tree.tag_configure("skipped", foreground="#888888")
+        for r in results.get("skipped", []):
+            tree.insert("", tk.END, text=r["name"], tags=("skipped",),
+                        values=(r["count"], r["reason"], "", "", "", "", ""))
         tree.pack(fill=tk.BOTH, expand=True, padx=6)
 
         t = results["totals"]
