@@ -19,7 +19,12 @@ _APPLICATIONS = [("Hit roll", "hitRoll"), ("Wound roll", "woundRoll"),
                  ("AP", "ap"), ("Damage", "damage"), ("Attacks", "attacks"),
                  ("Strength", "strength"), ("Movement (M)", "m"),
                  ("Leadership (LD)", "ld"),
-                 ("Objective Control (OC)", "oc")]
+                 ("Objective Control (OC)", "oc"),
+                 # Model profile characteristics: what an ability
+                 # granting extra Wounds or Toughness, or a better
+                 # armour save, acts on.
+                 ("Toughness (T)", "t"), ("Save (Sv)", "sv"),
+                 ("Wounds (W)", "w")]
 
 EFFECT_SPECS = {
     "modifyRelative": {

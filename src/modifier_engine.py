@@ -231,8 +231,11 @@ _IMPROVE_SIGN = {"_skill": -1, "AP": -1, "D": +1, "A": +1, "S": +1}
 # Model characteristics reachable by modify effects. Improving LD
 # lowers the target (6+ is better than 7+), like skills; M and OC
 # improve upwards.
-_MODEL_ATTRS = {"m": "M", "ld": "LD", "oc": "OC"}
-_MODEL_IMPROVE_SIGN = {"M": +1, "LD": -1, "OC": +1}
+_MODEL_ATTRS = {"m": "M", "ld": "LD", "oc": "OC",
+                "t": "T", "sv": "Sv", "w": "W"}
+# Toughness and Wounds improve upwards, saves downwards (4+ -> 3+).
+_MODEL_IMPROVE_SIGN = {"M": +1, "LD": -1, "OC": +1,
+                       "T": +1, "Sv": -1, "W": +1}
 
 
 def _e_modify_relative(d, env):

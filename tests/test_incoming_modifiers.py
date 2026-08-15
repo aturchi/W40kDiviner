@@ -17,6 +17,7 @@ with the dice resolver. No tkinter needed.
 """
 import testpaths                      # sets up sys.path to the engine src/
 import attack_math as am
+import effect_specs as _es
 import mc_support as mcs
 from characteristics import Characteristic
 from unit_model import Weapon
@@ -230,3 +231,19 @@ ok, msg = mcs.check_weapon("free damage re-roll", w, REF_SOFT, CTX,
                            mech_for(["REROLL DAMAGE FAILS"]))
 assert ok, msg
 print("a free damage re-roll picks the die's losing half, dice included")
+
+# --- 9. model profile characteristics (T / Sv / W) --------------------
+# Abilities that change the DEFENDER's own profile, not the attack: a
+# storm shield raising Wounds, a buff to Toughness, a better armour save.
+import modifier_engine as _me                              # noqa: E402
+assert _me._MODEL_ATTRS["t"] == "T"
+assert _me._MODEL_ATTRS["sv"] == "Sv"
+assert _me._MODEL_ATTRS["w"] == "W"
+# "Improve by 1" goes the right way for each: T and W up, Sv down.
+assert _me._MODEL_IMPROVE_SIGN["T"] == +1
+assert _me._MODEL_IMPROVE_SIGN["W"] == +1
+assert _me._MODEL_IMPROVE_SIGN["Sv"] == -1
+_apps = dict(_es.EFFECT_SPECS["modifyAbsolute"]["fields"][0][3])
+for _label in ("Toughness (T)", "Save (Sv)", "Wounds (W)"):
+    assert _label in _apps, f"{_label} missing from the editor vocabulary"
+print("T, Sv and W can be modified by an ability")
