@@ -83,14 +83,30 @@ def load(path, program: str) -> dict:
 # ---------------- joins as plain records (no tkinter) ----------------
 
 
+def _as_list(x):
+    """None / one object / a list -> a list. A slot used to hold at most
+    one helper and now holds several, so both shapes are accepted."""
+    if x is None:
+        return []
+    return list(x) if isinstance(x, (list, tuple)) else [x]
+
+
+def _names(helpers):
+    """Helper names in the most compact form: None / one name / a list.
+    Keeps session files written before multi-slot support readable, and
+    keeps writing the old shape whenever a slot holds a single helper."""
+    names = [u.name for u in _as_list(helpers)]
+    return None if not names else (names[0] if len(names) == 1 else names)
+
+
 def joined_records(joined) -> list:
-    """[(combined, leader, unit, support)] -> [{'unit','leader','support'}]
-    with names only: the Unit objects are rebuilt from the roster on
-    load, so nothing about the profiles is duplicated in the file."""
-    return [{"unit": unit.name,
-             "leader": leader.name if leader is not None else None,
-             "support": support.name if support is not None else None}
-            for _combined, leader, unit, support in joined]
+    """[(combined, leaders, unit, supports)] -> [{'unit','leader',
+    'support'}] with names only: the Unit objects are rebuilt from the
+    roster on load, so nothing about the profiles is duplicated in the
+    file. 'leaders'/'supports' may be a single Unit or a list."""
+    return [{"unit": unit.name, "leader": _names(leaders),
+             "support": _names(supports)}
+            for _combined, leaders, unit, supports in joined]
 
 
 def rebuild_joins(records, leaders, others, supports):
@@ -105,29 +121,30 @@ def rebuild_joins(records, leaders, others, supports):
     joined, missing = [], []
     for rec in records or []:
         base = find(others, rec.get("unit"))
-        leader = find(leaders, rec.get("leader")) if rec.get("leader") \
-            else None
-        support = find(supports, rec.get("support")) if rec.get("support") \
-            else None
-        label = " + ".join(x for x in (rec.get("unit"), rec.get("leader"),
-                                       rec.get("support")) if x)
-        if base is None \
-                or (rec.get("leader") and leader is None) \
-                or (rec.get("support") and support is None):
+        want_l = _as_list(rec.get("leader"))
+        want_s = _as_list(rec.get("support"))
+        found_l = [find(leaders, n) for n in want_l]
+        found_s = [find(supports, n) for n in want_s]
+        label = " + ".join([x for x in [rec.get("unit")] if x]
+                           + want_l + want_s)
+        if base is None or None in found_l or None in found_s:
             missing.append(label)
             continue
-        combined = base
-        if leader is not None and combined.can_attach(leader):
-            combined = combined.attach_leader(leader)
-        elif leader is not None:
+        combined, ok = base, True
+        for ld in found_l:
+            if not combined.can_attach(ld):
+                ok = False
+                break
+            combined = combined.attach_leader(ld)
+        for sp in found_s if ok else []:
+            if not combined.can_support(sp):
+                ok = False
+                break
+            combined = combined.attach_support(sp)
+        if not ok:
             missing.append(label)
             continue
-        if support is not None and combined.can_support(support):
-            combined = combined.attach_support(support)
-        elif support is not None:
-            missing.append(label)
-            continue
-        joined.append((combined, leader, base, support))
+        joined.append((combined, found_l, base, found_s))
     return joined, missing
 
 

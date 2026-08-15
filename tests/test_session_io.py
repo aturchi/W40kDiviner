@@ -74,12 +74,49 @@ assert recs == [{"unit": unit.name, "leader": leader.name,
 back, missing = si.rebuild_joins(json.loads(json.dumps(recs)),
                                  leaders, others, supports)
 assert not missing and len(back) == 1
+# a slot holds a LIST of helpers now (a session file written when it held
+# at most one still reads back correctly, and is written the same way)
 combined, l2, u2, s2 = back[0]
-assert l2 is leader and u2 is unit and s2 is None
+assert l2 == [leader] and u2 is unit and s2 == []
 assert combined.attached_leader is leader
 assert sum(m.model_count for m in combined.models()) == \
     sum(m.model_count for m in joined[0][0].models())
 print("joins rebuild from names alone")
+
+# --- several helpers in one slot survive the cycle too -----------------
+# The roster has a single Leader, so clone it under another name (the
+# rules forbid attaching duplicates) and open a second slot on the unit,
+# as an attachmentSlots ability would.
+raw = json.loads(json.dumps(data))
+squad_d = next(u for a in raw["armies"] for u in a["units"]
+               if u["name"] == unit.name)
+squad_d["leader_slots"] = 2
+leader_d = next(u for a in raw["armies"] for u in a["units"]
+                if u["name"] == leader.name)
+clone_d = json.loads(json.dumps(leader_d))
+clone_d["name"] = leader_d["name"] + " (second)"
+raw["armies"][0]["units"].append(clone_d)
+u2s = um.units_from_native(raw)
+l2s, r2 = lc.split_leaders(u2s)
+s2s, o2s = lc.split_supports(r2)
+squad = next(u for u in o2s if u.name == unit.name)
+ld_a = next(l for l in l2s if l.name == leader.name)
+ld_b = next(l for l in l2s if l.name == clone_d["name"])
+assert squad.slot_capacity("leader") == 2
+two = squad.attach_leader(ld_a)
+assert two.can_attach(ld_b), "the second Leader must fit"
+assert not two.can_attach(ld_a), "a duplicate Leader must be refused"
+two = two.attach_leader(ld_b)
+recs2 = si.joined_records([(two, [ld_a, ld_b], squad, [])])
+assert recs2 == [{"unit": squad.name,
+                  "leader": [ld_a.name, ld_b.name],
+                  "support": None}], recs2
+back2, missing2 = si.rebuild_joins(json.loads(json.dumps(recs2)),
+                                   l2s, o2s, s2s)
+assert not missing2 and len(back2) == 1, (back2, missing2)
+assert [u.name for u in back2[0][1]] == [ld_a.name, ld_b.name]
+assert len(back2[0][0].attached_leaders) == 2
+print("a two-Leader join survives the save/load cycle")
 
 # --- a roster that no longer holds the parts reports them, not crashes -
 back, missing = si.rebuild_joins(

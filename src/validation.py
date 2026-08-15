@@ -85,6 +85,11 @@ def validate_data(data) -> list:
                 issues.append(f"{uname}: support must be a list of strings")
             if not isinstance(u.get("damageable", False), bool):
                 issues.append(f"{uname}: damageable must be a boolean")
+            for slot in ("leader_slots", "support_slots"):
+                n = u.get(slot, 1)
+                if not isinstance(n, int) or isinstance(n, bool) or n < 0:
+                    issues.append(f"{uname}: {slot} must be a non-negative "
+                                  f"integer (got {n!r})")
             if "LEADER" in u.get("keywords", []) and not u.get("leadership"):
                 issues.append(f"{uname}: LEADER unit with empty "
                               "'leadership' list")

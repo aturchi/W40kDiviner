@@ -176,6 +176,25 @@ class Model:
         return f"Model({self.name!r} x{self.model_count})"
 
 
+def combined_name(base, leaders, supports) -> str:
+    """Name of a combined unit: 'base + helper' with one helper of a
+    kind, 'base + N leaders' with several, because listing three or four
+    names makes the roster lists unreadable. 'leaders'/'supports' are
+    Units or anything with a .name (or a plain name string).
+    """
+    def _n(x):
+        return x if isinstance(x, str) else x.name
+
+    parts = [base]
+    for helpers, word in ((list(leaders), "leader"),
+                          (list(supports), "support")):
+        if len(helpers) == 1:
+            parts.append(_n(helpers[0]))
+        elif helpers:
+            parts.append(f"{len(helpers)} {word}s")
+    return " + ".join(parts)
+
+
 class Unit:
     """A datasheet unit: one or more :class:`Model` groups plus unit-level
     data. Profiles are immutable by convention. Two independent attachment
@@ -191,8 +210,11 @@ class Unit:
                  apply_leader_effects_to_self=False, profile_name=None,
                  leadership=None, damageable=False,
                  unit_composition="", wargear_options="", notes="",
-                 support=None):
+                 support=None, leader_slots=1, support_slots=1):
         self.name = name
+        self.base_name = name       # name without the attached helpers;
+        #   _attach carries the original one over so the combined name is
+        #   rebuilt from scratch each time instead of growing.
         self.profile_name = profile_name or name
         self._models = list(models or [])
         self.keywords = list(keywords or [])
@@ -214,11 +236,55 @@ class Unit:
         #   unit can support (empty -> not a support). Mirrors leadership:
         #   a support attaches like a leader but fills a SEPARATE slot, so
         #   a unit may carry one leader AND one support at once.
+        # How many helpers may be attached in each slot. Both default to
+        # 1; a datasheet that allows more (e.g. a 20-model unit taking two
+        # Leaders) either carries a different number here or an
+        # 'attachmentSlots' ability - see slot_capacity().
+        self.leader_slots = int(leader_slots)
+        self.support_slots = int(support_slots)
         self.leader_effects = list(leader_effects or [])
         self.apply_leader_effects_to_self = apply_leader_effects_to_self
-        self.attached_leader = None           # set on combined units only
-        self.attached_support = None          # set on combined units only
+        self.attached_leaders = []            # set on combined units only
+        self.attached_supports = []           # set on combined units only
         self.effects = []                     # populated only on combat views
+
+    # Historical single-slot accessors: the FIRST helper of each slot, or
+    # None. Kept because most of the code only ever needs "is this unit
+    # led, and by whom".
+    @property
+    def attached_leader(self):
+        return self.attached_leaders[0] if self.attached_leaders else None
+
+    @property
+    def attached_support(self):
+        return self.attached_supports[0] if self.attached_supports else None
+
+    def slot_capacity(self, slot: str) -> int:
+        """How many helpers fit in 'slot' ('leader' or 'support'): the
+        unit's own number, changed by any ENABLED 'attachmentSlots'
+        ability. Structural, so it is read at join time and the ability's
+        activation conditions are ignored (the enable/disable toggle is
+        the switch)."""
+        n = self.leader_slots if slot == "leader" else self.support_slots
+        for ab in self.abilities:
+            if not ab.get("enabled", True):
+                continue
+            eff = ab.get("effect") or {}
+            if eff.get("type") != "attachmentSlots":
+                continue
+            d = eff.get("data", {})
+            which = d.get("slot")
+            which = which.get("key") if isinstance(which, dict) else which
+            if str(which or "leader").lower() != slot:
+                continue
+            op = d.get("operator")
+            op = op.get("key") if isinstance(op, dict) else op
+            try:
+                value = int(d.get("value"))
+            except (TypeError, ValueError):
+                continue
+            n = value if str(op or "add").lower() == "set" else n + value
+        return max(0, n)
 
     def is_leader(self) -> bool:
         """True only for a unit that BOTH can lead (non-empty leadership
@@ -227,7 +293,7 @@ class Unit:
         leader's leadership list and carries attached_leader). A
         standalone, unattached leader returns False. Currently unused,
         kept for future rules expansions."""
-        return bool(self.leadership) and self.attached_leader is not None
+        return bool(self.leadership) and bool(self.attached_leaders)
 
     # ---------- model access ----------
 
@@ -235,10 +301,8 @@ class Unit:
         """All model groups: the unit's own, plus any attached leader's
         and attached support's (a unit may carry one of each)."""
         out = list(self._models)
-        if self.attached_leader is not None:
-            out += self.attached_leader.models()
-        if self.attached_support is not None:
-            out += self.attached_support.models()
+        for helper in self.attached_leaders + self.attached_supports:
+            out += helper.models()
         return out
 
     def bodyguard_models(self):
@@ -261,13 +325,19 @@ class Unit:
         """True if 'leader' can lead this unit: some entry of the leader's
         leadership list matches this unit's keywords (see
         _entry_matches_keywords)."""
-        return _any_entry_matches(leader.leadership, self.keywords)
+        return (len(self.attached_leaders) < self.slot_capacity("leader")
+                # "provided those Leaders are not duplicates"
+                and all(l.name != leader.name for l in self.attached_leaders)
+                and _any_entry_matches(leader.leadership, self.keywords))
 
     def can_support(self, support: "Unit") -> bool:
         """True if 'support' can support this unit: some entry of the
         support's support list matches this unit's keywords. Mirrors
         can_attach for the separate support slot."""
-        return _any_entry_matches(support.support, self.keywords)
+        return (len(self.attached_supports) < self.slot_capacity("support")
+                and all(x.name != support.name
+                        for x in self.attached_supports)
+                and _any_entry_matches(support.support, self.keywords))
 
     def _attach(self, helper: "Unit", slot: str) -> "Unit":
         """Return a NEW combined unit (originals untouched) with 'helper'
@@ -279,14 +349,11 @@ class Unit:
         base_keywords = set(self.keywords)
         base_abilities = list(self.abilities)
         base_effects = list(self.leader_effects)
-        kept_leader = self.attached_leader
-        kept_support = self.attached_support
-        if slot == "leader":
-            kept_leader = helper
-        else:
-            kept_support = helper
+        kept_leaders = list(self.attached_leaders)
+        kept_supports = list(self.attached_supports)
+        (kept_leaders if slot == "leader" else kept_supports).append(helper)
         combined = Unit(
-            name=f"{self.name} + {helper.name}",
+            name=combined_name(self.base_name, kept_leaders, kept_supports),
             models=base_models,
             keywords=sorted(base_keywords | set(helper.keywords)),
             abilities=base_abilities + helper.abilities,
@@ -296,9 +363,12 @@ class Unit:
             profile_name=self.profile_name,
             damageable=self.damageable,
             leadership=self.leadership or helper.leadership,
-            support=self.support or helper.support)
-        combined.attached_leader = kept_leader
-        combined.attached_support = kept_support
+            support=self.support or helper.support,
+            leader_slots=self.leader_slots,
+            support_slots=self.support_slots)
+        combined.base_name = self.base_name
+        combined.attached_leaders = kept_leaders
+        combined.attached_supports = kept_supports
         return combined
 
     def attach_leader(self, leader: "Unit") -> "Unit":
@@ -387,6 +457,8 @@ def units_from_native(native: dict) -> list:
                     u.get("apply_leader_effects_to_self", False)),
                 profile_name=u.get("profile_name"),
                 damageable=bool(u.get("damageable", False)),
+                leader_slots=u.get("leader_slots", 1),
+                support_slots=u.get("support_slots", 1),
                 unit_composition=u.get("unit_composition", ""),
                 wargear_options=u.get("wargear_options", ""),
                 notes=u.get("notes", ""))

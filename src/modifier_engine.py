@@ -408,6 +408,13 @@ def _e_hunter_target(d, env):
     return [("weffect", f"HUNTER {kw}")] if kw else []
 
 
+def _e_disable_weapon(d, env):
+    """The weapon in scope cannot be selected for the attack. Emitted as
+    a weapon effect string; analyzer_core.select_weapons_split reads it
+    and reports the weapon as skipped instead of resolving it."""
+    return [("weffect", "WEAPON_DISABLED")]
+
+
 def _e_set_keyword(d, env):
     kw = str(d.get("keyword", "")).upper()
     return [("kw", _key(d.get("target")), _key(d.get("operation")),
@@ -438,6 +445,7 @@ EFFECT_APPLIERS = {
     "hunterTarget": _e_hunter_target,
     "disableMechanic": _e_disable_mechanic,
     "setKeyword": _e_set_keyword,
+    "disableWeapon": _e_disable_weapon,
     "modifyAbsolute": _e_modify_absolute,
     "damageReduction": _e_damage_reduction,
     "damageSetZero": _e_damage_set_zero,
@@ -460,14 +468,24 @@ def _eval_conditions(ability, env):
         ev = CONDITION_EVALUATORS.get(cond.get("type"))
         if ev is None:
             return False, []            # unknown condition: be conservative
+        negate = bool(cond.get("data", {}).get("negate"))
         if ev is DYNAMIC:
+            if negate:
+                return False, []    # see below: not expressible
             prefixes.append(_dynamic_prefix(cond))
             continue
         result = ev(cond.get("data", {}), env)
         if result is DYNAMIC:
+            # A roll-time condition becomes an IF-prefix in the effect
+            # string, and the effect grammar has no negation - so a
+            # negated dynamic condition cannot be expressed. Be
+            # conservative and switch the ability off rather than apply
+            # it with the wrong sense.
+            if negate:
+                return False, []
             prefixes.append(_dynamic_prefix(cond))
             continue
-        if not result:
+        if bool(result) == negate:
             return False, []
     return True, prefixes
 
@@ -497,7 +515,15 @@ def _apply_ops(ops, prefixes, weapon_view, model_view, unit_view, deltas):
               else [model_view] if model_view is not None else [])
     for op in ops:
         kind = op[0]
-        if kind == "wdelta" and weapon_view is not None:
+        if kind == "wdelta" and weapon_view is None:
+            # Defender role: "the weapon" is the incoming attack, unknown
+            # until the attack is resolved. Export the delta as a string
+            # so the attack maths can apply it to the attacking weapon
+            # (only AP is modelled there; anything else warns).
+            unit_view.effects.append(
+                f"{pre}CHARMOD {_ATTR_NAMES.get(op[1], op[1])} "
+                f"{op[2]:+d}")
+        elif kind == "wdelta" and weapon_view is not None:
             if prefixes:
                 # A conditional characteristic delta cannot be applied to
                 # the view (the condition is roll-time): export it as a
@@ -583,9 +609,23 @@ def _apply_ops(ops, prefixes, weapon_view, model_view, unit_view, deltas):
             unit_view.effects.append(pre + op[1])
         elif kind == "kw":
             _t, op_, kw_ = op[1], op[2], op[3]
+            if prefixes:
+                # A roll-time condition cannot gate a keyword: the
+                # keyword is read once, when the mechanics are built.
+                # Export it as a string so the attack maths reports it
+                # instead of applying it silently and unconditionally.
+                (weapon_view if weapon_view is not None
+                 else unit_view).effects.append(
+                    f"{pre}KEYWORD {op_.upper()} {kw_}")
+                continue
+            # Scope: "this weapon" is only meaningful in the per-weapon
+            # pass; every other target is resolved once, in the
+            # weapon-free pass, so it is not applied again per weapon.
+            if (_t == "weapon") != (weapon_view is not None):
+                continue
             # Resolve targets: weapon / allWeapons / model / allModels / unit
             if _t == "weapon":
-                targets = [weapon_view] if weapon_view is not None else []
+                targets = [weapon_view]
             elif _t == "allweapons":
                 targets = [w for mv in models for w in mv.weapons]
             elif _t == "model":
@@ -623,8 +663,7 @@ def build_view(unit: Unit, defender, context, role: str = "attacker"):
 
     unit_abilities = [ab for ab in view.abilities if _on(ab)]
     if (view.apply_leader_effects_to_self
-            or view.attached_leader is not None
-            or getattr(view, "attached_support", None) is not None):
+            or view.attached_leaders or view.attached_supports):
         unit_abilities += [ab for ab in view.leader_effects if _on(ab)]
 
     all_models = view.models()
@@ -694,7 +733,12 @@ def build_view(unit: Unit, defender, context, role: str = "attacker"):
             for ab in scoped:
                 eff = ab.get("effect") or {}
                 etype = eff.get("type")
-                if etype in _WEAPON_FREE_EFFECTS or etype not in EFFECT_APPLIERS:
+                # setKeyword is weapon-free for its model/unit targets,
+                # but its "this weapon" target needs the per-weapon pass
+                # (where attackType and the like are static, decided
+                # against the real weapon) - so it runs in both.
+                if (etype in _WEAPON_FREE_EFFECTS and etype != "setKeyword") \
+                        or etype not in EFFECT_APPLIERS:
                     continue
                 env = Env(view, defender, context, role,
                           model=model, weapon=weapon)

@@ -71,6 +71,7 @@ def new_unit() -> dict:
         "core_abilities": [], "faction_abilities": [],
         "leadership": [],
         "support": [],
+        "leader_slots": 1, "support_slots": 1,
         "leader_effects": [], "apply_leader_effects_to_self": False,
         "damageable": False,
         "unit_composition": "", "wargear_options": "", "notes": "",

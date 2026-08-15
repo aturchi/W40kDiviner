@@ -59,8 +59,13 @@ def _multi_select(parent, title, prompt, items, selected=(),
 FLAGS = [("half_range", "Within half range"),
          ("stationary", "Attacker remained stationary"),
          ("charged", "Attacker charged"),
-         ("cover", "Defender in cover (-1 to hit)"),
-         ("plunging", "Plunging fire (+1 to hit)"),
+         # 11th ed.: the Benefit of Cover and Plunging Fire modify the
+         # attacker's BS CHARACTERISTIC, not the hit roll - so they are
+         # not subject to the +/-1 roll cap and stack with a hit-roll
+         # modifier. Several sources of cover never stack with each
+         # other: cover is a state, not a counter.
+         ("cover", "Defender has the Benefit of Cover (-1 BS)"),
+         ("plunging", "Plunging fire (+1 BS)"),
          ("damaged", "Attacker damaged (-1 to hit)"),
          # Indirect shooting mode: only INDIRECT FIRE weapons are fired,
          # the target always counts as being in Cover, hit re-rolls are
@@ -71,7 +76,14 @@ FLAGS = [("half_range", "Within half range"),
          ("spotter", "  ...with spotter and stationary"),
          ("attacker_below_half", "Attacker below half strength"),
          ("defender_below_half", "Defender below half strength"),
-         ("defender_below_full", "Defender below full strength")]
+         ("defender_below_full", "Defender below full strength"),
+         # Board states an ability can be conditioned on. Without them
+         # the objectiveRange / engagementRange conditions could never be
+         # true, so an ability using one was silently dead.
+         ("attacker_on_objective", "Attacker within range of an objective"),
+         ("defender_on_objective", "Defender within range of an objective"),
+         ("attacker_in_engagement", "Attacker within Engagement Range"),
+         ("defender_in_engagement", "Defender within Engagement Range")]
 
 # Modifier targets: (label, kind, key)
 MOD_TARGETS = [("Hit roll", "rolls", "hit"),
@@ -169,6 +181,11 @@ class SetupPanel(ttk.LabelFrame):
         self.mod_value = ttk.Entry(mrow, width=3)
         self.mod_value.insert(0, "+1")
         self.mod_value.grid(row=0, column=1, padx=3)
+        # A re-roll entry carries no value: grey the field out (and
+        # blank it) while one is selected, so it cannot be typed into.
+        self.mod_target.bind("<<ComboboxSelected>>",
+                             lambda e: self._sync_mod_value())
+        self._sync_mod_value()
         ttk.Button(mrow, text="Add", width=5,
                    command=self.cmd_add_mod).grid(row=0, column=2)
         self.mods = []               # [(label, kind, key, value)]
@@ -195,6 +212,23 @@ class SetupPanel(ttk.LabelFrame):
         self.ability_label.pack(anchor=tk.W, padx=4)
 
     # ---------- manual modifiers ----------
+
+    def _mod_kind(self, label=None):
+        """The kind ('rolls'|'rerolls'|'weapon'|...) of a modifier target
+        label, or None when the label is not one of them."""
+        label = self.mod_target.get() if label is None else label
+        return next((k for lab, k, _ky in MOD_TARGETS if lab == label),
+                    None)
+
+    def _sync_mod_value(self):
+        """Enable the value field only for the targets that take one."""
+        if self._mod_kind() == "rerolls":
+            self.mod_value.delete(0, tk.END)
+            self.mod_value.config(state=tk.DISABLED)
+        elif str(self.mod_value.cget("state")) == tk.DISABLED:
+            self.mod_value.config(state=tk.NORMAL)
+            self.mod_value.delete(0, tk.END)
+            self.mod_value.insert(0, "+1")
 
     def cmd_add_mod(self):
         label = self.mod_target.get()

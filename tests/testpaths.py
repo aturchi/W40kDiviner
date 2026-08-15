@@ -11,7 +11,7 @@ Design goals:
   current working directory.
 - Tests default to the bundled **synthetic** roster in ``tests/synthetic/``.
   The real ArmyFetcher tree is used only when explicitly requested, via the
-  ``W40K_TEST_REAL`` flag or an explicit ``W40K_TEST_DATA`` path (regress.py
+  ``W40K_TEST_REAL`` flag or an explicit ``W40K_TEST_DATA`` path (test_regress.py
   exposes this as ``--real_data``). Requesting real data that is absent falls
   back to synthetic.
 - Tests ask for a roster by bare name via :func:`roster` and stay agnostic
@@ -105,7 +105,7 @@ def set_source(real):
     """Re-resolve the active data source at runtime (updates ``DATA_DIR``
     and ``USING_SYNTHETIC``). ``real=True`` forces the real ArmyFetcher
     tree (falling back to synthetic if absent); ``real=False`` forces the
-    synthetic roster. Used by regress.py's --real_data flag, which is
+    synthetic roster. Used by test_regress.py's --real_data flag, which is
     parsed after this module is imported."""
     global DATA_DIR, USING_SYNTHETIC
     DATA_DIR, USING_SYNTHETIC = _resolve(force_real=real)

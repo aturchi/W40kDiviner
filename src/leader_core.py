@@ -12,7 +12,7 @@ index and split back here, and the combined Unit is rebuilt at attack
 time so the masking machinery keeps working unchanged."""
 
 import attack_resolve
-from unit_model import units_from_native
+from unit_model import units_from_native, combined_name
 
 
 # ---------------- object level (attack analyzer) ----------------
@@ -83,17 +83,18 @@ class ArmyJoinState:
         return native_can_support(support_dict, target_dict, self.fmt)
 
     def join_combo(self, target_dict, leader_dict=None, support_dict=None):
-        """Build ONE joined entry from a target plus an optional leader
-        and/or support, removing every chosen part from its pool. Powers
-        the single Join button (leader+unit, support+unit, or
-        leader+support+unit)."""
+        """Build ONE joined entry from a target plus optional leaders
+        and/or supports (each argument may be a single dict or a list),
+        removing every chosen part from its pool. Powers the single Join
+        button (leader+unit, support+unit, or leader+support+unit)."""
+        leaders = _as_list(leader_dict)
+        supports = _as_list(support_dict)
         self._remove(target_dict)
-        if leader_dict is not None:
-            self._remove(leader_dict)
-        if support_dict is not None:
-            self._remove(support_dict)
-        self.joined.append(make_entry(target_dict, leader_dict,
-                                      support_dict))
+        for d in leaders + supports:
+            self._remove(d)
+        entry = make_entry(target_dict)
+        entry = set_helpers(entry, "leader", leaders)
+        self.joined.append(set_helpers(entry, "support", supports))
 
     def join_leader(self, leader_dict, target_dict):
         """Combine leader + target into a new joined entry; remove both
@@ -110,20 +111,25 @@ class ArmyJoinState:
         self.joined.append(make_entry(target_dict, None, support_dict))
 
     def add_to_joined(self, entry_index, helper_dict, slot):
-        """Attach an extra helper (slot 'leader'|'support') to an existing
-        joined entry, consuming the helper from its pool. Enables
-        leader+support units built in two steps."""
+        """Attach one more helper (slot 'leader'|'support') to an existing
+        joined entry, consuming it from its pool. Enables leader+support
+        units built in two steps, and units with more than one slot."""
         self._remove(helper_dict)
-        e = dict(self.joined[entry_index])
-        e[slot] = helper_dict
-        self.joined[entry_index] = e
+        e = self.joined[entry_index]
+        self.joined[entry_index] = set_helpers(
+            e, slot, helpers(e, slot) + [helper_dict])
+
+    def free_slots(self, entry_index, slot) -> int:
+        """How many more helpers the joined entry can take in 'slot'."""
+        return free_slots(self.joined[entry_index], slot, self.fmt)
 
     def unjoin(self, entry_index):
         """Split a joined entry back into its parts, returned to pools."""
         e = self.joined.pop(entry_index)
-        for part in ("unit", "leader", "support"):
-            if e.get(part):
-                self._restore(e[part])
+        self._restore(e["unit"])
+        for slot in ("leader", "support"):
+            for h in helpers(e, slot):
+                self._restore(h)
 
     def _remove(self, ud):
         for pool in (self.leaders, self.supports, self.others):
@@ -153,6 +159,36 @@ class ArmyJoinState:
 # ---------------- native-dict level (game assistant) ----------------
 
 
+def helpers(entry, slot) -> list:
+    """The helpers filling 'slot' ('leader'|'support') of an entry, as a
+    list. A slot holds None, a single dict, or a list of dicts - the
+    compact forms are kept so that files and code written when a slot
+    could hold only one helper still read correctly."""
+    v = entry.get(slot)
+    if v is None:
+        return []
+    return list(v) if isinstance(v, list) else [v]
+
+
+def set_helpers(entry, slot, items) -> dict:
+    """Copy of 'entry' with 'slot' filled by 'items' (a list), stored in
+    the most compact form: None / a single dict / a list."""
+    items = [x for x in items if x is not None]
+    new = dict(entry)
+    new[slot] = None if not items else (items[0] if len(items) == 1
+                                        else items)
+    return new
+
+
+def free_slots(entry, slot, fmt="w40k-sim/6") -> int:
+    """How many more helpers the entry can take in 'slot': the base
+    unit's capacity (its leader_slots/support_slots field plus any
+    enabled attachmentSlots ability) minus what is already attached."""
+    unit = units_from_native({"format": fmt, "armies": [
+        {"name": "x", "units": [entry["unit"]]}]})[0]
+    return max(0, unit.slot_capacity(slot) - len(helpers(entry, slot)))
+
+
 def make_entry(unit_dict, leader_dict=None, support_dict=None) -> dict:
     """A roster entry: the base unit plus an optional attached leader and
     an optional attached support (independent slots; a unit may carry one
@@ -163,13 +199,14 @@ def make_entry(unit_dict, leader_dict=None, support_dict=None) -> dict:
 
 
 def entry_label(entry) -> str:
-    """Human-readable label for a roster entry: the base unit's name with
-    ' + <name> [JOINED]' appended for each attached leader/support."""
-    name = entry["unit"]["name"]
-    for slot in ("leader", "support"):
-        if entry.get(slot) is not None:
-            name += f" + {entry[slot]['name']} [JOINED]"
-    return name
+    """Human-readable label for a roster entry: the base unit's name plus
+    its attached helpers. One helper of a kind is named, several are
+    summarised ('+ 2 leaders'), so a unit with two Leaders and a Support
+    still fits a list column - same rule as the combined Unit's name."""
+    lds = [h["name"] for h in helpers(entry, "leader")]
+    sps = [h["name"] for h in helpers(entry, "support")]
+    name = combined_name(entry["unit"]["name"], lds, sps)
+    return f"{name} [JOINED]" if (lds or sps) else name
 
 
 def entry_points(entry) -> int:
@@ -177,18 +214,19 @@ def entry_points(entry) -> int:
     leader and support."""
     pts = entry["unit"].get("points") or 0
     for slot in ("leader", "support"):
-        if entry.get(slot) is not None:
-            pts += entry[slot].get("points") or 0
+        for h in helpers(entry, slot):
+            pts += h.get("points") or 0
     return pts
 
 
 def _entry_parts(entry):
     """The present parts of an entry in global-index order:
-    [('unit', dict), ('leader', dict)?, ('support', dict)?]."""
+    [('unit', dict), ('leader:0', dict)?, ..., ('support:0', dict)?, ...].
+    A slot may hold several helpers, so each part gets a unique key."""
     parts = [("unit", entry["unit"])]
     for slot in ("leader", "support"):
-        if entry.get(slot) is not None:
-            parts.append((slot, entry[slot]))
+        for i, h in enumerate(helpers(entry, slot)):
+            parts.append((f"{slot}:{i}", h))
     return parts
 
 
@@ -260,28 +298,32 @@ def build_entry_unit(entry, masked_copies, masked_weapons, weapon_counts,
     mw = _split_indexed(entry, masked_weapons)
     wc = _split_indexed(entry, weapon_counts)
 
-    def rebuild(slot):
-        ud = entry.get(slot)
+    def rebuild(part_key, ud):
         if ud is None:
             return None
         f = attack_resolve.filter_native_unit(
-            ud, mc.get(slot, {}), mw.get(slot, {}), wc.get(slot, {}))
+            ud, mc.get(part_key, {}), mw.get(part_key, {}),
+            wc.get(part_key, {}))
         if not f["models"]:
             return None
         return units_from_native({"format": fmt, "armies": [
             {"name": "table", "units": [f]}]})[0]
 
-    unit = rebuild("unit")
-    leader = rebuild("leader")
-    support = rebuild("support")
-    # If the base unit is gone, a surviving helper fights alone (prefer the
-    # leader, else the support).
+    unit = rebuild("unit", entry["unit"])
+    leaders = [u for u in (rebuild(k, d) for k, d in _entry_parts(entry)
+                           if k.startswith("leader:")) if u is not None]
+    supports = [u for u in (rebuild(k, d) for k, d in _entry_parts(entry)
+                            if k.startswith("support:")) if u is not None]
+    # If the base unit is gone, a surviving helper fights alone (prefer a
+    # leader, else a support).
     if unit is None:
-        return leader or support
-    if leader is not None and unit.can_attach(leader):
-        unit = unit.attach_leader(leader)
-    if support is not None and unit.can_support(support):
-        unit = unit.attach_support(support)
+        return (leaders + supports or [None])[0]
+    for helper in leaders:
+        if unit.can_attach(helper):
+            unit = unit.attach_leader(helper)
+    for helper in supports:
+        if unit.can_support(helper):
+            unit = unit.attach_support(helper)
     return unit
 
 
@@ -289,21 +331,17 @@ def entry_ability_dicts(entry):
     """(scope_label, ability_dict) for every ability of an entry across
     all present parts (unit, leader, support), so inspect toggles reach
     the support's abilities too. Prefixes leader/support scopes."""
-    for part in ("unit", "leader", "support"):
-        d = entry["unit"] if part == "unit" else entry.get(part)
-        if d is None:
-            continue
+    for part, d in _entry_parts(entry):
         pref = "" if part == "unit" else f"{part}: "
         for scope, ab in iter_ability_dicts(d):
             yield (pref + scope, ab)
 
 
 def attach_support_to_entry(entry, support_dict):
-    """Return a copy of 'entry' with support_dict filling its support slot
-    (compatibility already checked by the caller)."""
-    new = dict(entry)
-    new["support"] = support_dict
-    return new
+    """Return a copy of 'entry' with support_dict added to its support
+    slot (compatibility and capacity already checked by the caller)."""
+    return set_helpers(entry, "support",
+                       helpers(entry, "support") + [support_dict])
 
 
 def native_leaders_others(unit_dicts, fmt="w40k-sim/6"):
@@ -327,6 +365,41 @@ def native_supports_others(unit_dicts, fmt="w40k-sim/6"):
             {"name": "x", "units": [ud]}]})[0]
         (supports if is_support_unit(u) else others).append(ud)
     return supports, others
+
+
+def attach_all(combined, picks):
+    """Attach every pick that fits to a Unit, in order.
+
+    'picks' is [(slot, Unit)] with slot 'leader'|'support'. Returns
+    (combined, taken, refused): 'taken' the [(slot, Unit)] actually
+    attached, 'refused' the [(Unit, reason)] that did not fit, with a
+    reason to show the user instead of silently doing nothing.
+    """
+    taken, refused = [], []
+    for slot, helper in picks:
+        attached = (combined.attached_leaders if slot == "leader"
+                    else combined.attached_supports)
+        fits = (combined.can_attach(helper) if slot == "leader"
+                else combined.can_support(helper))
+        if fits:
+            combined = (combined.attach_leader(helper) if slot == "leader"
+                        else combined.attach_support(helper))
+            taken.append((slot, helper))
+        elif any(u.name == helper.name for u in attached):
+            refused.append((helper, f"already attached as {slot}"))
+        elif len(attached) >= combined.slot_capacity(slot):
+            refused.append((helper, f"no free {slot} slot on "
+                                    f"{combined.base_name}"))
+        else:
+            refused.append((helper, f"cannot {slot} {combined.base_name}"))
+    return combined, taken, refused
+
+
+def _as_list(x):
+    """None / one dict / a list of dicts -> a list."""
+    if x is None:
+        return []
+    return list(x) if isinstance(x, list) else [x]
 
 
 def native_can_attach(leader_dict, unit_dict, fmt="w40k-sim/6"):

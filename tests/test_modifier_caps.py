@@ -110,10 +110,22 @@ b = am.analyze_weapon(w_ap1, ref_2up, {}, clone(mech()))["damage"]["mean"]
 assert abs(a - b) < 1e-9, (a, b)
 print("Sv and invuln are clamped at 2+ before AP")
 
-# --- Psychic drops the negatives of BOTH groups ------------------------
-assert mean(mech(hit_mod=-1, ignore_malus={"hit"}), {"cover": True}) == base
-assert mean(mech(hit_mod=1, ignore_malus={"hit"}), {}) > base
-print("ignore-malus covers BS/WS and the hit roll alike")
+# --- the two ignore-malus groups are independent -----------------------
+# 11th ed. keeps the hit ROLL modifiers and the BS/WS CHARACTERISTIC
+# modifiers apart, so ignoring one group must not touch the other.
+assert mean(mech(hit_mod=-1, ignore_malus={"hit"}), {"cover": True}) < base, \
+    "'hit' must not clear the BS penalty of Cover"
+assert mean(mech(hit_mod=-1, ignore_malus={"skill"}), {"cover": True}) < base, \
+    "'skill' must not clear the hit-roll penalty"
+assert mean(mech(hit_mod=-1, ignore_malus={"hit", "skill"}),
+            {"cover": True}) == base, "both groups together clear everything"
+assert mean(mech(hit_mod=1, ignore_malus={"hit"}), {}) > base, \
+    "positive modifiers still apply"
+# PSYCHIC sets both groups, as its wording says
+psy = am.WeaponMechanics()
+am.parse_weapon_keywords(["PSYCHIC"], psy)
+assert psy.ignore_malus == {"hit", "skill"}, psy.ignore_malus
+print("the hit-roll and BS/WS ignore-malus groups are independent")
 
 # --- the "no cap" option frees the rolls -------------------------------
 rc.set_caps(roll=None)

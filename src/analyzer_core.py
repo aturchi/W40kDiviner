@@ -19,6 +19,13 @@ from modifier_engine import Context
 import attack_math as am
 
 
+def _is_led(unit) -> bool:
+    """True when a CHARACTER is attached to this unit (the combined unit
+    built by attach_leader carries it), which is what the leaderAttached
+    condition asks about."""
+    return getattr(unit, "attached_leader", None) is not None
+
+
 def build_views(attacker, defender, flags: dict, mods: dict = None):
     """Build attacker/defender combat views from context flags and
     manual modifiers. mods = {'rolls': {hit|wound|save|invuln|fnp: +/-N},
@@ -36,6 +43,16 @@ def build_views(attacker, defender, flags: dict, mods: dict = None):
                   defender_below_half=flags.get("defender_below_half"),
                   defender_below_full=flags.get("defender_below_full"),
                   attacker_below_full=flags.get("attacker_below_full"),
+                  attacker_on_objective=flags.get("attacker_on_objective"),
+                  defender_on_objective=flags.get("defender_on_objective"),
+                  attacker_in_engagement=flags.get("attacker_in_engagement"),
+                  defender_in_engagement=flags.get("defender_in_engagement"),
+                  # Not a user flag: whether a unit is being led is known
+                  # from the unit itself (a combined unit carries its
+                  # leader), so the leaderAttached condition is decided
+                  # automatically.
+                  attacker_has_leader=_is_led(attacker),
+                  defender_has_leader=_is_led(defender),
                   roll_mods=dict(mods.get("rolls") or {}),
                   reroll_mods=dict(mods.get("rerolls") or {}),
                   char_mods={
@@ -125,6 +142,8 @@ INDIRECT_SKIP = "inapplicable due to indirect fire"
 CQ_BLAST_SKIP = "BLAST cannot target an engaged unit"
 CQ_NOT_CQ_SKIP = "not a CLOSE-QUARTERS weapon"
 CQ_ONLY_SKIP = "CLOSE-QUARTERS: fires only in close quarters"
+DISABLED_SKIP = "unusable in this attack setup"
+_DISABLED = "WEAPON_DISABLED"
 
 
 def hunter_skip_reason(mech, dview):
@@ -209,6 +228,10 @@ def select_weapons_split(aview, mode: str, melee_name: str = None,
     they were fetched from."""
     kept, skipped = [], []
     cq = mode == "close_quarters"
+    # A weapon switched off by an ability (disableWeapon) is reported,
+    # not silently dropped - same treatment as indirect fire and close
+    # quarters. Only the UNCONDITIONAL form counts: a roll-time
+    # condition cannot decide whether a weapon is fired.
     big = close_quarters_attacker(aview)
     for model in aview.models():
         for w in model.weapons:
@@ -230,7 +253,9 @@ def select_weapons_split(aview, mode: str, melee_name: str = None,
                 pass
             else:
                 continue
-            if indirect and w.type == "Ranged" \
+            if _DISABLED in (w.effects or ()):
+                skipped.append((w, DISABLED_SKIP))
+            elif indirect and w.type == "Ranged" \
                     and "INDIRECT FIRE" not in kw:
                 skipped.append((w, INDIRECT_SKIP))
             else:

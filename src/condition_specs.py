@@ -16,7 +16,7 @@ WH40k 11th-edition core rules; they are not part of the source
 export format (a re-import there would ignore them).
 """
 
-from spec_kinds import CHOICE, ENUM, TEXT, KEYWORDS  # noqa: F401
+from spec_kinds import CHOICE, ENUM, TEXT, BOOL, KEYWORDS  # noqa: F401
 
 # Reusable option lists: list of (title, key)
 _WHO = [("Attacker", "attacker"), ("Defender", "defender")]
@@ -169,6 +169,18 @@ CONDITION_SPECS = {
 }
 
 
+# Every condition can be NEGATED. The flag is injected here as an extra
+# BOOL field of every spec, so the spec-driven editor form renders its
+# checkbox and writes it back with no GUI code of its own. It is honoured
+# by modifier_engine._eval_conditions and only makes sense for conditions
+# decided before the dice are rolled (see NEGATE_LABEL).
+NEGATE_KEY = "negate"
+NEGATE_LABEL = "Negate: the condition must NOT hold"
+for _spec in CONDITION_SPECS.values():
+    _spec["fields"] = list(_spec["fields"]) + [
+        (NEGATE_KEY, BOOL, NEGATE_LABEL, None)]
+
+
 def list_types():
     """Return condition type ids sorted, native types first."""
     native = [t for t, s in CONDITION_SPECS.items() if not s.get("extension")]
@@ -187,6 +199,8 @@ def new_condition(ctype: str) -> dict:
             data[key] = options[0]
         elif kind == KEYWORDS:
             data[key] = []
+        elif kind == BOOL:
+            data[key] = False
         else:  # TEXT
             data[key] = ""
     cond = {"text": spec["text"], "type": ctype, "data": data,

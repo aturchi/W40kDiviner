@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """One-shot runner for the W40kDiviner engine test suite in tests/.
 
-Runs every ``test_*.py`` in this directory (plus the ``regress.py``
-characterisation script) and prints a single comprehensive report:
+Runs every ``test_*.py`` in this directory and prints a single comprehensive report:
 a per-test PASS / FAIL table, timings, a summary line, and the captured
 output of anything that did not pass.
 
@@ -28,12 +27,12 @@ suite runs on a bare checkout -- there is nothing to skip.
 Usage:
     python3 run_all.py                # run everything on synthetic data
     python3 run_all.py --real_data    # run everything on the real data
-    python3 run_all.py --save         # let regress.py (re)write its baseline
+    python3 run_all.py --save         # let test_regress.py (re)write its baseline
     python3 run_all.py --real_data --save   # rewrite the real baseline
     python3 run_all.py -v             # also stream each test's own output
     python3 run_all.py -k damage      # only tests whose name contains 'damage'
 
---real_data and --save are forwarded to regress.py; --real_data also selects
+--real_data and --save are forwarded to test_regress.py; --real_data also selects
 the real source for every other roster-reading test.
 
 Exit code: the number of FAIL/ERROR tests (0 when all pass), so CI can
@@ -71,14 +70,13 @@ _STATUS_STYLE = {
 def discover():
     """Return the ordered list of test filenames to run.
 
-    All ``test_*.py`` in this directory (minus _EXCLUDED), sorted, with
-    ``regress.py`` appended last (it's a characterisation digest, not a
-    pass/fail test in the strict sense, but we still run and time it)."""
+    All ``test_*.py`` in this directory (minus _EXCLUDED), sorted.
+    ``test_regress.py`` is one of them: a characterisation digest rather
+    than a pass/fail test in the strict sense, but it is run and timed
+    like the others."""
     names = sorted(f for f in os.listdir(_TESTS_DIR)
                    if f.startswith("test_") and f.endswith(".py")
                    and f not in _EXCLUDED)
-    if os.path.exists(os.path.join(_TESTS_DIR, "regress.py")):
-        names.append("regress.py")
     return names
 
 
@@ -89,7 +87,7 @@ def run_one(fname, extra_args=None, env=None):
     one of PASS / FAIL / ERROR. Roster-reading tests resolve their data
     through testpaths (synthetic by default, or the real ArmyFetcher tree
     when requested via env), so nothing is skipped here. 'extra_args' are
-    appended to the child's argv (only regress.py accepts any); 'env' is
+    appended to the child's argv (only test_regress.py accepts any); 'env' is
     the child environment (used to select real data suite-wide)."""
     path = os.path.join(_TESTS_DIR, fname)
     cmd = [sys.executable, path] + list(extra_args or [])
@@ -166,7 +164,7 @@ def main(argv=None):
                     help="run the whole suite against the real ArmyFetcher "
                          "data instead of the default synthetic roster")
     ap.add_argument("--save", action="store_true",
-                    help="pass --save to regress.py so it (re)writes its "
+                    help="pass --save to test_regress.py so it (re)writes its "
                          "baseline for the active source instead of comparing")
     args = ap.parse_args(argv)
 
@@ -178,21 +176,21 @@ def main(argv=None):
             return 0
 
     # --real_data selects the real source for EVERY roster-reading test via
-    # the env flag; it is also forwarded to regress.py's own --real_data so
-    # the choice is explicit there too. --save is regress.py-only.
+    # the env flag; it is also forwarded to test_regress.py's own --real_data so
+    # the choice is explicit there too. --save is test_regress.py-only.
     child_env = dict(os.environ)
     if args.real_data:
         child_env["W40K_TEST_REAL"] = "1"
 
     def _extra_args(fname):
-        if fname != "regress.py":
+        if fname != "test_regress.py":
             return []
         extra = []
         if args.real_data:
             extra.append("--real_data")
         if args.save:
             extra.append("--save")
-        # In verbose mode, ask regress.py for its full digest too; run_all's
+        # In verbose mode, ask test_regress.py for its full digest too; run_all's
         # own -v then prints that captured output under the test.
         if args.verbose:
             extra.append("--verbose")

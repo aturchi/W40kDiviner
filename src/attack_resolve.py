@@ -86,7 +86,10 @@ def _roll_damage(rng, d_char, mech, half: bool) -> int:
     fixed order - see attack_math.apply_damage_modifiers), keeping this
     dice resolver in step with the exact maths."""
     total = max(d_char.flat, 0)
-    lo, hi = mech.dmg_reroll or (0, -1)
+    lo, hi = (mech.dmg_reroll
+              or (mech.dmg_reroll_any
+                  and am.damage_reroll_range(d_char))
+              or (0, -1))
     for _ in range(d_char.count):
         v = _d6(rng) if d_char.sides == 6 else rng.randint(1, d_char.sides)
         if lo <= v <= hi and rules_config.CAP_REROLLS > 0:
@@ -197,7 +200,9 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         for src in (mech.blast, mech.cleave):
             if groups and am.x_active(src):
                 extra_a += sum(am.x_value(src, rng) for _ in range(groups))
-        n_att += (weapon.A.value(rng) or 0) + extra_a
+        a_char = rules_config.clamp_characteristic(
+            "A", (weapon.A.value(rng) or 0) + mech.attacks_mod)
+        n_att += a_char + extra_a
 
     # static roll parameters (mirror analyze_weapon)
     # 11th ed.: BS/WS CHARACTERISTIC modifiers (cover, plunging fire) and
@@ -223,12 +228,20 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         reroll_hit = None
     skill_mod = 0
     if weapon.type == "Ranged":
-        if (ctx.get("cover") or indirect) and not mech.ignores_cover:
+        if (ctx.get("cover") or mech.cover or indirect) \
+                and not mech.ignores_cover:
             skill_mod -= 1
         if ctx.get("plunging"):
             skill_mod += 1
+    # Defender ability on the attack's BS/WS: characteristic convention
+    # (+1 = worse), so it enters with the opposite sign (see
+    # analyze_weapon).
+    skill_mod -= mech.skill_mod
+    # The hit ROLL and the BS/WS CHARACTERISTIC are two separate groups
+    # in 11th ed. and are ignored separately (see analyze_weapon).
     if "hit" in mech.ignore_malus:
         hit_mod = max(0, hit_mod)
+    if "skill" in mech.ignore_malus:
         skill_mod = max(0, skill_mod)
     hit_mod = am._cap(hit_mod)          # the ROLL modifier is capped,
     skill = weapon.WS if weapon.type == "Melee" else weapon.BS
@@ -248,7 +261,8 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         hit_mod, skill_target, reroll_hit = 0, ow, None
         unmod_min = max(unmod_min, ow)
     auto = mech.torrent or mech.auto_hit or skill.is_none()
-    s_val = weapon.S.value() or 0
+    s_val = rules_config.clamp_characteristic(
+        "S", (weapon.S.value() or 0) + mech.str_mod)
     wt = am.wound_target(s_val, defender_ref["T"])
     wound_mod = mech.wound_mod + (1 if (mech.lance and ctx.get("charged"))
                                   else 0)
@@ -266,7 +280,7 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
     crit_mw = mech.crit_mw
     if mech.devastating and crit_mw is None:
         crit_mw = {"value": None, "match": True, "end": True}
-    ap = weapon.AP.value() or 0
+    ap = am._effective_ap(weapon.AP.value() or 0, mech)
     fnp = defender_ref.get("fnp")
 
     events = []
@@ -295,8 +309,8 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             if kept > 0:
                 events.append({"kind": "mortal", "amount": kept})
             go_on = not crit_mw["end"]
-        if wound_crit and mech.crit_ap_delta:
-            ap_eff = ap - abs(mech.crit_ap_delta)
+        if wound_crit and (mech.crit_ap_delta or mech.crit_ap_set is not None):
+            ap_eff = am._crit_ap(weapon.AP.value() or 0, mech)
         if not go_on:
             return
         if _save_made(rng, defender_ref, ap_eff, mech):

@@ -30,7 +30,7 @@ import session_io             # noqa: E402
 from unit_model import units_from_native  # noqa: E402
 from setup_panel import SetupPanel, show_options_dialog, show_font_dialog  # noqa: E402
 from search_widget import attach_search    # noqa: E402
-from ui_utils import scrollable_listbox, multi_select_hint   # noqa: E402
+from ui_utils import scrollable_listbox     # noqa: E402
 from army_load_dialog import ArmyLoadDialog  # noqa: E402
 
 _GREY = "#aaaaaa"
@@ -92,9 +92,6 @@ class AnalyzerApp(tk.Tk):
                 col, height=6, exportselection=False,
                 selectmode=tk.EXTENDED)
             lead_frame.pack(fill=tk.X, padx=4)
-            # The helper list takes several selections at once (a unit
-            # with two Leader slots can be filled in one Join).
-            multi_select_hint(col).pack(anchor=tk.W, padx=4)
             btn_row = ttk.Frame(col)
             btn_row.pack(anchor=tk.W, padx=4, pady=2)
             join_btn = ttk.Button(btn_row, text="Join",
@@ -302,12 +299,11 @@ class AnalyzerApp(tk.Tk):
         # Join enabled: at least one helper + one compatible target.
         tkind, _tobj, _ti = self._unit_pick(p)
         usel = p["unit_lb"].curselection()
-        # Enabled as soon as a helper and a single target are selected:
-        # whether each helper actually fits is decided (and explained) by
-        # cmd_join, so the button is never a silent dead end.
+        target_ok = (tkind is not None and len(usel) == 1
+                     and p["unit_lb"].itemcget(usel[0], "foreground")
+                     != _GREY)
         p["join_btn"].config(
-            state=tk.NORMAL if picks and tkind is not None
-            and len(usel) == 1 else tk.DISABLED)
+            state=tk.NORMAL if picks and target_ok else tk.DISABLED)
         # Split (un-join) shows when a joined entry is selected in unit_lb.
         if tkind == "joined":
             p["split_btn"].pack(side=tk.LEFT, padx=4)
@@ -338,17 +334,15 @@ class AnalyzerApp(tk.Tk):
         else:
             return
         leaders, supports = list(leaders), list(supports)
-        combined, taken, refused = lc.attach_all(
-            combined, [(k, o) for k, o, _i in picks])
-        for slot, obj in taken:
-            (leaders if slot == "leader" else supports).append(obj)
-        if refused:
-            # Never fail silently: say which helper did not fit and why.
-            messagebox.showinfo(
-                "Join", "Not joined:\n- " + "\n- ".join(
-                    f"{u.name}: {why}" for u, why in refused), parent=self)
-        if not taken:
-            return
+        for kind, obj, _idx in picks:
+            if kind == "leader" and combined.can_attach(obj):
+                combined = combined.attach_leader(obj)
+                leaders.append(obj)
+            elif kind == "support" and combined.can_support(obj):
+                combined = combined.attach_support(obj)
+                supports.append(obj)
+        if not leaders and not supports:
+            return                      # nothing fitted
         entry = (combined, leaders, unit, supports)
         if tkind == "joined":
             p["joined"][ti] = entry

@@ -230,6 +230,30 @@ def save_fail_prob(sv, ap, invuln,
     return 1.0 - max(p_arm, p_inv)
 
 
+# Characteristics of an INCOMING attack a defender ability may modify,
+# mapped to the WeaponMechanics field holding the modifier. "SKILL" is
+# what modifier_engine calls the BS/WS pair; a modifier to the Damage
+# characteristic reuses dmg_add, which already models the fixed
+# set/multiply/add order of the damage chain.
+_INCOMING_CHAR_MODS = {"AP": "ap_mod", "S": "str_mod", "A": "attacks_mod",
+                       "SKILL": "skill_mod", "D": "dmg_add"}
+
+
+def _effective_ap(base_ap: int, mech) -> int:
+    """AP of a normal attack: the weapon's value plus any defender-side
+    modifier, clamped by the absolute limit (never worse than 0)."""
+    return rules_config.clamp_characteristic("AP", base_ap + mech.ap_mod)
+
+
+def _crit_ap(base_ap: int, mech) -> int:
+    """AP on the critical-wound branch: an absolute set (crit_ap_set)
+    wins over the improving delta (crit_ap_delta); the defender-side
+    modifier applies on top of either, as modifiers always do."""
+    ap = (mech.crit_ap_set if mech.crit_ap_set is not None
+          else base_ap - abs(mech.crit_ap_delta))
+    return rules_config.clamp_characteristic("AP", ap + mech.ap_mod)
+
+
 def effective_fnp(defender_ref: dict, mech, mw: bool):
     """(fnp_target, roll_modifier) actually in force for one damage
     stream. Sources, in order:
@@ -255,6 +279,21 @@ def effective_fnp(defender_ref: dict, mech, mw: bool):
     if "fnp" in mech.ignore_malus:
         mod = max(0, mod)
     return fnp, mod
+
+
+def damage_reroll_range(char):
+    """Which die results a free "re-roll the Damage roll" should re-roll.
+
+    The datasheet gives no range: the player re-rolls a result only when
+    the re-roll is expected to beat it, i.e. anything strictly below the
+    die's mean (N+1)/2. That is 1..N//2 - for a D6, results 1-3 (a 3 is
+    below the 3.5 mean, a 4 is not); for a D3, only a 1. Returns None for
+    a flat Damage characteristic, where there is no roll to re-roll.
+    """
+    sides = getattr(char, "sides", None)
+    if not getattr(char, "count", 0) or not sides:
+        return None
+    return (1, sides // 2)
 
 
 def reroll_low_damage(pmf: list, lo: int, hi: int) -> list:
@@ -300,6 +339,29 @@ class WeaponMechanics:
         self.crit_mw = None         # {'value','match','end'} on crit wound
         self.hitroll_mw = None      # {'thr','value','match'} same-die MW
         self.crit_ap_delta = 0      # AP delta on the crit-wound branch
+        self.crit_ap_set = None     # absolute AP on the crit-wound branch
+        #                             (datasheet "that attack has an AP of
+        #                             -N"); the strongest value wins and it
+        #                             takes precedence over crit_ap_delta
+        self.ap_mod = 0             # DEFENDER-side modifiers to the
+        self.str_mod = 0            # characteristics of the INCOMING
+        self.attacks_mod = 0        # attack ("subtract 1 from the
+        self.skill_mod = 0          # Strength characteristic of that
+        #                             attack", "worsen its AP by 1", ...).
+        #                             They are CHARACTERISTIC modifiers, so
+        #                             they are not capped, only clamped by
+        #                             the absolute limits; skill_mod is a
+        #                             BS/WS modifier (positive = worsened,
+        #                             like the Benefit of Cover) and joins
+        #                             cover/plunging fire. A modifier to
+        #                             the Damage characteristic is folded
+        #                             into dmg_add, which already models
+        #                             the fixed set/mult/add order.
+        self.cover = False          # the defender has the Benefit of Cover
+        #                             from an ability (11th-ed. Stealth),
+        #                             on top of any terrain cover from the
+        #                             attack setup: it is the same -1 BS
+        #                             and does NOT stack with it.
         self.fnp_grant = None       # FNP GRANTED by an ability (best wins)
         self.fnp_mw = None          # ...granted vs mortal wounds only
         self.fnp_set = None         # FNP OVERRIDDEN for this attack
@@ -307,6 +369,10 @@ class WeaponMechanics:
         self.fnp_mod_mw = 0         # FNP roll modifier vs mortal wounds only
         self.invuln_mw = None       # invulnerable save vs mortal wounds only
         self.dmg_reroll = None      # (lo, hi) damage re-roll range
+        self.dmg_reroll_any = False # "you can re-roll the Damage roll"
+        #                             with no range given: the range is
+        #                             then the die's own losing half
+        #                             (see damage_reroll_range).
         self.anti = []              # [(KEYWORD, X)] from ANTI-... X+
         self.twin_linked = False    # re-roll wound (fails)
         self.auto_wound = False      # OVERRIDE WOUND ALWAYS: every hit
@@ -352,8 +418,15 @@ class WeaponMechanics:
         self.fnp_mod = 0            # modifier to the Feel No Pain roll
         # ignore-malus: when set, NEGATIVE modifiers to that roll are
         # ignored (clamped to 0); positive modifiers still apply.
-        self.ignore_malus = set()   # subset of {hit, wound, save,
-        #                             invuln, fnp}
+        self.ignore_malus = set()   # subset of {hit, skill, wound, save,
+        #                             invuln, fnp}. 11th ed. keeps the hit
+        #                             ROLL modifiers and the BS/WS
+        #                             CHARACTERISTIC modifiers (Cover,
+        #                             Stealth, abilities) in two separate
+        #                             groups, so they are ignored
+        #                             separately: 'hit' clears the roll
+        #                             penalties, 'skill' the characteristic
+        #                             ones.
         self.reroll_hit = None      # None | '1' | 'fails'
         self.reroll_wound = None
         self.reroll_save = None     # defender-side re-rolls
@@ -573,9 +646,10 @@ def parse_weapon_keywords(keywords, mech: WeaponMechanics):
         if kw in _KW_FLAGS:
             setattr(mech, _KW_FLAGS[kw], True)
         elif kw == "PSYCHIC":
-            # 11th ed.: psychic attacks ignore negative modifiers to the
-            # hit roll (BS/WS). Modelled via the shared ignore-malus set.
-            mech.ignore_malus.add("hit")
+            # 11th ed.: "ignore any or all modifiers to that attack's BS
+            # or WS characteristic and any or all modifiers to the hit
+            # roll" - both groups, via the shared ignore-malus set.
+            mech.ignore_malus.update(("hit", "skill"))
         elif kw in _KW_IGNORED or not kw:
             pass
         else:
@@ -679,6 +753,11 @@ def _dispatch(dyn, s, tok, mech) -> bool:
         elif _RANGE_RE.match(s):
             m = _RANGE_RE.match(s)
             mech.dmg_reroll = (int(m.group(1)), int(m.group(2)))
+        elif tok[0] == "REROLL" and tok[1] == "DAMAGE" and tok[2] == "FAILS":
+            # "You can re-roll the Damage roll": no range is given, so
+            # the sensible policy is re-rolling the results a player
+            # would - see damage_reroll_range.
+            mech.dmg_reroll_any = True
         elif s == "OVERRIDE HIT ALWAYS":
             mech.auto_hit = True
         elif s == "OVERRIDE WOUND ALWAYS":
@@ -698,12 +777,12 @@ def _dispatch(dyn, s, tok, mech) -> bool:
         elif tok[0] == "CLEAVE":
             mech.cleave = mech.cleave or 1
         elif tok[0] == "PSYCHIC":
-            mech.ignore_malus.add("hit")
+            mech.ignore_malus.update(("hit", "skill"))
         elif tok[0] == "IGNORECOVER":
             mech.ignores_cover = True
         elif tok[0] == "IGNOREMALUS" and len(tok) >= 2:
             roll = tok[1].lower()
-            if roll in ("hit", "wound", "save", "invuln", "fnp"):
+            if roll in ("hit", "skill", "wound", "save", "invuln", "fnp"):
                 mech.ignore_malus.add(roll)
             else:
                 return False
@@ -716,6 +795,18 @@ def _dispatch(dyn, s, tok, mech) -> bool:
                 mech.crit_wound_on = min(mech.crit_wound_on, n)
             else:
                 return False
+        elif tok[0] == "CHARMOD" and len(tok) >= 3 \
+                and tok[1] in _INCOMING_CHAR_MODS:
+            # Defender ability: "worsen/improve the <characteristic> of
+            # that attack by N". Sign convention follows the datasheet:
+            # +1 on AP or on the BS/WS modifier makes the attack worse,
+            # +1 on S / A / D makes it better.
+            attr = _INCOMING_CHAR_MODS[tok[1]]
+            setattr(mech, attr, getattr(mech, attr) + int(tok[2]))
+        elif tok[0] == "BENEFITOFCOVER":
+            # An ability granting the Benefit of Cover (11th-ed. Stealth).
+            # Boolean, so it can never stack with terrain cover.
+            mech.cover = True
         elif tok[0] == "DMGREDUX" and len(tok) >= 3:
             # DMGREDUX set|mult|add N -> a modifier on the incoming attack's
             # Damage, resolved against the attacking weapon (static conds
@@ -738,8 +829,8 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             # the "always at least 1" floor (e.g. an ability that negates
             # the attack's damage entirely).
             mech.dmg_set_zero = True
-        elif tok[0] == "EXTRAATTACKS":
-            pass                    # selection-level keyword, no maths
+        elif tok[0] in ("EXTRAATTACKS", "WEAPON_DISABLED"):
+            pass                    # selection-level tokens, no maths
         elif tok[0] == "CONVERSION":
             mech.conversion = True
         elif tok[0] == "HUNTER" and len(tok) >= 2:
@@ -766,7 +857,7 @@ def _dispatch(dyn, s, tok, mech) -> bool:
     # ---- single roll-time condition ----
     if dyn == ["CRIT_HIT"]:
         if tok[0] == "EXTRA_HITS":
-            add = parse_x_value(tok[1], warn)
+            add = parse_x_value(tok[1], mech.warnings.append)
             if x_active(add):
                 mech.sustained = (add if not x_active(mech.sustained)
                                   else _x_sum(mech.sustained, add))
@@ -785,6 +876,13 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             mech.crit_mw = mw
         elif tok[0] == "CHARMOD" and tok[1] == "AP":
             mech.crit_ap_delta += int(tok[2])
+        elif tok[0] == "CHARSET" and tok[1] == "AP":
+            # "on a Critical Wound, that attack has an AP of -N": an
+            # absolute value, not a delta. The strongest (most negative)
+            # wins if several abilities set it.
+            n = int(tok[2])
+            mech.crit_ap_set = n if mech.crit_ap_set is None \
+                else min(mech.crit_ap_set, n)
         else:
             return False
         return True
@@ -894,6 +992,14 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
             for _ in range(groups):
                 extra_pmf = convolve(extra_pmf, x_pmf(src))
     per_copy = char_pmf(weapon.A)
+    if mech.attacks_mod:
+        # Defender ability on the attack's Attacks characteristic: it
+        # modifies the characteristic, so it lands BEFORE the extra
+        # attacks granted by Rapid Fire / Blast / Cleave.
+        per_copy = transform(
+            per_copy,
+            lambda v: rules_config.clamp_characteristic(
+                "A", v + mech.attacks_mod))
     if len(extra_pmf) > 1 or extra_pmf[0] != 1.0:
         per_copy = convolve(per_copy, extra_pmf)
     attacks_pmf = delta(0)
@@ -934,17 +1040,23 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         reroll_hit = None
     skill_mod = 0
     if weapon.type == "Ranged":
-        if (ctx.get("cover") or indirect) and not mech.ignores_cover:
+        if (ctx.get("cover") or mech.cover or indirect) \
+                and not mech.ignores_cover:
             skill_mod -= 1
         if ctx.get("plunging"):
             skill_mod += 1
+    # A defender ability may also modify the attack's BS/WS. It uses the
+    # characteristic convention (+1 = worse), so it enters with the
+    # opposite sign of the roll-style skill_mod above.
+    skill_mod -= mech.skill_mod
+    # "any or all": the best use of the choice is to drop the negatives
+    # and keep the positives. The two groups are independent - an ability
+    # that ignores modifiers to the HIT ROLL does not ignore the Benefit
+    # of Cover, which in 11th ed. is a BS penalty. PSYCHIC sets both.
     if "hit" in mech.ignore_malus:
-        # PSYCHIC: "ignore any or all modifiers to that attack's BS or WS
-        # characteristic and any or all modifiers to the hit roll" - the
-        # best use of "any or all" is to drop the negatives and keep the
-        # positives, in BOTH groups.
         hit_mod = max(0, hit_mod)
-        skill_mod = max(0, skill_mod)
+    if "skill" in mech.ignore_malus:
+        skill_mod = max(0, skill_mod)   # roll-style sign: penalty < 0
     hit_mod = _cap(hit_mod)             # the ROLL modifier is capped...
     skill = weapon.WS if weapon.type == "Melee" else weapon.BS
     # ...the CHARACTERISTIC modifier is not: it is uncapped and only
@@ -993,7 +1105,8 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     p_norm_hit = p_hit - p_crit_hit
 
     # ---- wound stage ----
-    s = weapon.S.value() or 0
+    s = rules_config.clamp_characteristic(
+        "S", (weapon.S.value() or 0) + mech.str_mod)
     t = defender_ref["T"]
     wt = wound_target(s, t)
     wound_mod = mech.wound_mod + (1 if (mech.lance and ctx.get("charged"))
@@ -1017,7 +1130,10 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     q_nw = q_w - q_cw
 
     # ---- saves (normal and crit-wound branch) ----
-    ap = weapon.AP.value() or 0
+    # AP of the attack: the weapon's own value, then any defender-side
+    # modifier (ap_mod), clamped by the absolute limit (never worse
+    # than 0).
+    ap = _effective_ap(weapon.AP.value() or 0, mech)
     # Saving-throw modifiers are NOT capped (only hit and wound are).
     save_mod = (max(0, mech.save_mod) if "save" in mech.ignore_malus
                 else mech.save_mod)
@@ -1032,22 +1148,24 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                               smod, imod, srr, irr)
 
     p_unsaved = p_uns(ap)
-    ap_crit = ap - abs(mech.crit_ap_delta)   # AP improves (more negative)
-    p_unsaved_crit = p_uns(ap_crit) if mech.crit_ap_delta else p_unsaved
+    ap_crit = _crit_ap(weapon.AP.value() or 0, mech)
+    p_unsaved_crit = p_uns(ap_crit) if ap_crit != ap else p_unsaved
 
     # ---- damage PMFs (normal and mortal-wound streams) ----
     # The damage re-roll range refers to the DIE result, so it is
     # applied per-die, before the flat bonus and before MELTA.
-    if mech.dmg_reroll and weapon.D.count:
+    dmg_rr = mech.dmg_reroll or (damage_reroll_range(weapon.D)
+                                 if mech.dmg_reroll_any else None)
+    if dmg_rr and weapon.D.count:
         die = [0.0] + [1.0 / weapon.D.sides] * weapon.D.sides
-        die = reroll_low_damage(die, *mech.dmg_reroll)
+        die = reroll_low_damage(die, *dmg_rr)
         dmg_raw = delta(max(weapon.D.flat, 0))
         for _ in range(weapon.D.count):
             dmg_raw = convolve(dmg_raw, die)
     else:
         dmg_raw = char_pmf(weapon.D)
-        if mech.dmg_reroll:
-            dmg_raw = reroll_low_damage(dmg_raw, *mech.dmg_reroll)
+        if dmg_rr:
+            dmg_raw = reroll_low_damage(dmg_raw, *dmg_rr)
     if half and x_active(mech.melta):
         dmg_raw = convolve(dmg_raw, x_pmf(mech.melta))
     # Defender Damage modifiers (set / multiply / add / floor, in that

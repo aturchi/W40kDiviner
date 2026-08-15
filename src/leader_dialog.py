@@ -110,8 +110,16 @@ class JoinDialog(tk.Toplevel):
             messagebox.showinfo("Join", f"That unit is not compatible with "
                                 f"the selected {self.mode}.", parent=self)
             return
-        self.joined.append((self.helpers.pop(hs[0]),
-                            self.targets.pop(us[0])))
+        target = self.targets[us[0]]
+        used = sum(1 for _h, t in self.joined if t is target)
+        if used >= lc.free_slots(target, self.slot, self.fmt):
+            messagebox.showinfo("Join", f"That unit has no free "
+                                f"{self.mode} slot left.", parent=self)
+            return
+        self.joined.append((self.helpers.pop(hs[0]), target))
+        # The target stays selectable while it has another free slot.
+        if used + 1 >= lc.free_slots(target, self.slot, self.fmt):
+            self.targets.pop(us[0])
         self._refresh()
 
     def cmd_remove(self):
@@ -120,17 +128,24 @@ class JoinDialog(tk.Toplevel):
             return
         he, te = self.joined.pop(sel[0])
         self.helpers.append(he)
-        self.targets.append(te)
+        if te not in self.targets:
+            self.targets.append(te)
         self._refresh()
 
     def cmd_ok(self):
         # Join the helper's base unit into the target entry's slot; unpaired
         # helpers and targets pass through unchanged.
-        joined_entries = []
+        # Group by target: one entry may have taken several helpers.
+        merged, order = {}, []
         for he, te in self.joined:
-            merged = dict(te)
-            merged[self.slot] = he["unit"]
-            joined_entries.append(merged)
+            key = id(te)
+            if key not in merged:
+                merged[key] = te
+                order.append(key)
+            merged[key] = lc.set_helpers(
+                merged[key], self.slot,
+                lc.helpers(merged[key], self.slot) + [he["unit"]])
+        joined_entries = [merged[k] for k in order]
         self.result = joined_entries + self.helpers + self.targets
         self.destroy()
 
@@ -156,12 +171,12 @@ class TwoArmyJoinDialog(tk.Toplevel):
     once. One row per army (attacker A, defender B); each row shows three
     source lists -- Leaders, Units, Supports -- plus a Joined list. Multi-
     select is allowed in the source lists. Buttons:
-      * Join leader   : one selected leader + one selected target (a Unit
-                        or a Support) -> a joined entry.
-      * Join support  : one selected support + one selected target.
-      * Add to joined : attach the selected leader/support to the selected
-                        joined entry (build leader+support in two steps).
-      * Unjoin        : split the selected joined entry back to its lists.
+      * Join    : the selected leaders and/or supports (several at once)
+                  onto the selected target - a Unit, a Support, or an
+                  existing Joined entry that still has a free slot.
+      * Unjoin  : split the selected joined entry back to its lists.
+    A label under each row shows how many leader/support slots the
+    selected target still has free.
     Joined units disappear from their source lists (game-assistant rule).
     self.result = (entriesA, entriesB) or None.
     """
@@ -175,6 +190,7 @@ class TwoArmyJoinDialog(tk.Toplevel):
         self.states = {"A": lc.ArmyJoinState(data_a, fmt),
                        "B": lc.ArmyJoinState(data_b, fmt)}
         self.lb = {}                        # (side, which) -> Listbox
+        self.slot_lbl = {}                  # side -> free-slots Label
         self.result = None
 
         self.columnconfigure(0, weight=1)
@@ -198,9 +214,16 @@ class TwoArmyJoinDialog(tk.Toplevel):
                 lb_frame.pack(fill=tk.BOTH, expand=True)
                 lb.bind("<<ListboxSelect>>",
                         lambda e, s=side, w=which: self._grey(s, w))
+                if which == "joined":
+                    lb.config(selectmode=tk.BROWSE)
                 self.lb[(side, which)] = lb
             bar = ttk.Frame(lf)
             bar.grid(row=1, column=0, columnspan=4, pady=3)
+            # Free slots of the selected target; blank while none is
+            # selected (or several are).
+            lbl = ttk.Label(bar, text="", foreground="#666666")
+            self.slot_lbl[side] = lbl
+            lbl.pack(side=tk.RIGHT, padx=8)
             ttk.Button(bar, text="Join",
                        command=lambda s=side: self._join(s)
                        ).pack(side=tk.LEFT, padx=3)
@@ -233,10 +256,40 @@ class TwoArmyJoinDialog(tk.Toplevel):
             for e in st.joined:
                 lbj.insert(tk.END, lc.entry_label(e))
             self._clear_grey(side)
+            self._update_slots(side)
 
     def _sel_one(self, side, which):
         sel = self.lb[(side, which)].curselection()
         return sel[0] if len(sel) == 1 else None
+
+    def _sel_many(self, side, which):
+        """All selected indices of a source list (they are EXTENDED)."""
+        return list(self.lb[(side, which)].curselection())
+
+    def _target_entry(self, side):
+        """The entry the Join button would fill: the selected Unit, the
+        selected Support, or the selected Joined entry. None when the
+        selection is not exactly one target."""
+        st = self.states[side]
+        ui, ji = self._sel_one(side, "others"), self._sel_one(side, "joined")
+        si_ = self._sel_one(side, "supports")
+        if ji is not None:
+            return st.joined[ji], ("joined", ji)
+        if ui is not None:
+            return lc.make_entry(st.others[ui]), ("others", ui)
+        if si_ is not None:
+            return lc.make_entry(st.supports[si_]), ("supports", si_)
+        return None, (None, None)
+
+    def _update_slots(self, side):
+        entry, _where = self._target_entry(side)
+        if entry is None:
+            self.slot_lbl[side].config(text="")
+            return
+        self.slot_lbl[side].config(
+            text=f"Free slots - leaders: "
+                 f"{lc.free_slots(entry, 'leader', self.fmt)}   "
+                 f"supports: {lc.free_slots(entry, 'support', self.fmt)}")
 
     def _pool(self, side, which):
         st = self.states[side]
@@ -261,6 +314,7 @@ class TwoArmyJoinDialog(tk.Toplevel):
         nothing (or a multi-selection) is active."""
         self._clear_grey(side)
         st = self.states[side]
+        self._update_slots(side)
         i = self._sel_one(side, source_which)
         if i is None:
             return
@@ -285,36 +339,65 @@ class TwoArmyJoinDialog(tk.Toplevel):
                            [st.can_lead(ld, target) for ld in st.leaders])
             self._set_grey(side, "supports",
                            [st.can_support(sp, target) for sp in st.supports])
+        elif source_which == "joined":
+            # An existing joined entry is a valid target while it has a
+            # free slot for the helper.
+            entry = st.joined[i]
+            target = entry["unit"]
+            free_l = lc.free_slots(entry, "leader", self.fmt)
+            free_s = lc.free_slots(entry, "support", self.fmt)
+            self._set_grey(side, "leaders",
+                           [bool(free_l) and st.can_lead(ld, target)
+                            for ld in st.leaders])
+            self._set_grey(side, "supports",
+                           [bool(free_s) and st.can_support(sp, target)
+                            for sp in st.supports])
 
     def _join(self, side):
-        """Single smart join. Uses whatever is selected: a target unit
-        (required) plus an optional leader and/or support. Builds one
-        joined entry with all selected, compatible parts."""
+        """Single smart join. Uses whatever is selected: one target
+        (a Unit, a Support, or an existing Joined entry) plus one or more
+        leaders and/or supports. Every selected helper that fits a free,
+        compatible slot is attached; the rest is reported."""
         st = self.states[side]
-        ui = self._sel_one(side, "others")
-        if ui is None:
-            messagebox.showinfo("Join", "Select one unit to join.",
-                                parent=self)
+        entry, (where, wi) = self._target_entry(side)
+        if entry is None:
+            messagebox.showinfo("Join", "Select one unit (or one joined "
+                                "entry) to join.", parent=self)
             return
-        target = st.others[ui]
-        li = self._sel_one(side, "leaders")
-        si = self._sel_one(side, "supports")
-        leader = st.leaders[li] if li is not None else None
-        support = st.supports[si] if si is not None else None
-        if leader is None and support is None:
+        picks = ([("leader", st.leaders[i])
+                  for i in self._sel_many(side, "leaders")]
+                 + [("support", st.supports[i])
+                    for i in self._sel_many(side, "supports")
+                    if where != "supports" or i != wi])
+        if not picks:
             messagebox.showinfo("Join", "Select a leader and/or a support "
                                 "to join with the unit.", parent=self)
             return
-        if leader is not None and not st.can_lead(leader, target):
-            messagebox.showinfo("Join", "The selected leader cannot lead "
-                                "that unit.", parent=self)
-            return
-        if support is not None and not st.can_support(support, target):
-            messagebox.showinfo("Join", "The selected support cannot "
-                                "support that unit.", parent=self)
-            return
-        st.join_combo(target, leader, support)
-        self._refresh()
+        target = entry["unit"]
+        taken, refused = {"leader": 0, "support": 0}, []
+        chosen = {"leader": [], "support": []}
+        for slot, helper in picks:
+            can = (st.can_lead(helper, target) if slot == "leader"
+                   else st.can_support(helper, target))
+            room = lc.free_slots(entry, slot, self.fmt) - taken[slot]
+            if not can:
+                refused.append(f"{helper['name']}: cannot {slot} that unit")
+            elif room <= 0:
+                refused.append(f"{helper['name']}: no free {slot} slot")
+            else:
+                chosen[slot].append(helper)
+                taken[slot] += 1
+        if chosen["leader"] or chosen["support"]:
+            if where == "joined":
+                for slot in ("leader", "support"):
+                    for helper in chosen[slot]:
+                        st.add_to_joined(wi, helper, slot)
+            else:
+                st.join_combo(target, chosen["leader"], chosen["support"])
+            self._refresh()
+        if refused:
+            messagebox.showinfo("Join", "Not joined:\n- "
+                                + "\n- ".join(refused), parent=self)
 
     def _unjoin(self, side):
         i = self._sel_one(side, "joined")

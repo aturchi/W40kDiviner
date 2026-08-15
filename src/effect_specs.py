@@ -151,9 +151,13 @@ EFFECT_SPECS = {
         "description": "Ignore NEGATIVE modifiers to the chosen roll "
                        "(positive modifiers still apply). Hit/Wound act "
                        "on this unit's attacks; Save/Invuln/FNP act when "
-                       "this unit defends.",
+                       "this unit defends. 'Hit' covers the hit ROLL "
+                       "modifiers only: in 11th ed. the BS/WS "
+                       "CHARACTERISTIC modifiers (Benefit of Cover, "
+                       "Stealth, abilities) are a separate group, chosen "
+                       "with 'Skill'. A PSYCHIC weapon ignores both.",
         "fields": [("roll", ENUM, "Roll",
-                    ["Hit", "Wound", "Save", "Invuln", "FNP"])],
+                    ["Hit", "Skill", "Wound", "Save", "Invuln", "FNP"])],
     },
     "criticalThreshold": {
         "text": "Critical hit/wound on N+",
@@ -176,6 +180,10 @@ EFFECT_SPECS = {
               ("Ignore cover", "ignoreCover"), ("Lethal hits", "lethalHits"),
               ("Devastating wounds", "devastatingWounds"),
               ("Torrent", "torrent"), ("Twin-linked", "twinLinked"),
+              # Defender side: the unit counts as having the Benefit of
+              # Cover (11th-ed. Stealth). Boolean, so it never stacks
+              # with the terrain cover of the attack setup.
+              ("Benefit of cover (defender)", "benefitOfCover"),
               ("Hazardous", "hazardous"), ("Precision", "precision"),
               ("Lance", "lance"), ("Indirect fire", "indirectFire"),
               ("One shot", "oneShot"),
@@ -195,6 +203,38 @@ EFFECT_SPECS = {
                     keywords_config.all_keywords())],
     },
     # ---------- Project extensions ----------
+    "disableWeapon": {
+        "text": "Weapon unusable",
+        "extension": True,
+        "description": "The weapon cannot be selected for the attack "
+                       "while this ability's conditions hold; the "
+                       "analyzer and the game assistant list it greyed "
+                       "out with a reason instead of resolving it. Put "
+                       "it on the WEAPON, and use a negated condition "
+                       "for the usual 'only usable while ...' form "
+                       "(e.g. negated 'Attacker remained stationary' "
+                       "for a weapon that needs the unit to stand "
+                       "still). Takes no parameters.",
+        "fields": [],
+    },
+    "attachmentSlots": {
+        "text": "Leader / support slots",
+        "extension": True,
+        "description": "Change how many Leader or Support units may be "
+                       "attached to this unit (both default to 1). "
+                       "Structural: it is read when the units are "
+                       "joined, BEFORE any attack context exists, so "
+                       "the ability's conditions are ignored - use the "
+                       "enable/disable toggle to switch it on when the "
+                       "datasheet requirement is met.",
+        "fields": [
+            ("slot", CHOICE, "Slot",
+             [("Leader", "leader"), ("Support", "support")]),
+            ("operator", CHOICE, "Operation",
+             [("Add", "add"), ("Set", "set")]),
+            ("value", TEXT, "Value (N)", None),
+        ],
+    },
     "disableMechanic": {
         "text": "Disable mechanic",
         "extension": True,
