@@ -108,3 +108,32 @@ for label, mods in [("hit re-roll", {"rerolls": {"hit": "fails"}}),
 print("exact maths and dice resolver agree on the manual modifiers")
 
 print("ALL MANUAL-MODIFIER TESTS PASS")
+
+# --- 6. characteristics are printed, not rolled -----------------------
+# Characteristic.value() ROLLS a dice notation, so it must never be used
+# to display a profile or to compare two scenarios: the inspect panel
+# would show a different number at every refresh. notation() is what
+# display code uses, value_avg() what comparisons use.
+from characteristics import Characteristic              # noqa: E402
+import leader_core as _lc                               # noqa: E402
+
+for spec, shown, avg in (("D3", "D3", 2.0), ("D6", "D6", 3.5),
+                         ("2D6+1", "2D6+1", 8.0), (3, "3", 3.0),
+                         ("-", "-", None)):
+    c = Characteristic(spec)
+    assert c.notation() == shown, (spec, c.notation())
+    assert str(c) == shown
+    assert c.value_avg() == avg, (spec, c.value_avg())
+
+# The inspect text must be stable across calls even with dice profiles.
+# The synthetic roster has none, so give one weapon a dice Damage.
+dice_unit = next(u for u in units
+                 for m in u.models() for w in m.weapons
+                 if w.type == "Ranged")
+target_w = next(w for m in dice_unit.models() for w in m.weapons
+                if w.type == "Ranged")
+target_w.D = Characteristic("D6")
+texts = {_lc.unit_inspect_text(dice_unit) for _ in range(8)}
+assert len(texts) == 1, "the inspect text must not roll the dice"
+assert "D D6" in texts.pop(), "the dice notation must appear as written"
+print("dice characteristics are displayed as written, not rolled")

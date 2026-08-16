@@ -393,6 +393,15 @@ class WeaponMechanics:
         self.hunter = []            # HUNTER X: may only be fired at units
         #                             with keyword X (targeting rule, not
         #                             maths - see analyzer_core)
+        self.single_reroll = None   # "hit"|"wound": ONE die of that roll
+        #                             may be re-rolled per activation
+        #                             (Targeting Array and the like). Not
+        #                             a per-attack re-roll: it adds one
+        #                             fresh die when at least one such
+        #                             roll failed - see analyze_weapon.
+        self.ignore_cq_penalty = False  # the model ignores the -1 for
+        #                             shooting into Engagement Range
+        #                             (Siege Shield and the like)
         self.close_quarters = False  # CLOSE-QUARTERS (ex PISTOL): can be
         #                              fired at a unit the attacker is
         #                              engaged with, and is exempt from
@@ -744,6 +753,10 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             mech.wound_mod += int(tok[1])
         elif tok[0] == "SAVE_ROLL":
             mech.save_mod += int(tok[1])
+        elif tok[0] == "REROLL" and tok[1] == "ONE" \
+                and tok[2] in ("HIT_ROLL", "WOUND_ROLL"):
+            # ONE re-roll for the whole activation, not one per attack.
+            mech.single_reroll = tok[2].split("_")[0].lower()
         elif tok[0] == "REROLL" and tok[1] in ("HIT_ROLL", "WOUND_ROLL"):
             kind = "reroll_hit" if tok[1] == "HIT_ROLL" else "reroll_wound"
             what = {"FAILS": "fails", "1": "1"}.get(tok[2])
@@ -848,9 +861,15 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             mech.fnp_grant = v if mech.fnp_grant is None \
                 else min(mech.fnp_grant, v)
         elif tok[0] == "DISABLE":
-            # disableMechanic: switch a weapon ability off for this attack
-            disable_abilities(mech, [" ".join(tok[1:])],
-                              lambda m: mech.warnings.append(m))
+            if tok[1:] == ["CLOSEQUARTERSPENALTY"]:
+                # Not a weapon ability: the -1 a MONSTER/VEHICLE takes
+                # for shooting the unit it is engaged with.
+                mech.ignore_cq_penalty = True
+            else:
+                # disableMechanic: switch a weapon ability off for this
+                # attack
+                disable_abilities(mech, [" ".join(tok[1:])],
+                                  lambda m: mech.warnings.append(m))
         else:
             return False
         return True
@@ -1024,7 +1043,8 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     # CLOSE-QUARTERS weapons. The caller sets the flag only for such an
     # attacker (non-MONSTER/VEHICLE models may only fire CLOSE-QUARTERS
     # weapons in the first place, and take no penalty).
-    if ctx.get("close_quarters_penalty") and not mech.close_quarters:
+    if ctx.get("close_quarters_penalty") and not mech.close_quarters \
+            and not mech.ignore_cq_penalty:
         hit_mod -= 1
     # INDIRECT FIRE (11th ed. indirect shooting mode): the target always
     # counts as being in Cover, the hit roll cannot be re-rolled, and an
@@ -1225,6 +1245,46 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
             "damage_net": transform(thinned, lambda v: min(v, w_ref)),
             "wounds": transform(thinned, lambda v: 1 if v > 0 else 0)}
 
+    def _no_fail(pmf, pf):
+        """'pmf' conditioned on this attack's die NOT failing. The failed
+        branch contributes exactly 0, so it is the mass pf sitting at
+        index 0; remove it and renormalise."""
+        out = list(pmf)
+        out[0] = max(0.0, out[0] - pf)
+        scale = 1.0 - pf
+        return [v / scale for v in out]
+
+    def _combine(power, power_ok, w0, extra):
+        """Base over n attacks, plus the extra die exactly when at least
+        one of those n dice failed. Splitting on that event is what keeps
+        the two CORRELATED: the extra never lands on a sequence where
+        nothing failed, and those sequences are also the ones with the
+        most damage."""
+        size = max(len(power), len(power_ok))
+        rest = []
+        for i in range(size):
+            a = power[i] if i < len(power) else 0.0
+            b = power_ok[i] if i < len(power_ok) else 0.0
+            rest.append(max(0.0, a - w0 * b))
+        tail = convolve(rest, extra)
+        out = [0.0] * max(len(tail), len(power_ok))
+        for i, v in enumerate(power_ok):
+            out[i] += w0 * v
+        for i, v in enumerate(tail):
+            out[i] += v
+        return out
+
+    # ONE re-roll for the whole activation (mech.single_reroll): the
+    # player re-rolls a FAILED die, which is always the best use of it.
+    # Exactly: with probability q_n = 1 - (1 - p_fail)^n over n attacks
+    # at least one such die failed, and re-rolling it adds one fresh
+    # outcome - a whole attack for a hit re-roll, a wound roll onwards
+    # for a wound one. Everything else in the sequence is untouched, so
+    # the total is the base chain convolved with that single extra.
+    # (Bonus dice from SUSTAINED HITS are not counted among the dice
+    # that may have failed: they are hits, not hit rolls.)
+    single_extra = {}
+
     def build_chain(key):
         """Per-attack outcome PMF for one metric ('damage',
         'damage_net' or 'wounds')."""
@@ -1262,19 +1322,41 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                  (1 - p_hit - p_mw_hit, zero)]
         if p_mw_hit:
             pairs.append((p_mw_hit, streams["hmw"][key]))
-        return mix(pairs)
+        per_attack = mix(pairs)
+        if mech.single_reroll == "hit":
+            # a failed hit roll, re-rolled into a whole fresh attack
+            single_extra[key] = (per_attack,
+                                 max(0.0, 1 - p_hit - p_mw_hit))
+        elif mech.single_reroll == "wound":
+            # a failed wound roll: only the hits that actually rolled to
+            # wound can fail (LETHAL HITS turns criticals into automatic
+            # wounds, so those never roll).
+            rolled = p_norm_hit if (mech.lethal or mech.lethal_crit) \
+                else p_hit
+            single_extra[key] = (per_hit, rolled * max(0.0, 1 - q_w))
+        return per_attack
 
     # ---- totals: mixture over the number of attacks ----
     out = {"attacks_pmf": attacks_pmf,
            "attacks": pmf_stats(attacks_pmf)}
     for key in ("damage", "damage_net", "wounds"):
         pa = build_chain(key)
-        power, acc = delta(0), []
+        extra_pmf, p_fail = single_extra.get(key, (None, 0.0))
+        single = extra_pmf is not None and 0.0 < p_fail < 1.0
+        pa_ok = _no_fail(pa, p_fail) if single else None
+        power, power_ok, acc = delta(0), delta(0), []
         for n, pn in enumerate(attacks_pmf):
             if pn:
-                acc.append((pn, power))
+                if single and n:
+                    acc.append((pn, _combine(power, power_ok,
+                                             (1.0 - p_fail) ** n,
+                                             extra_pmf)))
+                else:
+                    acc.append((pn, power))
             if n < len(attacks_pmf) - 1:
                 power = convolve(power, pa)
+                if single:
+                    power_ok = convolve(power_ok, pa_ok)
         total = mix(acc)
         out[key + "_pmf"] = total
         out[key] = pmf_stats(total)

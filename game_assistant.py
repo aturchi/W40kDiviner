@@ -587,11 +587,12 @@ class GameAssistantApp(tk.Tk):
             messagebox.showinfo("Attack",
                                 f"No weapons match the '{mode}' selection.")
             return
-        ctx = {k: flags.get(k) for k in ("half_range", "stationary",
-                                         "charged", "cover",
+        ctx = {k: flags.get(k) for k in ("half_range", "charged", "cover",
                                          "plunging", "damaged",
                                          "indirect", "spotter",
                                          "overwatch", "overwatch_value")}
+        # The ctx key has no side prefix, the flag behind it does.
+        ctx["stationary"] = flags.get("attacker_stationary")
         # Close quarters: only a MONSTER/VEHICLE attacker takes the -1,
         # and only with weapons that are not CLOSE-QUARTERS.
         ctx["close_quarters_penalty"] = (
@@ -602,7 +603,7 @@ class GameAssistantApp(tk.Tk):
         results = []
         for w in weapons:
             mech = analyzer_core.mechanics_for_attack(w, dview, attack_type,
-                                                      mods, flags)
+                                                      mods, flags, aview)
             # HUNTER X: the weapon may only be fired at units carrying
             # the named keyword (the restriction can come from the
             # datasheet or from an ability, so it is checked here).
@@ -610,12 +611,14 @@ class GameAssistantApp(tk.Tk):
             if why:
                 skipped = list(skipped) + [(w, why)]
                 continue
-            hazardous = mech.hazardous and messagebox.askyesno(
-                "Hazardous", f"Use the HAZARDOUS profile for {w.name}?")
+            # No question to ask any more: the datasheet lists the
+            # supercharged profile as its own weapon and that is the one
+            # carrying HAZARDOUS, so the choice was already made when
+            # the weapon was picked. The keyword only means the
+            # Hazardous test is rolled.
             res = attack_resolve.resolve_weapon(w, ref, ctx, mech,
-                                                self.rng, hazardous,
-                                                haz_damage)
-            results.append((w, hazardous, res))
+                                                self.rng, haz_damage)
+            results.append((w, mech.hazardous, res))
         self._show_results(attacker, defender, ref, results, skipped)
 
     # ---------- results popup ----------

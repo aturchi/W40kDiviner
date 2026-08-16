@@ -13,7 +13,7 @@ Flow:
   results = run_analysis(aview, dview, ref, flags, mode, melee, manual)
 """
 
-import copy
+import re
 
 from modifier_engine import Context
 import attack_math as am
@@ -36,7 +36,7 @@ def build_views(attacker, defender, flags: dict, mods: dict = None):
     the global caps independently."""
     mods = mods or {}
     ctx = Context(range_half=flags.get("half_range"),
-                  attacker_stationary=flags.get("stationary"),
+                  attacker_stationary=flags.get("attacker_stationary"),
                   attacker_charged=flags.get("charged"),
                   defender_in_cover=flags.get("cover"),
                   attacker_below_half=flags.get("attacker_below_half"),
@@ -263,12 +263,14 @@ def select_weapons_split(aview, mode: str, melee_name: str = None,
     return kept, skipped
 
 
-def mechanics_for_attack(weapon, dview, attack_type, manual, flags=None):
+def mechanics_for_attack(weapon, dview, attack_type, manual, flags=None,
+                         aview=None):
     """Public wrapper of _mechanics_for that also applies the attack-setup
     ability selection carried in 'flags' (used by the game assistant,
-    which resolves weapons one by one with the dice engine)."""
+    which resolves weapons one by one with the dice engine). Pass 'aview'
+    so the attacker's own unit-level effect strings are seen too."""
     return _mechanics_for(weapon, dview, attack_type, manual,
-                          ability_selection(flags))
+                          ability_selection(flags), aview)
 
 
 def melee_choices(aview):
@@ -279,16 +281,149 @@ def melee_choices(aview):
                                                for k in w.keywords}})
 
 
-def _hazardous_variant(weapon):
-    """Copy of the weapon with +1 S, +1 AP, +1 D (supercharged use)."""
-    v = copy.copy(weapon)
-    v.S = weapon.S.with_delta(1)
-    v.AP = weapon.AP.with_delta(-1)   # AP improves (datasheet negative)
-    v.D = weapon.D.with_delta(1)
-    return v
+# Tokens an ATTACKER's unit-level effect string may carry. Most unit
+# abilities reach the weapons directly (they are applied per weapon, so
+# they land in weapon.effects); what stays on the attacker's unit view is
+# the weapon-free vocabulary, and of that only DISABLE means anything for
+# our own attacks. The rest of that vocabulary (FNP, invulnerable saves,
+# Damage reduction) is defender-side and is read from dview.effects, so
+# it must NOT be picked up here - it would hand the DEFENDER an ability
+# the attacker declared.
+_ATTACKER_UNIT_TOKENS = ("DISABLE",)
 
 
-def _mechanics_for(weapon, dview, attack_type, manual, abilities=None):
+def _attacker_unit_effects(effects):
+    """The attacker's unit-level effect strings that apply to its own
+    attacks (see _ATTACKER_UNIT_TOKENS)."""
+    out = []
+    for raw in effects or ():
+        body = str(raw).split(":")[-1].strip()
+        if body.split(" ")[0] in _ATTACKER_UNIT_TOKENS:
+            out.append(raw)
+    return out
+
+
+_RE_SUFFIX = re.compile(r"\s*\[[^\]]*\]\s*$")
+
+
+def _key_of(value, default=""):
+    """The 'key' of a CHOICE field, which is stored as {title, key}."""
+    if isinstance(value, dict):
+        value = value.get("key")
+    return str(value or default).strip().lower()
+
+
+def _iter_view_abilities(aview):
+    """(scope label, ability dict) for every ability of an attacker view,
+    whatever its scope - the checks below are unit-wide."""
+    for ab in getattr(aview, "abilities", None) or ():
+        yield ("unit", ab)
+    for model in aview.models():
+        for ab in getattr(model, "abilities", None) or ():
+            yield (f"model {model.name}", ab)
+        for weapon in model.weapons:
+            for ab in getattr(weapon, "abilities", None) or ():
+                yield (f"weapon {weapon.name}", ab)
+
+
+def exclusive_group_notes(aview) -> list:
+    """Check the "select one of the following" ability groups.
+
+    A datasheet that says "select one weapon" or "select one of the
+    following" is modelled as several switched-off copies of the
+    ability, one per choice, all carrying the same 'exclusive_group'
+    label. Nothing stops the player ticking two, so this counts what is
+    on and warns - the engine cannot pick for them.
+    """
+    counts = {}
+    for scope, ab in _iter_view_abilities(aview):
+        group = str(ab.get("exclusive_group") or "").strip()
+        if not group or not ab.get("enabled", True):
+            continue
+        # Copies of one choice often share a name and differ only by the
+        # weapon they sit on (Nova Charge), so the scope is what tells
+        # them apart in the message.
+        name = ab.get("name") or group
+        counts.setdefault(group, []).append(
+            name if name != group and scope == "unit"
+            else f"{name} ({scope})")
+    notes = []
+    for group, picked in sorted(counts.items()):
+        if len(picked) > 1:
+            notes.append(
+                f"{group}: {len(picked)} choices are enabled "
+                f"({', '.join(sorted(picked))}), but only ONE of them "
+                f"applies - switch off the others.")
+    return notes
+
+
+def single_reroll_notes(aview) -> list:
+    """Check how the unit spends its 'one re-roll per activation'
+    abilities (singleReRoll).
+
+    The rule allows ONE re-roll for the whole activation, but the
+    ability sits on the weapons - one disabled copy per candidate - so
+    nothing stops the player ticking two. This counts what is switched
+    on, per datasheet ability, and says what is wrong:
+
+      * allowance 'exclusive' (hit OR wound): more than one on at all;
+      * allowance 'eachKind'  (hit AND wound): more than one of a kind
+        on, or a kind left unused when it was available.
+
+    Returns a list of strings for the analysis warnings.
+    """
+    found = {}                      # ability name -> {kind: [enabled...]}
+    allowance = {}
+    for model in aview.models():
+        for weapon in model.weapons:
+            for ab in getattr(weapon, "abilities", None) or ():
+                eff = ab.get("effect") or {}
+                if eff.get("type") != "singleReRoll":
+                    continue
+                data = eff.get("data", {})
+                # Copies of one datasheet ability are named "<name>
+                # [hit roll]" / "[wound roll]" per weapon: the budget
+                # belongs to the datasheet ability, so group on the
+                # base name.
+                name = _RE_SUFFIX.sub(
+                    "", ab.get("name") or "Single re-roll").strip()
+                kind = _key_of(data.get("roll"), "hit")
+                allowance[name] = _key_of(data.get("allowance"),
+                                          "exclusive")
+                found.setdefault(name, {}).setdefault(kind, []).append(
+                    bool(ab.get("enabled", True)))
+
+    notes = []
+    for name, kinds in sorted(found.items()):
+        on = {k: sum(1 for e in v if e) for k, v in kinds.items()}
+        total = sum(on.values())
+        if allowance.get(name) == "eachkind":
+            # Nothing enabled at all: the player simply is not using the
+            # ability, which is not a mistake worth a warning.
+            for kind, n in (sorted(on.items()) if total else ()):
+                if n > 1:
+                    notes.append(
+                        f"{name}: {n} {kind}-roll re-rolls are enabled "
+                        f"across this unit's weapons; the rule allows "
+                        f"one - switch off all but the weapon you want.")
+                elif n == 0:
+                    notes.append(
+                        f"{name}: no {kind}-roll re-roll is enabled, but "
+                        f"this ability grants one of EACH kind - you can "
+                        f"also enable one {kind}-roll re-roll on a "
+                        f"weapon.")
+        elif total > 1:
+            picked = ", ".join(f"{n}x {k}" for k, n in sorted(on.items())
+                               if n)
+            notes.append(
+                f"{name}: {total} re-rolls are enabled across this "
+                f"unit's weapons ({picked}), but the rule allows only "
+                f"ONE, of either kind - switch off all but one.")
+    return notes
+
+
+def _mechanics_for(weapon, dview, attack_type, manual, abilities=None,
+                   aview=None):
     """Weapon mechanics for one attack. 'abilities' is the attack-setup
     ability selection: {'extra': [tokens added to EVERY attack],
     'disabled': [abilities switched off]}. Extras are added first and
@@ -297,6 +432,9 @@ def _mechanics_for(weapon, dview, attack_type, manual, abilities=None):
     am.parse_weapon_keywords(weapon.keywords, mech)
     am.parse_effect_strings(weapon.effects, attack_type, mech, weapon)
     am.parse_effect_strings(dview.effects, attack_type, mech, weapon)
+    if aview is not None:
+        am.parse_effect_strings(_attacker_unit_effects(aview.effects),
+                                attack_type, mech, weapon)
     abilities = abilities or {}
     am.add_abilities(mech, abilities.get("extra"))
     am.disable_abilities(mech, abilities.get("disabled"),
@@ -324,15 +462,23 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
     {'weapons': [per-weapon dicts], 'totals': {...}, 'warnings': [...]}.
     manual = {'rolls': {...}} roll modifiers (characteristic modifiers
     are already baked into the views by build_views via the Context).
-    HAZARDOUS weapons get a second entry with the +1S/-1AP/+1D profile
-    and the mean self-damage (its median is 0 and is not reported).
+    A HAZARDOUS weapon is analysed once, exactly as the roster lists it,
+    with the mean self-damage attached (its median is 0 and is not
+    reported): datasheets already carry the two profiles as two separate
+    weapons ("standard" and "supercharge"/"overcharge"), and the boosted
+    one IS the one flagged HAZARDOUS - so recomputing the boost here
+    would apply it twice. Which profile to fire stays the player's
+    choice: both are listed.
     'skipped' lists the weapons excluded by the attack setup (indirect
     fire), so the caller can show them greyed out with the reason."""
     manual = manual or {}
     attack_type = "Melee" if mode == "melee" else "Ranged"
     haz_damage = am.hazardous_damage_per_fail(aview.keywords)
+    # ctx keys are attacker-side by nature, so they carry no side
+    # prefix; the FLAG behind this one does (attacker_stationary), to
+    # pair with defender_stationary.
     ctx = {"half_range": flags.get("half_range"),
-           "stationary": flags.get("stationary"),
+           "stationary": flags.get("attacker_stationary"),
            "charged": flags.get("charged"),
            "cover": flags.get("cover"),
            "plunging": flags.get("plunging"),
@@ -343,41 +489,40 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
            "overwatch_value": flags.get("overwatch_value"),
            "close_quarters_penalty": (mode == "close_quarters"
                                       and close_quarters_attacker(aview))}
-    rows, warnings = [], []
+    # How the unit spends its "one re-roll per activation" abilities:
+    # they live on the weapons, so the count is a unit-wide check.
+    rows, warnings = [], (list(single_reroll_notes(aview))
+                          + list(exclusive_group_notes(aview)))
     gross, net = am.delta(0), am.delta(0)
     kept, skipped = select_weapons_split(aview, mode, melee_name,
                                          bool(flags.get("indirect")))
     abilities = ability_selection(flags)
     optimise = abilities.get("optimise", True)
     for w in kept:
-        mech = _mechanics_for(w, dview, attack_type, manual, abilities)
+        mech = _mechanics_for(w, dview, attack_type, manual, abilities,
+                              aview)
         why = hunter_skip_reason(mech, dview)
         if why:
             skipped.append((w, why))
             continue
-        variants = [(w.name, w, None)]
-        if mech.hazardous:
-            variants.append((f"{w.name} [HAZARDOUS]",
-                             _hazardous_variant(w),
-                             am.hazardous_self_damage_mean(w.count,
-                                                           haz_damage)))
-        for i, (label, wv, selfdmg) in enumerate(variants):
-            if optimise:
-                res, note = am.analyze_weapon_best(wv, ref, ctx, mech)
-            else:
-                res, note = am.analyze_weapon(wv, ref, ctx, mech), None
-            if note:
-                label = f"{label}  [{note}]"
-            rows.append({"name": label, "count": wv.count,
-                         "attacks": res["attacks"],
-                         "wounds": res["wounds"],
-                         "damage": res["damage"],
-                         "damage_net": res["damage_net"],
-                         "self_damage_mean": selfdmg})
-            warnings += [f"{label}: {x}" for x in res["warnings"]]
-            if i == 0:      # totals use the NORMAL profile only
-                gross = am.convolve(gross, res["damage_pmf"])
-                net = am.convolve(net, res["damage_net_pmf"])
+        label = w.name
+        selfdmg = (am.hazardous_self_damage_mean(w.count, haz_damage)
+                   if mech.hazardous else None)
+        if optimise:
+            res, note = am.analyze_weapon_best(w, ref, ctx, mech)
+        else:
+            res, note = am.analyze_weapon(w, ref, ctx, mech), None
+        if note:
+            label = f"{label}  [{note}]"
+        rows.append({"name": label, "count": w.count,
+                     "attacks": res["attacks"],
+                     "wounds": res["wounds"],
+                     "damage": res["damage"],
+                     "damage_net": res["damage_net"],
+                     "self_damage_mean": selfdmg})
+        warnings += [f"{label}: {x}" for x in res["warnings"]]
+        gross = am.convolve(gross, res["damage_pmf"])
+        net = am.convolve(net, res["damage_net_pmf"])
     return {"weapons": rows,
             "skipped": [{"name": w.name, "count": w.count, "reason": why}
                         for w, why in skipped],

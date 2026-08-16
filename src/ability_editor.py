@@ -96,6 +96,20 @@ class AbilityEditor(ttk.Frame):
                         "joins or leads)",
                         variable=self.share_var).pack(anchor=tk.W)
 
+        # exclusive_group: abilities of the same unit sharing this label
+        # are mutually exclusive choices ("select one of the following",
+        # "select one weapon"). The engine does not enforce it - it
+        # cannot know which one you meant - but the analysis warns when
+        # more than one of the group is switched on.
+        grp = ttk.Frame(right)
+        grp.pack(fill=tk.X)
+        ttk.Label(grp, text="Exclusive group (optional): only one "
+                            "ability with this label should be on").pack(
+            side=tk.LEFT)
+        self.group_var = tk.StringVar(value="")
+        ttk.Entry(grp, textvariable=self.group_var, width=22).pack(
+            side=tk.LEFT, padx=4)
+
         self.eff_frame = ttk.LabelFrame(right, text="Effect")
         self.eff_frame.pack(fill=tk.X, pady=4)
 
@@ -222,6 +236,7 @@ class AbilityEditor(ttk.Frame):
         self.desc_var.set((ab or {}).get("description") or "")
         self.enabled_var.set(bool((ab or {}).get("enabled", True)))
         self.share_var.set(bool((ab or {}).get("share_with_unit", False)))
+        self.group_var.set((ab or {}).get("exclusive_group") or "")
         # Effect section
         for w in self.eff_frame.winfo_children():
             w.destroy()
@@ -346,6 +361,11 @@ class AbilityEditor(ttk.Frame):
         ab["description"] = self.desc_var.get()
         ab["enabled"] = bool(self.enabled_var.get())
         ab["share_with_unit"] = bool(self.share_var.get())
+        group = self.group_var.get().strip()
+        if group:
+            ab["exclusive_group"] = group
+        else:
+            ab.pop("exclusive_group", None)
         try:
             eff = ab.get("effect") or {}
             spec = es.EFFECT_SPECS.get(eff.get("type"))

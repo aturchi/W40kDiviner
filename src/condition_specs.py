@@ -89,8 +89,8 @@ CONDITION_SPECS = {
         "text": "Remained stationary",
         "description": "Whether a profile remained stationary this turn.",
         "fields": [("remainedStationary", CHOICE, "Who",
-                    [("Attacker remained stationary", "attackerStationary"),
-                     ("Defender remained stationary", "defenderStationary")])],
+                    [("Attacker remained stationary",
+                      "attackerStationary")])],
     },
     "attackerCharged": {
         "text": "Attacker charged",

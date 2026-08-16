@@ -57,7 +57,7 @@ def _multi_select(parent, title, prompt, items, selected=(),
 
 
 FLAGS = [("half_range", "Within half range"),
-         ("stationary", "Attacker remained stationary"),
+         ("attacker_stationary", "Attacker remained stationary"),
          ("charged", "Attacker charged"),
          # 11th ed.: the Benefit of Cover and Plunging Fire modify the
          # attacker's BS CHARACTERISTIC, not the hit roll - so they are

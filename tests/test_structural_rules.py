@@ -81,7 +81,7 @@ kept, skipped = selection(gunner, {})
 assert "turret" not in kept, "the gated weapon fired although the unit moved"
 assert skipped.get("turret") == ac.DISABLED_SKIP, skipped
 assert "rifle" in kept, "the gate must not touch the other weapons"
-kept, skipped = selection(gunner, {"stationary": True})
+kept, skipped = selection(gunner, {"attacker_stationary": True})
 assert "turret" in kept, "the gated weapon did not come back when stationary"
 assert not skipped, skipped
 print("a negated condition gates a weapon in and out of the attack")
@@ -91,7 +91,7 @@ plain = ability({"type": "disableWeapon", "data": {}},
                 [cond("remainedStationary", STATIONARY)])
 mover = build(unit_dict("mover", ["Infantry"], weapon_abilities=[plain]))[0]
 assert "turret" in selection(mover, {})[0]
-assert "turret" not in selection(mover, {"stationary": True})[0]
+assert "turret" not in selection(mover, {"attacker_stationary": True})[0]
 print("the un-negated condition has the opposite sense, as it should")
 
 # --- 3. a roll-time condition cannot be negated -----------------------
@@ -145,5 +145,43 @@ squad["abilities"] = []
 squad["leader_slots"] = 3
 assert build(squad, boss1, boss2)[0].slot_capacity("leader") == 3
 print("leader/support slots: default, ability-driven and datasheet-driven")
+
+# --- 5. the ATTACKER's own unit-level effect strings are read ---------
+# Most unit abilities reach the weapons directly, but the weapon-free
+# vocabulary lands on the unit view. Of that, only DISABLE means anything
+# for our own attacks - and it used to be dropped, because only the
+# weapon's and the DEFENDER's effect strings were parsed.
+import analyzer_core as _ac                                # noqa: E402
+import attack_math as am                                   # noqa: E402
+
+SIEGE = ability({"type": "disableMechanic", "data": {
+    "mechanic": {"title": "Close-quarters hit penalty",
+                 "key": "closeQuartersPenalty"}}},
+    [], name="siege shield")
+shooter = build(unit_dict("shooter", ["Vehicle"], abilities=[SIEGE]))[0]
+plain = build(unit_dict("plain", ["Vehicle"]))[0]
+CQ = {"close_quarters_penalty": True}
+
+for u, expect in ((shooter, True), (plain, False)):
+    av, dv = _ac.build_views(u, u, {})
+    w = next(w for m in av.models() for w in m.weapons
+             if w.type == "Ranged")
+    mech = _ac.mechanics_for_attack(w, dv, "Ranged", {}, {}, av)
+    assert mech.ignore_cq_penalty is expect, (u.name, mech.ignore_cq_penalty)
+    ref = _ac.reference_options(dv)[0][1]
+    same = abs(am.analyze_weapon(w, ref, CQ, mech)["damage"]["mean"]
+               - am.analyze_weapon(w, ref, {}, mech)["damage"]["mean"]) < 1e-9
+    assert same is expect, (u.name, "close-quarters penalty applied?")
+# and the defender-side half of that vocabulary must NOT leak: an FNP the
+# ATTACKER declares may never reach the defender through this path.
+FNP = ability({"type": "feelNoPain", "data": {
+    "operator": {"title": "Grant", "key": "grant"}, "value": "4"}},
+    [], name="attacker fnp")
+leaky = build(unit_dict("leaky", ["Vehicle"], abilities=[FNP]))[0]
+av, dv = _ac.build_views(leaky, plain, {})
+w = next(w for m in av.models() for w in m.weapons if w.type == "Ranged")
+mech = _ac.mechanics_for_attack(w, dv, "Ranged", {}, {}, av)
+assert mech.fnp_grant is None, "an attacker's FNP must not reach the defender"
+print("the attacker's own unit effects are read, and only its own")
 
 print("ALL STRUCTURAL TESTS PASS")

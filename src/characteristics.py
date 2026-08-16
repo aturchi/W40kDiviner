@@ -6,9 +6,14 @@ A Characteristic is immutable and wraps one of:
 - "XdY+Z"     -> dice notation (X >= 1 optional, Z optional, +/- allowed)
 
 API:
-  value(rng=None) -> int|None   roll the dice (explicit Random for
-                                 reproducibility) or return the int
+  value(rng=None) -> int|None   ROLL the dice (explicit Random for
+                                 reproducibility) or return the int.
+                                 Never use it for display or to compare
+                                 two scenarios: it is not deterministic
+                                 on a dice characteristic.
   value_avg()     -> float|None  expected value: X*(Y+1)/2 + Z
+  notation()      -> str         '4' / 'D3' / '2D6+1' / '-'; what to
+                                 print (also str(char))
   with_delta(d)   -> Characteristic   new object with flat part += d
 """
 
@@ -88,6 +93,25 @@ class Characteristic:
         out = Characteristic(0)
         out.count, out.sides, out.flat = self.count, self.sides, self.flat + delta
         return out
+
+    def notation(self) -> str:
+        """The characteristic as the datasheet writes it: '4', 'D3',
+        '2D6+1', or '-' when not applicable.
+
+        Use this for DISPLAY. value() ROLLS the dice, so printing it
+        shows one random result that changes at every refresh; only the
+        dice resolver should call value(), and the exact maths should
+        use value_avg() or the full PMF.
+        """
+        if self.is_none():
+            return "-"
+        if not self.count:
+            return str(self.flat)
+        z = f"{self.flat:+d}" if self.flat else ""
+        return f"{self.count if self.count > 1 else ''}D{self.sides}{z}"
+
+    def __str__(self):
+        return self.notation()
 
     def __repr__(self):
         if self.is_none():

@@ -23,12 +23,35 @@ import effect_specs
 
 _MODEL_CHARS = ("M", "T", "Sv", "W", "LD", "OC")
 _WEAPON_CHARS = ("RNG", "A", "S", "AP", "D")
+# Only Attacks and Damage are rolled during an attack. Everywhere else
+# the exact maths reads the characteristic as a single number (with
+# Characteristic.value(), which would ROLL a dice notation and give a
+# different answer at every call, silently desynchronising the exact
+# maths from the dice resolver), so dice there are rejected at load.
+_DICE_ALLOWED = ("A", "D")
 
 
 def _parseable(value) -> bool:
     try:
         Characteristic(value)
         return True
+    except (ValueError, TypeError):
+        return False
+
+
+def _check_exclusive_group(ab, label, issues):
+    """'exclusive_group' is an optional free label: abilities sharing it
+    are mutually exclusive choices (see analyzer_core)."""
+    group = ab.get("exclusive_group")
+    if group is not None and not isinstance(group, str):
+        issues.append(f"{label}: exclusive_group must be a string "
+                      f"(got {group!r})")
+
+
+def _is_dice(value) -> bool:
+    """True if the value is written as dice notation (D6, 2D3+1...)."""
+    try:
+        return Characteristic(value).is_dice()
     except (ValueError, TypeError):
         return False
 
@@ -49,6 +72,7 @@ def _check_abilities(abilities, where, issues):
         elif eff.get("type") not in effect_specs.EFFECT_SPECS:
             issues.append(f"{tag}: unregistered effect type "
                           f"{eff.get('type')!r}")
+        _check_exclusive_group(ab, tag, issues)
         conds = ab.get("conditions")
         if not isinstance(conds, list):
             issues.append(f"{tag}: missing/invalid 'conditions'")
@@ -110,6 +134,9 @@ def validate_data(data) -> list:
                     if not _parseable(m.get(ch)):
                         issues.append(f"{mname}: invalid characteristic "
                                       f"{ch}={m.get(ch)!r}")
+                    elif _is_dice(m.get(ch)):
+                        issues.append(f"{mname}: {ch} cannot be a dice "
+                                      f"value ({m.get(ch)!r})")
                 for fld in ("invuln", "fnp"):
                     v = m.get(fld)
                     if v is not None and (not isinstance(v, int)
@@ -142,6 +169,14 @@ def validate_data(data) -> list:
                         if not _parseable(w.get(ch)):
                             issues.append(f"{wname}: invalid characteristic "
                                           f"{ch}={w.get(ch)!r}")
+                        elif ch not in _DICE_ALLOWED and _is_dice(w.get(ch)):
+                            issues.append(f"{wname}: {ch} cannot be a dice "
+                                          f"value ({w.get(ch)!r})")
+                    for skill in ("BS", "WS"):
+                        if skill in w and _parseable(w.get(skill)) \
+                                and _is_dice(w.get(skill)):
+                            issues.append(f"{wname}: {skill} cannot be a "
+                                          f"dice value ({w.get(skill)!r})")
                     cnt = w.get("count", 1)
                     if not isinstance(cnt, int) or cnt < 1:
                         issues.append(f"{wname}: count must be a positive "

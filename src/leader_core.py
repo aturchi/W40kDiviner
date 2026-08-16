@@ -431,7 +431,10 @@ def unit_inspect_text(unit) -> str:
         lines.append("Can support: " + ", ".join(unit.support))
     lines.append("")
     def _v(c):
-        return c.value() if hasattr(c, "value") else c
+        """Datasheet notation, NOT a roll: value() would print a random
+        result for a dice characteristic (A D3, D D6...) and a different
+        one at every refresh."""
+        return c.notation() if hasattr(c, "notation") else c
     for m in unit.models():
         inv = f"  invuln {m.invuln}+" if m.invuln else ""
         fnp = f"  FNP {m.fnp}+" if m.fnp else ""

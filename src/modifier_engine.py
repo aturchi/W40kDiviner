@@ -105,11 +105,13 @@ def _c_range(d, env):
     return half if want == "withinhalfrange" else not half
 
 
-def _c_stationary(d, env):
-    who = _key(d.get("remainedStationary"))
-    if who == "attackerstationary":
-        return bool(env.context.attacker_stationary)
-    return bool(env.context.defender_stationary)
+def _c_stationary(_d, env):
+    """Whether the ATTACKER remained stationary. The defender side has no
+    flag behind it and no ability asking for it, so the condition only
+    offers the attacker; adding the other side later means restoring the
+    choice in condition_specs, a flag in setup_panel.FLAGS and one line
+    in analyzer_core.build_views."""
+    return bool(env.context.attacker_stationary)
 
 
 def _c_charged(_d, env):
@@ -411,6 +413,15 @@ def _e_hunter_target(d, env):
     return [("weffect", f"HUNTER {kw}")] if kw else []
 
 
+def _e_single_reroll(d, env):
+    """ONE re-roll of the chosen roll per activation (not per attack).
+    The 'allowance' field is not part of the maths: it only drives the
+    warning that counts how many of these are switched on across the
+    unit's weapons (see analyzer_core.single_reroll_notes)."""
+    roll = _key(d.get("roll")) or "hit"
+    return [("weffect", f"REROLL ONE {roll.upper()}_ROLL")]
+
+
 def _e_disable_weapon(d, env):
     """The weapon in scope cannot be selected for the attack. Emitted as
     a weapon effect string; analyzer_core.select_weapons_split reads it
@@ -449,6 +460,7 @@ EFFECT_APPLIERS = {
     "disableMechanic": _e_disable_mechanic,
     "setKeyword": _e_set_keyword,
     "disableWeapon": _e_disable_weapon,
+    "singleReRoll": _e_single_reroll,
     "modifyAbsolute": _e_modify_absolute,
     "damageReduction": _e_damage_reduction,
     "damageSetZero": _e_damage_set_zero,

@@ -174,19 +174,18 @@ def _save_made(rng, ref, ap_eff, mech) -> bool:
 
 def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                    mech: am.WeaponMechanics, rng: random.Random,
-                   hazardous: bool = False, haz_damage: int = 1) -> dict:
+                   haz_damage: int = 1) -> dict:
     """Resolve every attack of one weapon (all its copies). Returns
     {'attacks': n, 'events': [{'kind': 'damage'|'mortal',
     'amount': k}, ...], 'self_damage': int, 'warnings': [...]}.
-    Events with amount 0 after FNP are dropped. With hazardous=True the
-    weapon uses the +1S/-1AP/+1D profile and rolls one Hazardous test
-    per copy (11th ed.: a 1-2 deals haz_damage self-damage)."""
+    Events with amount 0 after FNP are dropped.
+
+    A HAZARDOUS weapon is resolved exactly as the roster lists it and
+    rolls one Hazardous test per copy (11th ed.: a 1-2 deals haz_damage
+    self-damage). It does NOT get a boosted profile: datasheets list the
+    supercharged version as its own weapon, and that is the one carrying
+    the keyword."""
     half = bool(ctx.get("half_range"))
-    if hazardous:
-        weapon = copy.copy(weapon)
-        weapon.S = weapon.S.with_delta(1)
-        weapon.AP = weapon.AP.with_delta(-1)
-        weapon.D = weapon.D.with_delta(1)
 
     # number of attacks. X may be a dice expression (11th ed.), so every
     # extra is rolled; BLAST/CLEAVE roll once per group of five models,
@@ -215,7 +214,8 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
     # Close-quarters shooting: -1 to hit for a MONSTER/VEHICLE attacker
     # with everything except its CLOSE-QUARTERS weapons (see
     # analyze_weapon).
-    if ctx.get("close_quarters_penalty") and not mech.close_quarters:
+    if ctx.get("close_quarters_penalty") and not mech.close_quarters \
+            and not mech.ignore_cq_penalty:
         hit_mod -= 1
     # INDIRECT FIRE, mirroring analyze_weapon: target always in Cover,
     # no hit re-rolls, and an unmodified die below unmod_min always
@@ -285,6 +285,8 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
 
     events = []
 
+    fails = {"hit": False, "wound": False}
+
     def resolve_hit_chain(hit_is_crit: bool):
         # wound stage
         if hit_is_crit and mech.lethal_crit:
@@ -299,6 +301,7 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             r = _roll_success(rng, ok, reroll_wound)
             wounded, wound_crit = ok(r), r >= crit_on
         if not wounded:
+            fails["wound"] = True
             return
         ap_eff, go_on = ap, True
         if wound_crit and crit_mw:
@@ -320,10 +323,12 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         if kept > 0:
             events.append({"kind": "damage", "amount": kept})
 
-    for _ in range(n_att):
+    # Did any hit / wound roll fail? A "one re-roll per activation"
+    # ability (mech.single_reroll) spends its re-roll on one of them.
+    def one_attack():
         if auto:
             resolve_hit_chain(False)
-            continue
+            return
         # +1 BS makes the target easier; a characteristic never beats 1+.
         tgt = skill_target
         if mech.hitroll_mw:
@@ -339,11 +344,12 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                                  mech, mw=True)
                 if kept > 0:
                     events.append({"kind": "mortal", "amount": kept})
-                continue
+                return
             if not ok(r):
-                continue
+                fails["hit"] = True
+                return
             resolve_hit_chain(False)
-            continue
+            return
         if mech.hit_unmod_only:
             x = max(mech.hit_unmod_only, unmod_min)
             ok = lambda r: r >= x and (r == 6 or r >= crit_hit_on
@@ -354,15 +360,26 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                                  or (r > 1 and r + hit_mod >= tgt)))
         r = _roll_success(rng, ok, reroll_hit)
         if not ok(r):
-            continue
+            fails["hit"] = True
+            return
         crit = (r >= crit_hit_on and r >= unmod_min)
         resolve_hit_chain(crit)
         if crit:
             for _ in range(am.x_value(mech.sustained, rng)):
                 resolve_hit_chain(False)
 
+    for _ in range(n_att):
+        one_attack()
+    # The single re-roll: one failed die of the chosen kind is re-rolled,
+    # which is one fresh attack (hit) or one fresh wound roll onwards
+    # (wound). Mirrors the q_n term of analyze_weapon.
+    if mech.single_reroll == "hit" and fails["hit"]:
+        one_attack()
+    elif mech.single_reroll == "wound" and fails["wound"]:
+        resolve_hit_chain(False)
+
     self_damage = 0
-    if hazardous:
+    if mech.hazardous:
         for _ in range(max(1, weapon.count)):
             if _d6(rng) <= 2:
                 self_damage += haz_damage

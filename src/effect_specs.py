@@ -222,6 +222,29 @@ EFFECT_SPECS = {
                        "still). Takes no parameters.",
         "fields": [],
     },
+    "singleReRoll": {
+        "text": "Re-roll ONE die per activation",
+        "extension": True,
+        "description": "One single die of the chosen roll may be "
+                       "re-rolled each time the unit is selected to "
+                       "attack - NOT one per attack. Put it on the "
+                       "WEAPON that should get the re-roll: the rule is "
+                       "one re-roll for the whole activation, so a copy "
+                       "goes on every candidate weapon, all switched "
+                       "off, and the player ticks one in the inspect "
+                       "window. 'Allowance' says how the datasheet "
+                       "spends it: 'One roll of any kind' (hit OR wound) "
+                       "warns when more than one is on; 'One roll of "
+                       "each kind' (hit AND wound) warns when one kind "
+                       "is left unused.",
+        "fields": [
+            ("roll", CHOICE, "Roll",
+             [("Hit roll", "hit"), ("Wound roll", "wound")]),
+            ("allowance", CHOICE, "Allowance",
+             [("One roll of any kind (hit OR wound)", "exclusive"),
+              ("One roll of each kind (hit AND wound)", "eachKind")]),
+        ],
+    },
     "attachmentSlots": {
         "text": "Leader / support slots",
         "extension": True,
@@ -249,7 +272,10 @@ EFFECT_SPECS = {
                      ("Re-roll hits", "reRollHits"),
                      ("Re-roll wounds", "reRollWounds"),
                      ("Re-roll damage", "reRollDamage"),
-                     ("Save (incl. invulnerable)", "save")])],
+                     ("Save (incl. invulnerable)", "save"),
+             # Not a weapon ability: the -1 to hit a MONSTER/VEHICLE
+             # takes for shooting the unit it is engaged with.
+             ("Close-quarters hit penalty", "closeQuartersPenalty")])],
     },
     "setKeyword": {
         "text": "Set keyword",
