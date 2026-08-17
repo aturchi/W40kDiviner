@@ -8,7 +8,9 @@ or discards with *Cancel*. On Finish the merged working copy is exposed in
 ``self.result`` (``None`` on Cancel), which the caller reads after
 ``wait_window`` - the same pattern as :class:`editor_widgets.PickerDialog`.
 
-Three colour-coded boxes (all reusing :func:`ui_utils.scrollable_listbox`):
+Three colour-coded boxes: box 1 is a plain scrollable listbox, boxes 2/3
+and the inspector are :class:`ui_utils.WrappedList`, so their long lines
+wrap inside the window instead of running past its edge.
 
 * box 1 - every unit across both armies; select green/red rows to enable
   Merge/Delete, select a single blue (modified) row to populate...
@@ -23,7 +25,7 @@ import copy
 import tkinter as tk
 from tkinter import ttk
 
-from ui_utils import scrollable_listbox, multi_select_hint
+from ui_utils import scrollable_listbox, multi_select_hint, WrappedList
 import profile_diff as pd
 
 
@@ -107,12 +109,10 @@ class MergeDialog(tk.Toplevel):
             self._accept_box3_sel, self._accept_box3_all)
         # Clicking a change updates the read-only inspector below, tracking
         # the LAST-clicked row in whichever detail box was touched last.
-        self.box2_lb.bind("<<ListboxSelect>>",
-                          lambda e: self._show_inspector(self._box2,
-                                                         self.box2_lb))
-        self.box3_lb.bind("<<ListboxSelect>>",
-                          lambda e: self._show_inspector(self._box3,
-                                                         self.box3_lb))
+        self.box2_lb.bind_select(
+            lambda e: self._show_inspector(self._box2, self.box2_lb))
+        self.box3_lb.bind_select(
+            lambda e: self._show_inspector(self._box3, self.box3_lb))
 
         # Inspector (box-3 detail): for a selected MODIFIED item - chiefly a
         # replaced ability - the field-level differences (read only; accept
@@ -124,8 +124,8 @@ class MergeDialog(tk.Toplevel):
         insp.rowconfigure(1, weight=1)
         ttk.Label(insp, text="Differences of selected modified item"
                   ).grid(row=0, column=0, sticky="w")
-        ifr, self.detail_lb = scrollable_listbox(insp, exportselection=False)
-        ifr.grid(row=1, column=0, sticky="nsew")
+        self.detail_lb = WrappedList(insp, exportselection=False)
+        self.detail_lb.frame.grid(row=1, column=0, sticky="nsew")
 
         # Bottom bar: status + commit/discard.
         bottom = ttk.Frame(root)
@@ -140,16 +140,16 @@ class MergeDialog(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", self._cancel)
 
     def _detail_column(self, parent, col, title, on_sel, on_all):
-        """Build one detail box (label + coloured multi-select listbox +
-        Accept selected / Accept all). Returns the listbox."""
+        """Build one detail box (label + coloured multi-select WrappedList +
+        Accept selected / Accept all). Returns the WrappedList."""
         frame = ttk.Frame(parent)
         frame.grid(row=0, column=col, sticky="nsew", padx=4)
         frame.columnconfigure(0, weight=1)
         frame.rowconfigure(1, weight=1)
         ttk.Label(frame, text=title).grid(row=0, column=0, sticky="w")
-        lbfr, lb = scrollable_listbox(
-            frame, selectmode=tk.EXTENDED, exportselection=False)
-        lbfr.grid(row=1, column=0, sticky="nsew")
+        lb = WrappedList(frame, selectmode=tk.EXTENDED,
+                         exportselection=False)
+        lb.frame.grid(row=1, column=0, sticky="nsew")
         btns = ttk.Frame(frame)
         btns.grid(row=2, column=0, sticky="w", pady=3)
         ttk.Button(btns, text="Accept selected",
@@ -162,7 +162,9 @@ class MergeDialog(tk.Toplevel):
 
     @staticmethod
     def _fill(lb, records):
-        """Populate a listbox with .display strings coloured by .color."""
+        """Populate the box-1 listbox with .display strings coloured by
+        .color. Boxes 2/3 and the inspector use WrappedList.fill instead,
+        which wraps long rows."""
         lb.delete(0, tk.END)
         for i, rec in enumerate(records):
             lb.insert(tk.END, rec.display)
@@ -208,37 +210,36 @@ class MergeDialog(tk.Toplevel):
             self._work_unit = modified[0].unit1     # ref into working army1
             self._box2, self._box3 = pd.diff_unit(modified[0].unit1,
                                                   modified[0].unit2)
-            self._fill(self.box2_lb, self._box2)
-            self._fill(self.box3_lb, self._box3)
-            self.detail_lb.delete(0, tk.END)   # inspector waits for a click
+            self.box2_lb.fill(self._box2)
+            self.box3_lb.fill(self._box3)
+            self.detail_lb.clear()             # inspector waits for a click
         else:
             self._clear_detail()
 
     def _clear_detail(self):
         self._sel_unit = self._work_unit = None
         self._box2, self._box3 = [], []
-        self.box2_lb.delete(0, tk.END)
-        self.box3_lb.delete(0, tk.END)
-        self.detail_lb.delete(0, tk.END)
+        self.box2_lb.clear()
+        self.box3_lb.clear()
+        self.detail_lb.clear()
 
     def _show_inspector(self, records, lb):
         """Fill the read-only inspector with the field-level differences of
         the last-clicked MODIFIED row: a replaced ability shows its internal
         diff (what changed inside), a changed scalar its single old->new
         line. New/removed rows have nothing to inspect - box left empty."""
-        self.detail_lb.delete(0, tk.END)
+        self.detail_lb.clear()
         if lb.size() == 0 or self._work_unit is None:
             return
-        idx = lb.index(tk.ACTIVE)             # the last-clicked row
-        if not 0 <= idx < len(records):
+        idx = lb.active()                     # record of the last-clicked row
+        if idx is None or not 0 <= idx < len(records):
             return
         ch = records[idx]
         if ch.op == "replaced":
             old = pd.current_item(self._work_unit, ch)
-            self._fill(self.detail_lb,
-                       pd.diff_detail(old or {}, ch.payload or {}))
+            self.detail_lb.fill(pd.diff_detail(old or {}, ch.payload or {}))
         elif ch.op == "changed":
-            self._fill(self.detail_lb, [ch])
+            self.detail_lb.fill([ch])
 
     def _merge_selected(self):
         """Add every selected green (v2-only) unit into the working army."""
@@ -266,13 +267,13 @@ class MergeDialog(tk.Toplevel):
         self._reload_units()
 
     def _accept_box2_sel(self):
-        self._accept([self._box2[i] for i in self.box2_lb.curselection()])
+        self._accept([self._box2[i] for i in self.box2_lb.selection()])
 
     def _accept_box2_all(self):
         self._accept(list(self._box2))
 
     def _accept_box3_sel(self):
-        self._accept([self._box3[i] for i in self.box3_lb.curselection()])
+        self._accept([self._box3[i] for i in self.box3_lb.selection()])
 
     def _accept_box3_all(self):
         self._accept(list(self._box3))

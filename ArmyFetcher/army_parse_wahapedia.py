@@ -420,15 +420,41 @@ def _comp_costs(div):
 
 
 # --------------------------------------------------------------- datasheet
+def _anchor_name(a):
+    """Unit name from one 'can be attached to' link. Prefers the anchor id
+    (#Dark-Reapers -> 'Dark Reapers') because it carries the real casing and
+    the plural form, falling back to the visible link text, Title-cased.
+
+    Wahapedia numbers anchors that would otherwise collide
+    (#Sternguard-Veteran-Squad-1), which used to produce a phantom unit
+    name 'Sternguard Veteran Squad 1' that matches nothing. The visible
+    text never has that suffix, so it is used to detect and drop it."""
+    href = a.get("href", "")
+    text = a.get_text(" ", strip=True)
+    if "#" not in href:
+        return text.title()
+    nm = href.split("#")[-1].replace("-", " ").strip()
+    base = re.sub(r"\s+\d+$", "", nm)
+    # compare on the raw words: ap40._norm drops digits, which would also
+    # strip the number from a unit genuinely named '... 1'
+    plain = re.sub(r"\s+", " ", text).strip().upper()
+    if base != nm and plain == base.upper():
+        return base
+    return nm
+
+
 def _attach_box_keywords(ab):
     """The attachable-unit names inside one 'can be attached to' dsAbility.
-    Prefers the anchor id (#Dark-Reapers -> 'Dark Reapers'), falling back to
-    the visible (possibly singular) link text, Title-cased."""
+
+    Driven by the list ITEMS, not by the links: some entries are rendered
+    as a plain tooltip span with no <a> at all (VANGUARD VETERAN SQUAD,
+    ERADICATOR SQUAD), and reading only the anchors silently dropped
+    them."""
     seen, out = set(), []
-    for a in ab.select("a.kwbOne"):
-        href = a.get("href", "")
-        nm = (href.split("#")[-1].replace("-", " ").strip()
-              if "#" in href else a.get_text(" ", strip=True).title())
+    items = ab.find_all("li")
+    for it in items or ab.select("a.kwbOne"):
+        a = it if it.name == "a" else it.select_one("a.kwbOne")
+        nm = _anchor_name(a) if a else it.get_text(" ", strip=True).title()
         if nm and nm not in seen:
             seen.add(nm)
             out.append(nm)

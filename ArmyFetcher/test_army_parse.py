@@ -683,3 +683,44 @@ def _dropped_row_warning_test():
 
 
 _dropped_row_warning_test()
+
+
+# Regression: the 'can be attached to' box drives leadership/support.
+# Two ways it used to lose or invent entries:
+#   - an entry rendered as a plain tooltip span, with no <a> at all
+#     (VANGUARD VETERAN SQUAD, ERADICATOR SQUAD) was skipped;
+#   - a numbered duplicate anchor (#Sternguard-Veteran-Squad-1) produced a
+#     phantom unit name 'Sternguard Veteran Squad 1' matching nothing.
+def _attach_box_test():
+    from bs4 import BeautifulSoup
+    import army_parse_wahapedia as apw
+
+    box = ('<div class="dsAbility">This model can be attached to the '
+           'following units:<ul>'
+           '<li><a class="kwbOne" href="/x.html#Tactical-Squad">'
+           '<span class="kwb">TACTICAL</span> <span class="kwb">SQUAD</span>'
+           '</a></li>'
+           '<li><span class="tooltip"><span class="kwb kwbu">VANGUARD</span> '
+           '<span class="kwb kwbu">VETERAN</span> '
+           '<span class="kwb kwbu">SQUAD</span></span></li>'
+           '<li><a class="kwbOne" href="/x.html#Sternguard-Veteran-Squad">'
+           '<span class="kwb">STERNGUARD VETERAN SQUAD</span></a></li>'
+           '<li><a class="kwbOne" href="/x.html#Sternguard-Veteran-Squad-1">'
+           '<span class="kwb">STERNGUARD VETERAN SQUAD</span></a></li>'
+           '</ul></div>')
+    ab = BeautifulSoup(box, "html.parser").select_one(".dsAbility")
+    got = apw._attach_box_keywords(ab)
+    assert got == ["Tactical Squad", "Vanguard Veteran Squad",
+                   "Sternguard Veteran Squad"], got
+
+    # a numeric suffix that is part of the real name must NOT be stripped:
+    # it only goes when the visible text says otherwise
+    one = ('<div class="dsAbility">attached to the following units:<ul>'
+           '<li><a class="kwbOne" href="/x.html#Kill-Team-1">'
+           '<span class="kwb">KILL TEAM 1</span></a></li></ul></div>')
+    ab = BeautifulSoup(one, "html.parser").select_one(".dsAbility")
+    assert apw._attach_box_keywords(ab) == ["Kill Team 1"]
+    print("attach-box test PASS")
+
+
+_attach_box_test()
