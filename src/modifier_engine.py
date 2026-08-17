@@ -78,23 +78,32 @@ def _c_attack_type(d, env):
     return _key(d.get("attackType")) == env.weapon.type.lower()
 
 
+def _keyword_subject(d, env):
+    """The unit whose keywords a keyword condition reads: the target of
+    the attack by default, or the ability's own unit when 'who' is
+    'self' ("while this model is leading a BLOOD CLAWS unit")."""
+    return env.attacker if _key(d.get("who")) == "self" else env.defender
+
+
 def _c_keywords_only(d, env):
-    # Assumed semantics: at least one keyword on the DEFENDER unit
-    if env.defender is None:
+    # At least one of the keywords on the chosen unit.
+    subject = _keyword_subject(d, env)
+    if subject is None:
         return False
     kws = {str(k).strip().upper() for k in d.get("keywords", [])}
     # Both sides upper-cased: roster keywords are spelled 'Vehicle',
     # 'VEHICLE' or 'vehicle' depending on the source.
     return bool(kws & {str(k).strip().upper()
-                       for k in (env.defender.keywords or ())})
+                       for k in (subject.keywords or ())})
 
 
 def _c_keywords_excludes(d, env):
-    if env.defender is None:
+    subject = _keyword_subject(d, env)
+    if subject is None:
         return True
     kws = {str(k).strip().upper() for k in d.get("keywords", [])}
     return not (kws & {str(k).strip().upper()
-                       for k in (env.defender.keywords or ())})
+                       for k in (subject.keywords or ())})
 
 
 def _c_range(d, env):

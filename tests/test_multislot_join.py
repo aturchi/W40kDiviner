@@ -169,4 +169,27 @@ _x, taken, refused = lc.attach_all(other, [("leader", ld_a)])
 assert not taken and "cannot leader" in refused[0][1], refused
 print("attach_all takes what fits and explains what it refuses")
 
+# --- 7. a Support character counts as leading the unit ----------------
+# The leaderAttached condition ("while a CHARACTER model is leading this
+# unit") must see BOTH slots: an Ancient, an Apothecary or a Pack Leader
+# joins as a Support, and build_view already applies its leader effects
+# exactly like a Leader's.
+import analyzer_core as _ac                                # noqa: E402
+
+sup_d = copy.deepcopy(leader_d)
+sup_d["name"] = leader_d["name"] + " (support)"
+sup_d["leadership"] = []
+sup_d["support"] = [squad_u.name]
+raw2 = copy.deepcopy(data)
+raw2["armies"][0]["units"].append(sup_d)
+u4 = {u.name: u for u in um.units_from_native(raw2)}
+squad4, helper4 = u4[squad_u.name], u4[sup_d["name"]]
+assert not _ac._is_led(squad4), "a bare unit is not led"
+assert squad4.can_support(helper4), (squad4.name, helper4.name)
+assert _ac._is_led(squad4.attach_support(helper4)), \
+    "a Support character must count as leading the unit"
+assert _ac._is_led(squad4.attach_leader(ld_a)), \
+    "and so must a Leader"
+print("both attachment slots count as 'a CHARACTER is leading this unit'")
+
 print("ALL MULTI-SLOT JOIN TESTS PASS")

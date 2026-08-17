@@ -671,6 +671,9 @@ _ROLL_RE = re.compile(r"^ROLL (HIT|WOUND|SAVE) (\d)([+\-=]) (UNMOD|MOD)$")
 _CHAR_RE = re.compile(r"^CHAR (S|A|AP|D) (GT|LT|EQ|GE|LE) (-?\d+) "
                       r"(MOD|UNMOD)$")
 _RANGE_RE = re.compile(r"^REROLL DAMAGE RANGE \[(\d+),\s*(\d+)\]$")
+# "Re-roll a Damage roll of N": the single-value form of the same thing,
+# which the ability editor offers for the Damage application too.
+_DMG_ONE_RE = re.compile(r"^REROLL DAMAGE (\d+)$")
 
 
 def _eval_char_cond(m, weapon) -> bool:
@@ -766,6 +769,9 @@ def _dispatch(dyn, s, tok, mech) -> bool:
         elif _RANGE_RE.match(s):
             m = _RANGE_RE.match(s)
             mech.dmg_reroll = (int(m.group(1)), int(m.group(2)))
+        elif _DMG_ONE_RE.match(s):
+            n = int(_DMG_ONE_RE.match(s).group(1))
+            mech.dmg_reroll = (n, n)
         elif tok[0] == "REROLL" and tok[1] == "DAMAGE" and tok[2] == "FAILS":
             # "You can re-roll the Damage roll": no range is given, so
             # the sensible policy is re-rolling the results a player

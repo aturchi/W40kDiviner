@@ -258,6 +258,21 @@ class DetailInspector(unittest.TestCase):
         self.assertFalse(any("id" in s for s in labels))
         self.assertTrue(all(r.category == "detail" for r in rows))
 
+    def test_nested_id_ignored(self):
+        # ids buried in the effect/condition payload are volatile too:
+        # they must not show the ability as replaced (with an inspector
+        # that then lists no difference at all)
+        u1 = _unit("U", abilities=[_ability("Buff", aid="aaa")])
+        u2 = _unit("U", abilities=[_ability("Buff", aid="zzz")])
+        u1["abilities"][0]["effect"]["id"] = "e1"
+        u2["abilities"][0]["effect"]["id"] = "e2"
+        u1["abilities"][0]["conditions"][0]["id"] = "c1"
+        u2["abilities"][0]["conditions"][0]["id"] = "c2"
+        other, ab = pd.diff_unit(u1, u2)
+        self.assertEqual((other, ab), ([], []))
+        self.assertEqual(pd.diff_detail(u1["abilities"][0],
+                                        u2["abilities"][0]), [])
+
     def test_added_removed_condition(self):
         old = {"conditions": [{"type": "x"}], "effect": {}}
         new = {"conditions": [{"type": "x"}, {"type": "y"}], "effect": {}}

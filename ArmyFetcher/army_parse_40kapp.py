@@ -31,6 +31,21 @@ SECTION_TITLES = [
 ]
 
 _SKILL_RE = re.compile(r"^(?:\d\+|N/?A)$")    # 4+  or  N/A (auto-hit)
+# 40k.app now writes the skill of an auto-hitting weapon (Torrent) as a
+# bare dash instead of 'N/A'. A dash is ALSO a legal AP value and shows up
+# in stat lines, so it only anchors a weapon row when the row shape agrees:
+# a range two cells before and an integer Strength right after.
+_NO_SKILL_RE = re.compile(r"^[-\u2010-\u2014]$")
+_RANGE_RE = re.compile(r'^(?:\d+"|Melee|N/?A)$', re.I)
+
+
+def _is_skill_anchor(body, j) -> bool:
+    """True when body[j] is the skill cell of a weapon row."""
+    if _SKILL_RE.match(body[j]):
+        return True
+    return bool(_NO_SKILL_RE.match(body[j]) and j >= 2
+                and _RANGE_RE.match(body[j - 2])
+                and re.fullmatch(r"-?\d+", body[j + 1]))
 _BASE_RE = re.compile(r"\d+(?:\.\d+)?\s*(?:x\s*\d+(?:\.\d+)?\s*)?mm", re.I)
 _STAT_HDRS = {"M", "T", "SV", "W", "LD", "OC", "RNG", "A", "BS", "WS",
               "S", "AP", "D"}
@@ -159,22 +174,52 @@ def parse_models(body):
 
 
 # ---------------------------------------------------------------- weapons
-def parse_weapons(body, melee):
+WARNINGS = []
+
+
+def warn(message):
+    """Print a parser warning on stdout, next to the driver's own progress
+    lines, and keep it in WARNINGS so the driver can summarise at the end
+    of a long run. Both parsers recognise a row by its SHAPE and skip
+    whatever they do not understand; skipping silently is how a site change
+    once removed every Torrent weapon without a single error, so anything
+    dropped that looked like real data is reported here."""
+    WARNINGS.append(message)
+    print(f"    WARNING: {message}")
+
+
+# a lone stat cell as it appears in the linearised text: a range ('12"'),
+# an integer ('4', '-1'), a dice value ('D6', '2D6+3') or a bare dash
+_STAT_CELL_RE = re.compile(r'^(?:\d+"|-?\d+|\d*D\d+(?:[+-]\d+)?'
+                           r'|[-\u2010-\u2014])$', re.I)
+
+
+def _stat_like(lines):
+    """The lines that look like weapon stat cells - used to spot a weapon
+    row the anchor did not recognise (its cells end up either as leftover
+    tail or swallowed into the next weapon's name/keyword head)."""
+    return [ln for ln in lines if _STAT_CELL_RE.match(ln)]
+
+
+def parse_weapons(body, melee, where=""):
     """Body of a weapons section -> [{name, keywords, RNG,A,skill,S,AP,D}].
-    Anchored on the skill cell ('\\d+'). melee decides WS vs BS."""
+    Anchored on the skill cell ('\\d+'). melee decides WS vs BS.
+    'where' names the unit for warnings about rows that were not
+    recognised (see warn)."""
     # drop leading column headers
     i = 0
     while i < len(body) and body[i] in _STAT_HDRS:
         i += 1
     body = body[i:]
-    # A skill cell is '\d+' or 'N/A'. But 'N/A' also occurs as the RNG of
-    # some missiles, so only accept an anchor whose AP slot (2 cells later)
-    # is a signed integer or '-' (AP 0) - the real skill position has AP
-    # there, whereas an N/A-as-RNG would have the BS ('2+') two cells on.
+    # A skill cell is '\d+', 'N/A' or a dash (see _is_skill_anchor). But
+    # 'N/A' also occurs as the RNG of some missiles, so only accept an
+    # anchor whose AP slot (2 cells later) is a signed integer or '-'
+    # (AP 0) - the real skill position has AP there, whereas an
+    # N/A-as-RNG would have the BS ('2+') two cells on.
     anchors = [j for j, ln in enumerate(body)
-               if _SKILL_RE.match(ln) and j + 3 < len(body)
+               if j + 3 < len(body) and _is_skill_anchor(body, j)
                and re.fullmatch(r"-|-?\d+", body[j + 2])]
-    weapons, prev_end = [], 0
+    weapons, prev_end, suspect = [], 0, []
     for j in anchors:
         if j - 2 < prev_end:                  # malformed, skip
             continue
@@ -182,6 +227,9 @@ def parse_weapons(body, melee):
         s, ap, d = (body[j + 1], body[j + 2], body[j + 3])
         head = [h for h in body[prev_end:j - 2]
                 if any(ch.isalnum() for ch in h)]   # drop '\u27a4' markers
+        # stat cells inside the head mean the PREVIOUS row was not
+        # recognised and its cells were swallowed by this one
+        suspect += _stat_like(head)
         name = head[0] if head else "Weapon"
         keywords = [h for h in head[1:] if h]
         weapons.append({
@@ -191,6 +239,18 @@ def parse_weapons(body, melee):
             "skill": _num(body[j]), "S": _num(s), "AP": _num(ap), "D": d,
         })
         prev_end = j + 4
+    suspect += _stat_like(body[prev_end:])    # ... or left as a tail
+    # a dropped weapon row leaves its range and numbers behind; a lone dash
+    # (an empty stat cell elsewhere in the section) is not evidence
+    solid = [c for c in suspect if not _NO_SKILL_RE.match(c)]
+    kind = "melee" if melee else "ranged"
+    if len(solid) >= 2:
+        warn(f"{where or 'unit'}: {len(suspect)} unrecognised {kind} weapon "
+             f"cell(s) dropped ({', '.join(suspect[:8])}) - a weapon row "
+             f"was probably not parsed")
+    elif body and not weapons:
+        warn(f"{where or 'unit'}: the {kind} weapons section has "
+             f"{len(body)} line(s) but no weapon row was recognised")
     return weapons
 
 
@@ -331,8 +391,10 @@ def parse_unit(lines):
     return {
         "name": name,
         "models": parse_models(_body(lines, b, "Models")),
-        "ranged": parse_weapons(_body(lines, b, "Ranged weapons"), False),
-        "melee": parse_weapons(_body(lines, b, "Melee weapons"), True),
+        "ranged": parse_weapons(_body(lines, b, "Ranged weapons"), False,
+                                name),
+        "melee": parse_weapons(_body(lines, b, "Melee weapons"), True,
+                               name),
         "keywords": parse_simple_list(_body(lines, b, "Keywords")),
         "core_abilities": core_ab,
         "faction_abilities": parse_simple_list(
@@ -389,11 +451,37 @@ def _norm(s):
     return "".join(singular(w) for w in re.findall(r"[a-z]+", s.lower()))
 
 
+_RANGE_DASH_RE = re.compile(r"(?<=\d)[\u2010-\u2014](?=\d)")
+
+
+def normalise_dashes(text) -> str:
+    """Unicode hyphens/dashes BETWEEN DIGITS -> plain '-'. Wahapedia writes
+    size ranges with a non-breaking hyphen on some datasheets ('3\u201110 Kill
+    Team Infiltrators'), which otherwise fails the '<min>-<max> <name>'
+    match and silently drops the whole composition entry. Only digit-digit
+    dashes are touched, so model names keep their original punctuation."""
+    return _RANGE_DASH_RE.sub("-", str(text or ""))
+
+
+_SIZE_CAP_RE = re.compile(r"^\s*\d+\s+MODELS?\s+MAXIMUM\b", re.I)
+
+
+def is_size_cap_line(line) -> bool:
+    """True for a composition bullet that states the TOTAL size cap
+    ('10 MODELS MAXIMUM') instead of naming a model group. It looks exactly
+    like a real entry ('<N> <name>'), so without this it becomes a phantom
+    model profile of 10 models (seen on the Deathwatch Kill Teams)."""
+    return bool(_SIZE_CAP_RE.match(str(line or "")))
+
+
 def _parse_composition(lines):
     """Composition bullets -> [(min, max, name)]. '1 Long-quill' and
-    '9-19 Kroot Carnivores' both parse."""
+    '9-19 Kroot Carnivores' both parse; a size-cap bullet is skipped."""
     out = []
     for ln in lines:
+        ln = normalise_dashes(ln)
+        if is_size_cap_line(ln):
+            continue
         m = _COMP_RE.search(ln.lstrip("-\u2022\u25e6* "))
         if m:
             lo = int(m.group(1))
@@ -435,6 +523,45 @@ def _compose_counts(model_profiles, comp, use_max):
     return [c if c is not None else 0 for c in counts]
 
 
+def _dropped_note(profiles):
+    """Note text for model profiles the datasheet offers but that resolve
+    to 0 models at minimum unit size ('0-6 Hunting Wolves'). model_count
+    must be a positive integer, so such a profile cannot be emitted; keep
+    its stat line here instead of losing it, so it can be re-created by
+    hand in the profile editor when the group is actually fielded."""
+    out = ["Optional model profiles not fielded at minimum unit size "
+           "(add by hand if you field them):"]
+    for mp in profiles:
+        stats = ", ".join(f"{k} {mp.get(k)}" for k in
+                          ("M", "T", "Sv", "W", "LD", "OC"))
+        for k in ("invuln", "fnp"):
+            if mp.get(k):
+                stats += f", {k} {mp[k]}+"
+        out.append(f"  {mp.get('name') or '?'}: {stats}")
+    return "\n".join(out)
+
+
+def _top_up(counts, maxima, min_size):
+    """A unit must field at least as many models as the price row it is
+    given. A few datasheets state per-group minimums that add up to less
+    than that (Deathwatch Kill Teams: '3-10 Kill Team Intercessors' with a
+    single '10 models' price), so spread the shortfall over the groups that
+    still have headroom, largest headroom first - i.e. onto the bulk group
+    rather than onto the optional ones."""
+    short = min_size - sum(counts)
+    if short <= 0 or not maxima:
+        return counts
+    out = list(counts)
+    room = {i: max(0, (maxima[i] or 0) - out[i]) for i in range(len(out))}
+    for i in sorted(room, key=lambda j: (-room[j], j)):
+        if short <= 0:
+            break
+        take = min(room[i], short)
+        out[i] += take
+        short -= take
+    return out
+
+
 def _split_models(model_profiles, total):
     """Fallback split when composition can't be matched: 1 per champion
     profile, remainder on the last. Total is preserved."""
@@ -464,12 +591,17 @@ def build_units(parsed):
     counts = _compose_counts(parsed["models"], comp, use_max=False)
     if not counts or sum(counts) == 0:
         counts = _split_models(parsed["models"], min_size)
+    else:
+        counts = _top_up(counts, _compose_counts(parsed["models"], comp,
+                                                 use_max=True), min_size)
     weapon_count = max_size                       # weapons: always maximum
     weapons = ([_weapon_json(w, weapon_count) for w in parsed["ranged"]]
                + [_weapon_json(w, weapon_count) for w in parsed["melee"]])
     # keep only profiles actually fielded at min size (drop optional
-    # wargear profiles that resolve to 0 models, e.g. an unequipped hull)
+    # wargear profiles that resolve to 0 models, e.g. an unequipped hull);
+    # their stat line survives in the notes (see _dropped_note)
     present = [(mp, c) for mp, c in zip(parsed["models"], counts) if c > 0]
+    dropped = [mp for mp, c in zip(parsed["models"], counts) if c <= 0]
     if not present:
         present = [(parsed["models"][0], min_size)] if parsed["models"] \
             else []
@@ -503,7 +635,9 @@ def build_units(parsed):
         "damageable": bool(parsed.get("damageable", False)),
         "unit_composition": parsed.get("unit_composition", ""),
         "wargear_options": parsed.get("wargear_options", ""),
-        "notes": parsed.get("notes", ""),
+        "notes": "\n\n".join(x for x in (parsed.get("notes", ""),
+                                         _dropped_note(dropped) if dropped
+                                         else "") if x),
         "models": models,
     }]
 

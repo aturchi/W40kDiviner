@@ -202,4 +202,58 @@ assert len(two) == 1 and "only ONE" in two[0], two
 assert "big gun" in two[0] and "small gun" in two[0], two
 print("the exclusive-group warning names the choices that are on")
 
+# --- 6. "re-roll a Damage roll of N" ----------------------------------
+# The ability editor offers "Single result" for the Damage application
+# too, and it used to come out as an unsupported effect: only the range
+# form was parsed. A single value is just the one-element range.
+m = am.WeaponMechanics()
+am.parse_effect_strings(["REROLL DAMAGE 1"], "Ranged", m, None)
+assert not m.warnings, m.warnings
+assert m.dmg_reroll == (1, 1), m.dmg_reroll
+m2 = am.WeaponMechanics()
+am.parse_effect_strings(["REROLL DAMAGE RANGE [1, 1]"], "Ranged", m2, None)
+assert m2.dmg_reroll == m.dmg_reroll, "both forms must agree"
+# and it does raise the damage of a dice-damage weapon
+wd = Weapon(name="lance", wtype="Ranged", A="1", skill=2, S=12, AP=-4,
+            D="D6", count=1)
+soft = {"T": 4, "Sv": 7, "W": 20, "invuln": None, "fnp": None,
+        "models": 1, "keywords": set()}
+assert am.analyze_weapon(wd, soft, {}, m)["damage"]["mean"] > \
+    am.analyze_weapon(wd, soft, {}, am.WeaponMechanics())["damage"]["mean"]
+print("a single-value damage re-roll is the one-element range")
+
+# --- 7. whose keywords a keyword condition reads ----------------------
+# "While this model is leading a BLOOD CLAWS unit" asks about the
+# ATTACKING unit, not the target. The keyword conditions take a 'who'
+# field for that; it defaults to the target, which is what every
+# condition written before the field meant.
+import condition_specs as _cs                             # noqa: E402
+import modifier_engine as _me2                            # noqa: E402
+
+assert dict(_cs.CONDITION_SPECS["keywordsOnly"]["fields"][1][3])[
+    "Target unit"] == "target"
+assert _cs.new_condition("keywordsOnly")["data"]["who"]["key"] == "target", \
+    "the default must stay 'target' for backward compatibility"
+
+
+class _Side:
+    def __init__(self, kws):
+        self.keywords = kws
+
+
+env = _me2.Env(_Side(["BLOOD CLAWS", "INFANTRY"]), _Side(["VEHICLE"]),
+               _me2.Context(), "attacker")
+only = _me2.CONDITION_EVALUATORS["keywordsOnly"]
+excl = _me2.CONDITION_EVALUATORS["keywordsExcludes"]
+# no 'who' at all: the target, as before
+assert only({"keywords": ["VEHICLE"]}, env) is True
+assert only({"keywords": ["BLOOD CLAWS"]}, env) is False
+# who = self: the attacking unit
+assert only({"keywords": ["BLOOD CLAWS"], "who": "self"}, env) is True
+assert only({"keywords": ["VEHICLE"], "who": "self"}, env) is False
+# and the same for the excluding form
+assert excl({"keywords": ["VEHICLE"]}, env) is False
+assert excl({"keywords": ["VEHICLE"], "who": "self"}, env) is True
+print("keyword conditions can read the attacker's own keywords")
+
 print("ALL PLAYER-CHOICE TESTS PASS")

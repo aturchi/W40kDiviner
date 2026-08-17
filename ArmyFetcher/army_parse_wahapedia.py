@@ -35,7 +35,7 @@ _PREFIX = "/wh40k11ed/factions/"
 _SM_SLUG = "space-marines"
 
 _BASE_PAREN = re.compile(r"\s*\(.*?\)\s*$")          # "Asurmen (⌀40mm)"
-_SKILL = re.compile(r"^(?:\d\+|N/?A)$")
+_SKILL = re.compile(r"^(?:\d\+|N/?A|[-\u2010-\u2014])$", re.I)
 
 
 # --------------------------------------------------------------- helpers
@@ -45,12 +45,39 @@ def _text(el, sep=" "):
     return el.get_text(sep, strip=True) if el else ""
 
 
+def _kw_head(label):
+    """Regex matching the keyword-column heading, in BOTH syntaxes:
+    the plain 'KEYWORDS:' and the per-model 'KEYWORDS - <GROUP>:' used when
+    a datasheet gives different keywords to different models ('KEYWORDS -
+    ALL MODELS: ... | ANCIENT: ...'). Hyphen, en dash and em dash accepted."""
+    return re.compile(rf"^\s*{label}\s*(?:[-\u2013\u2014][^:]*)?:", re.I)
+
+
 def _kw_after(label, div):
-    """Text of the block starting with 'LABEL:' -> list of keywords."""
-    for el in div.find_all(string=re.compile(rf"^\s*{label}\s*:", re.I)):
-        block = el.parent.get_text(" ", strip=True)
-        block = re.split(rf"{label}\s*:", block, flags=re.I, maxsplit=1)[-1]
-        return [k.strip() for k in re.split(r"[;,]", block) if k.strip()]
+    """Keywords of the block starting with 'LABEL:' -> flat list.
+
+    The column holds one <span> group per keyword set, separated by
+    span.dsVertLine markers; the plain syntax simply has a single group.
+    Per-model groups are MERGED into one unit-level list (the engine has no
+    per-model keywords) and de-duplicated case-insensitively, keeping
+    document order."""
+    for el in div.find_all(string=_kw_head(label)):
+        col = el.parent
+        groups = [s for s in col.find_all("span", recursive=False)
+                  if "dsVertLine" not in (s.get("class") or [])]
+        if groups:
+            blocks = [g.get_text(" ", strip=True) for g in groups]
+        else:                                  # no span wrapper: plain text
+            block = col.get_text(" ", strip=True)
+            blocks = [_kw_head(label).split(block, maxsplit=1)[-1]]
+        out, seen = [], set()
+        for block in blocks:
+            for kw in re.split(r"[;,]", block):
+                kw = kw.strip()
+                if kw and kw.casefold() not in seen:
+                    seen.add(kw.casefold())
+                    out.append(kw)
+        return out
     return []
 
 
@@ -116,22 +143,33 @@ def _comp_lines(div):
         return []
     out = []
     for ln in blk.get_text("\n").split("\n"):
-        ln = ln.strip()
+        ln = ap40.normalise_dashes(ln).strip()
         if "equipped with" in ln.lower():
             break
         if ln.upper() == "OR" and out:        # second size option: stop
             break
+        if ap40.is_size_cap_line(ln):         # '10 MODELS MAXIMUM': a cap,
+            continue                          # not a model group
         if re.match(r"\d+(?:-\d+)?\s+\S", ln):
             out.append(ln)
     return out
 
 
-def _weapon_rows(div):
+_RNG_CELL = re.compile(r'^(?:\d+"|Melee|N/?A)$', re.I)
+_ATTACKS_CELL = re.compile(r"^\d*D?\d+(?:[+-]\d+)?$", re.I)
+
+
+def _weapon_rows(div, where=""):
     """All weapon data rows in the datasheet as (name, keywords, cells6),
     where cells6 = [RNG, A, skill, S, AP, D]. A weapon row ends in those 6
     cells with the skill cell shaped like '3+' or 'N/A'; the name cell is
-    the one just before, its kwbw spans are the weapon keywords."""
-    out = []
+    the one just before, its kwbw spans are the weapon keywords.
+
+    A row whose skill cell is not recognised is skipped - silently, which
+    is how a site change could remove weapons without any error - so a row
+    that otherwise HAS the shape of a weapon (range + attacks) is reported
+    via ap40.warn instead."""
+    out, suspect = [], []
     for tr in div.find_all("tr"):
         cells = tr.find_all(["td", "th"])
         if len(cells) < 7:
@@ -139,6 +177,8 @@ def _weapon_rows(div):
         six = cells[-6:]
         vals = [_text(c) for c in six]
         if not _SKILL.match(vals[2]):         # stats[2] must be the skill
+            if _RNG_CELL.match(vals[0]) and _ATTACKS_CELL.match(vals[1]):
+                suspect.append((_text(cells[-7]), vals))
             continue
         name_cell = cells[-7]
         # keywords are kwbw spans APPENDED after the name; remove those
@@ -151,14 +191,17 @@ def _weapon_rows(div):
                     name_cell.get_text(" ", strip=True)).strip(" ,")
         if nm:
             out.append((nm, kws, vals))
+    for nm, vals in suspect:
+        ap40.warn(f"{where or 'unit'}: weapon row '{nm or '?'}' skipped - "
+                  f"unexpected skill cell {vals[2]!r} (row: {vals})")
     return out
 
 
-def _parse_weapons(div):
+def _parse_weapons(div, where=""):
     """Ranged and melee weapon profiles parsed from a datasheet div, as two
-    lists of native weapon dicts."""
+    lists of native weapon dicts. 'where' names the unit for warnings."""
     ranged, melee = [], []
-    for nm, kws, v in _weapon_rows(div):
+    for nm, kws, v in _weapon_rows(div, where):
         rng, a, skill, s, ap, d = v
         melee_w = rng.strip().lower() == "melee"
         w = {"name": nm, "keywords": kws,
@@ -332,6 +375,27 @@ def _section_text(div, label):
     return "" if txt.strip(" .").lower() == "none" else txt
 
 
+_COST_PART_RE = re.compile(r"^\s*(\d+)\s+\S")
+
+
+def _cost_row_models(label) -> int:
+    """Total model count a cost-table row is priced for, or None when the
+    row is not a size row. Two label styles exist: the usual '5 models',
+    and a per-group list naming the models ('3 Wolf Guard Headtakers,
+    3 Hunting Wolves' = 6, '1 Sword Brother, 4 Neophytes, 5 Initiates'
+    = 10), whose parts are summed. Wargear surcharge rows ('per Storm
+    Shield', '+ 1 Invader ATV') match neither and return None."""
+    if re.search(r"\d+\s+models?", label, re.I):
+        return int(re.search(r"\d+", label).group())
+    total = 0
+    for part in label.split(","):
+        m = _COST_PART_RE.match(part)
+        if not m:
+            return None
+        total += int(m.group(1))
+    return total or None
+
+
 def _comp_costs(div):
     """Cost table -> [(models, points)]. Wahapedia lists escalating tiers
     for the same unit ('1st-2nd units: 100', '3rd+ unit: 110'); the roster
@@ -345,10 +409,11 @@ def _comp_costs(div):
     seen = {}
     for tr in head.find_parent("table").find_all("tr"):
         cells = [_text(c) for c in tr.find_all("td")]
-        mm = next((c for c in cells if re.search(r"\d+\s+models?", c)), None)
+        sizes = [n for n in (_cost_row_models(c) for c in cells)
+                 if n is not None]
         pp = next((c for c in cells if re.fullmatch(r"\d+", c.strip())), None)
-        if mm and pp:
-            m = int(re.search(r"\d+", mm).group())
+        if sizes and pp:
+            m = sizes[0]
             if m not in seen:
                 seen[m] = int(pp)
     return list(seen.items())
@@ -547,7 +612,7 @@ def parse_datasheet(div):
     for m in models:
         if not m["name"]:
             m["name"] = name
-    ranged, melee = _parse_weapons(div)
+    ranged, melee = _parse_weapons(div, name)
     core, faction, unit_ab = _parse_abilities(div)
     # 'Feel No Pain N+' is a model characteristic, not an ability: lift it
     # from core onto every model's fnp stat (the engine reads model.fnp).
@@ -600,15 +665,38 @@ def _chapter_bit_map(codes):
     return {code: i + 1 for i, code in enumerate(sorted(codes))}
 
 
+_COLOR_CH_RE = re.compile(r"^dsColorFrCH([A-Z0-9]{2})$")
+
+
+def _colour_chapters(div, bitmap):
+    """Chapter codes taken from the datasheet's colour classes
+    (``dsColorFrCH<code>`` on its inner frames; a base / multi-chapter
+    sheet uses ``dsColorFrSM`` instead, which names no chapter). Verified
+    to agree with the data-f CH bitmask on every current SM datasheet, so
+    it is a safe last resort when the mask names no chapter at all."""
+    out = set()
+    for el in div.find_all(class_=_COLOR_CH_RE):
+        for cls in el.get("class", []):
+            m = _COLOR_CH_RE.match(cls)
+            if m and (not bitmap or m.group(1) in bitmap):
+                out.add(m.group(1))
+    return out
+
+
 def _ds_chapters(div, bitmap):
     """Set of chapter codes a datasheet belongs to. Prefers the modern
     ``data-f`` CH bitmask (decoded via 'bitmap'); falls back to the legacy
     ``CH<code>`` CSS classes on the outer div when no mask is present, so
-    the parser keeps working on both old and new Wahapedia markup."""
+    the parser keeps working on both old and new Wahapedia markup.
+
+    A few sheets carry a mask with the 'no filter' bit only (Wahapedia
+    shows them under no chapter filter at all, e.g. Kill Team Cassius):
+    they would belong to no file, so the colour class decides instead."""
     m = _DATAF_CH_RE.search(div.get("data-f", "") or "")
     if m and bitmap:
         mask = int(m.group(1), 16)
-        return {code for code, bit in bitmap.items() if mask >> bit & 1}
+        codes = {code for code, bit in bitmap.items() if mask >> bit & 1}
+        return codes or _colour_chapters(div, bitmap)
     # legacy markup: chapter codes were CSS classes on the datasheet div
     return {c[2:] for c in div.get("class", [])
             if re.fullmatch(r"CH[A-Z0-9]{2}", c)}
@@ -681,7 +769,7 @@ def collect(src, faction=None, debug=False):
     raw = _raw(src, faction)
 
     if faction == _SM_SLUG:
-        yield from _collect_space_marines(raw)
+        yield from _collect_space_marines(raw, debug)
         return
 
     std, leg = [], []
@@ -706,7 +794,7 @@ def _chapter_map(soup):
     return out
 
 
-def _collect_space_marines(raw):
+def _collect_space_marines(raw, debug=False):
     pre = _preamble(raw)
     chapters = _chapter_map(pre)
     # data-f CH bitmask decoder (built from ALL codes incl. C0, so the
@@ -715,15 +803,22 @@ def _collect_space_marines(raw):
     # base roster = 'No supplements' (C0); chapter extras = <code> - C0
     base_std, base_leg = [], []
     per_chapter = {c: {"std": [], "leg": []} for c in chapters}
+    orphans = []
     for div in _datasheet_divs(raw):
         kind, chset = _classify(div, bitmap)
         parsed = parse_datasheet(div)
         if "C0" in chset:
             (base_leg if kind == "legend" else base_std).append(parsed)
-        else:
+        elif chset & set(chapters):
             for code in chset & set(chapters):
                 bucket = per_chapter[code]
                 bucket["leg" if kind == "legend" else "std"].append(parsed)
+        else:
+            # belongs to no roster file: never drop one silently
+            orphans.append(parsed["name"])
+    if orphans:
+        print(f"  WARNING: {len(orphans)} Space Marines datasheet(s) match "
+              f"no chapter and were skipped: {', '.join(orphans)}")
     if base_std:
         yield _SM_SLUG, ap40.faction_json(
             "Space Marines", base_std)

@@ -98,15 +98,31 @@ CONDITION_SPECS = {
         "fields": [("attackerCharged", CHOICE, "Requirement",
                     [("Attacker charged", "attackerCharged")])],
     },
+    # 'who' lets a condition ask about the ATTACKING unit's own keywords
+    # ("while this model is leading a BLOOD CLAWS unit"), not only the
+    # target's. It defaults to the target, which is what every condition
+    # written before this field meant.
     "keywordsOnly": {
         "text": "Keywords (only)",
-        "description": "Require one or more keywords.",
-        "fields": [("keywords", KEYWORDS, "Keywords (comma-separated)", None)],
+        "description": "Require one or more keywords. 'Whose keywords' "
+                       "picks the unit they are read from: the target of "
+                       "the attack (the default, and what every older "
+                       "condition means) or the unit the ability belongs "
+                       "to - which is how \"while this model is leading a "
+                       "BLOOD CLAWS unit\" is written.",
+        "fields": [("keywords", KEYWORDS, "Keywords (comma-separated)",
+                    None),
+                   ("who", CHOICE, "Whose keywords",
+                    [("Target unit", "target"), ("This unit", "self")])],
     },
     "keywordsExcludes": {
         "text": "Keywords (excludes)",
-        "description": "Exclude one or more keywords.",
-        "fields": [("keywords", KEYWORDS, "Keywords (comma-separated)", None)],
+        "description": "Exclude one or more keywords. 'Whose keywords' "
+                       "works as in Keywords (only).",
+        "fields": [("keywords", KEYWORDS, "Keywords (comma-separated)",
+                    None),
+                   ("who", CHOICE, "Whose keywords",
+                    [("Target unit", "target"), ("This unit", "self")])],
     },
     "woundType": {
         "text": "Wound type",

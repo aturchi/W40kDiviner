@@ -20,10 +20,13 @@ import attack_math as am
 
 
 def _is_led(unit) -> bool:
-    """True when a CHARACTER is attached to this unit (the combined unit
-    built by attach_leader carries it), which is what the leaderAttached
-    condition asks about."""
-    return getattr(unit, "attached_leader", None) is not None
+    """True when a CHARACTER is attached to this unit, which is what the
+    leaderAttached condition asks about. Both slots count: a Support
+    character (an Ancient, an Apothecary, a Pack Leader) is a CHARACTER
+    joining the unit exactly like a Leader, and build_view already
+    applies its leader effects the same way."""
+    return bool(getattr(unit, "attached_leaders", None)
+                or getattr(unit, "attached_supports", None))
 
 
 def build_views(attacker, defender, flags: dict, mods: dict = None):

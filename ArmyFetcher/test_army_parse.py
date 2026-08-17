@@ -1,6 +1,9 @@
 """Offline self-test: run the pure parser/builder against linearised
 line fixtures derived from real 40k.app pages (markdown markers stripped,
 links reduced to their text - i.e. what soup.get_text() yields)."""
+import os
+import sys
+
 import army_parse_40kapp as ap
 
 # ---- Strike Team (fixture) ----
@@ -452,3 +455,231 @@ def _selection_parser_test():
 
 
 _selection_parser_test()
+
+
+# Regression: per-model keyword syntax on Wahapedia datasheets
+# ("KEYWORDS - ALL MODELS: ... | <MODEL>: ..."), seen on Company Heroes,
+# Aun'va and Wolf Guard Headtakers. All groups are merged into one
+# unit-level list, de-duplicated, document order kept.
+def _per_model_keywords_test():
+    from bs4 import BeautifulSoup
+    import army_parse_wahapedia as apw
+
+    def kws(inner):
+        soup = BeautifulSoup(f'<div class="dsOuterFrame datasheet">{inner}</div>',
+                             "html.parser")
+        return (apw._kw_after("KEYWORDS", soup),
+                apw._kw_after("FACTION KEYWORDS", soup))
+
+    plain = ('<div class="ds2colKW"><div class="dsLeftColKW">KEYWORDS: '
+             '<span><span class="kwb">INFANTRY</span>; '
+             '<span class="kwb">GRENADES</span></span></div>'
+             '<div class="dsRightColKW">FACTION KEYWORDS:<br>'
+             '<span><span class="kwb">ADEPTUS</span> '
+             '<span class="kwb">ASTARTES</span></span></div></div>')
+    unit, faction = kws(plain)
+    assert unit == ["INFANTRY", "GRENADES"], unit
+    assert faction == ["ADEPTUS ASTARTES"], faction
+
+    # two groups, an en dash in the heading, one keyword shared by both
+    per_model = ('<div class="ds2colKW"><div class="dsLeftColKW">'
+                 'KEYWORDS \u2013 ALL MODELS: '
+                 '<span><span class="kwb">INFANTRY</span>; '
+                 '<span class="kwb">IMPERIUM</span></span>'
+                 '<span class="dsVertLine"></span>HUNTING WOLVES: '
+                 '<span><span class="kwb">BEASTS</span>; '
+                 '<span class="kwb">IMPERIUM</span></span></div>'
+                 '<div class="dsRightColKW">FACTION KEYWORDS:<br>'
+                 '<span><span class="kwb">SPACE</span> '
+                 '<span class="kwb">WOLVES</span></span></div></div>')
+    unit, faction = kws(per_model)
+    assert unit == ["INFANTRY", "IMPERIUM", "BEASTS"], unit
+    assert faction == ["SPACE WOLVES"], faction
+
+    # single named group (no 'ALL MODELS'), hyphen instead of en dash
+    single = ('<div class="ds2colKW"><div class="dsLeftColKW">'
+              'KEYWORDS - AUN\u2019VA: <span><span class="kwb">CHARACTER</span>; '
+              '<span class="kwb">EPIC</span> <span class="kwb">HERO</span>'
+              '</span></div></div>')
+    assert kws(single)[0] == ["CHARACTER", "EPIC HERO"], kws(single)[0]
+    print("per-model keyword syntax PASS")
+
+
+_per_model_keywords_test()
+
+
+# Regression: chapter fallback + composition/cost edge cases
+# (Kill Team Cassius: CH mask with the no-filter bit only; cost rows
+# labelled with model names; '10 MODELS MAXIMUM' cap bullet; non-breaking
+# hyphen in a size range; optional 0-model groups kept in the notes.)
+def _chapter_and_composition_test():
+    from bs4 import BeautifulSoup
+    import army_parse_wahapedia as apw
+    import army_parse_40kapp as ap40
+
+    bitmap = apw._chapter_bit_map(["C0", "BA", "DW", "SW"])   # C0=1,BA=2,DW=3,SW=4
+
+    def ds(dataf, colour):
+        html = (f'<div class="dsOuterFrame datasheet" data-f="{dataf}">'
+                f'<div class="ds2colKW {colour}">x</div></div>')
+        return BeautifulSoup(html, "html.parser").select_one("div.dsOuterFrame")
+
+    # normal sheet: the mask decides, the colour is ignored
+    assert apw._ds_chapters(ds("CH:9,AA:1", "dsColorFrSM"), bitmap) == {"DW"}
+    # no-filter bit only -> fall back to the colour class (Kill Team Cassius)
+    assert apw._ds_chapters(ds("CH:1,AA:141", "dsColorFrCHDW"), bitmap) == {"DW"}
+    # no chapter anywhere -> empty, and the caller warns instead of dropping
+    assert apw._ds_chapters(ds("CH:1,AA:141", "dsColorFrSM"), bitmap) == set()
+
+    # cost rows: 'N models', named groups (summed), surcharge rows ignored
+    assert apw._cost_row_models("5 models") == 5
+    assert apw._cost_row_models("3 Wolf Guard Headtakers, "
+                                "3 Hunting Wolves") == 6
+    assert apw._cost_row_models("1 Sword Brother, 4 Neophytes, "
+                                "5 Initiates") == 10
+    assert apw._cost_row_models("per Storm Shield") is None
+    assert apw._cost_row_models("+ 1 Invader ATV") is None
+
+    # composition: cap bullet dropped, non-breaking hyphen range parsed
+    comp = ap40._parse_composition(["10 MODELS MAXIMUM",
+                                    "1 Kill Team Sergeant",
+                                    "3\u201110 Kill Team Intercessors",
+                                    "0-4 Kill Team Intercessors with "
+                                    "plasma incinerators"])
+    assert comp == [(1, 1, "Kill Team Sergeant"),
+                    (3, 10, "Kill Team Intercessors"),
+                    (0, 4, "Kill Team Intercessors with "
+                           "plasma incinerators")], comp
+
+    # top-up: per-group minimums (1+3=4) below the priced size (10) are
+    # topped up on the group with the most headroom, optional groups stay 0
+    assert ap40._top_up([1, 3, 0], [1, 10, 4], 10) == [1, 9, 0]
+    assert ap40._top_up([1, 5], [1, 10], 3) == [1, 5]      # already enough
+
+    # a 0-model optional group is not emitted but survives in the notes
+    note = ap40._dropped_note([{"name": "Hunting Wolves", "M": 10, "T": 4,
+                                "Sv": 6, "W": 1, "LD": 8, "OC": 0}])
+    assert "Hunting Wolves" in note and "T 4" in note
+    print("chapter/composition edge-case test PASS")
+
+
+_chapter_and_composition_test()
+
+
+# Regression: the weapon-row anchor must accept every rendering of a
+# "no ballistic skill" cell (torrent weapons - T'au flamers, Dvorgite
+# skinner...). A rejected row is dropped SILENTLY, so the weapon simply
+# vanishes from the unit.
+def _torrent_skill_cell_test():
+    from bs4 import BeautifulSoup
+    import army_parse_wahapedia as apw
+
+    row = ('<table><tr><td></td><td><span>T\u2019au flamer</span></td>'
+           '<td>12"</td><td>D6</td><td>{skill}</td><td>4</td><td>0</td>'
+           '<td>1</td></tr></table>')
+
+    for skill in ("N/A", "NA", "n/a", "N/a", "-", "\u2013", "\u2014", "4+"):
+        soup = BeautifulSoup(row.format(skill=skill), "html.parser")
+        got = apw._weapon_rows(soup)
+        assert got, f"weapon row dropped for skill cell {skill!r}"
+        assert got[0][0] == "T\u2019au flamer", got[0][0]
+
+    # a non-weapon row must still be rejected
+    soup = BeautifulSoup(row.format(skill="Infantry"), "html.parser")
+    assert apw._weapon_rows(soup) == []
+    print("torrent skill-cell test PASS")
+
+
+_torrent_skill_cell_test()
+
+
+# Regression: 40k.app switched the skill cell of auto-hitting (Torrent)
+# weapons from 'N/A' to a bare dash. A row that fails the skill anchor is
+# dropped SILENTLY, so every T'au flamer / Dvorgite skinner vanished - and
+# the dropped row's lines were absorbed into the next weapon's name/keyword
+# head, taking a second weapon with them.
+def _dash_skill_anchor_test():
+    import army_parse_40kapp as ap40
+
+    # RNG, A, skill, S, AP, D
+    body = ["T\u2019au flamer", "Ignores Cover", "Torrent",
+            '12"', "D6", "-", "4", "0", "1"]
+    got = ap40.parse_weapons(list(body), melee=False)
+    assert len(got) == 1, got
+    w = got[0]
+    assert w["name"] == "T\u2019au flamer", w["name"]
+    assert w["skill"] is None                      # auto-hit
+    assert (w["S"], w["AP"], w["D"]) == (4, 0, "1"), w
+    assert w["keywords"] == ["Ignores Cover", "Torrent"], w["keywords"]
+
+    # the old spelling still works
+    body_na = list(body)
+    body_na[5] = "N/A"
+    assert len(ap40.parse_weapons(body_na, melee=False)) == 1
+
+    # a dash in the AP slot must NOT anchor a phantom weapon: one weapon in,
+    # one weapon out
+    ap_dash = ["Pulse rifle", "Rapid Fire 1", '30"', "1", "4+", "5", "-", "1"]
+    got = ap40.parse_weapons(ap_dash, melee=False)
+    assert len(got) == 1 and got[0]["name"] == "Pulse rifle", got
+
+    # dashes with no weapon-row shape around them must not anchor anything
+    noise = ["Invulnerable save:", "-", "-", "-", "-", "-"]
+    assert ap40.parse_weapons(noise, melee=False) == []
+    print("dash skill-cell anchor test PASS")
+
+
+_dash_skill_anchor_test()
+
+
+# The parsers must SAY something when they skip data that looked real:
+# a silently dropped row is how the Torrent-weapon regression went unnoticed.
+def _dropped_row_warning_test():
+    from bs4 import BeautifulSoup
+    import army_parse_40kapp as ap40
+    import army_parse_wahapedia as apw
+
+    def captured(fn):
+        """Run fn, return the warnings it emitted."""
+        start = len(ap40.WARNINGS)
+        buf, sys.stdout = sys.stdout, open(os.devnull, "w")
+        try:
+            fn()
+        finally:
+            sys.stdout.close()
+            sys.stdout = buf
+        return ap40.WARNINGS[start:]
+
+    # 40k.app: a weapon row whose skill cell is unknown ('X') is dropped;
+    # its stat cells survive as a tail and must be reported
+    body = ["Burst cannon", '18"', "4", "4+", "5", "0", "1",
+            "T\u2019au flamer", "Torrent", '12"', "D6", "X", "4", "0", "1"]
+    got = {}
+    msgs = captured(lambda: got.setdefault(
+        "w", ap40.parse_weapons(list(body), False, "Test unit")))
+    assert len(got["w"]) == 1                       # only the burst cannon
+    assert msgs and "Test unit" in msgs[0], msgs
+    assert "ranged" in msgs[0]
+
+    # ... and nothing is reported when every row parses
+    ok_body = ["Burst cannon", '18"', "4", "4+", "5", "0", "1"]
+    assert captured(lambda: ap40.parse_weapons(ok_body, False, "Test")) == []
+
+    # Wahapedia: same, on a table row with the six trailing stat cells
+    row = ('<div><table><tr><td></td><td><span>T\u2019au flamer</span></td>'
+           '<td>12"</td><td>D6</td><td>X</td><td>4</td><td>0</td>'
+           '<td>1</td></tr></table></div>')
+    soup = BeautifulSoup(row, "html.parser")
+    msgs = captured(lambda: apw._weapon_rows(soup, "Ghostkeel"))
+    assert msgs and "Ghostkeel" in msgs[0] and "'X'" in msgs[0], msgs
+
+    # a non-weapon table row with 7+ cells must NOT warn
+    noise = ('<div><table><tr><td></td><td>QUARRY TALLY</td><td>Incursion</td>'
+             '<td>2</td><td>Strike Force</td><td>3</td><td>Onslaught</td>'
+             '<td>4</td></tr></table></div>')
+    soup = BeautifulSoup(noise, "html.parser")
+    assert captured(lambda: apw._weapon_rows(soup, "Bunker")) == []
+    print("dropped-row warning test PASS")
+
+
+_dropped_row_warning_test()

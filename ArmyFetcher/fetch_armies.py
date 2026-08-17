@@ -210,6 +210,11 @@ def main():
         except Exception as exc:                         # noqa: BLE001
             print(f"  ({label}: failed - {exc})")
     print(f"done: {written} file(s)")
+    # Both parsers skip anything they cannot recognise; a long run scrolls
+    # the individual warnings off the screen, so repeat the count here.
+    if army_parse_40kapp.WARNINGS:
+        print(f"{len(army_parse_40kapp.WARNINGS)} warning(s) - data was "
+              f"skipped; scroll up for details")
 
 
 if __name__ == "__main__":

@@ -20,4 +20,19 @@ assert um._kw_key("Wolves") == um._kw_key("Wolf")
 # spurious entry doesn't match
 assert not m("Any unit with", tau_kw)
 assert not m("", tau_kw)
+# A keyword may itself be several words: 'Wolf Guard Headtakers' is
+# covered by the pair 'WOLF GUARD' + 'HEADTAKERS' (the datasheet splits
+# them because the unit mixes INFANTRY and BEASTS models).
+MIXED = ["INFANTRY", "BEASTS", "IMPERIUM", "WOLF GUARD", "HEADTAKERS",
+         "HUNTING WOLVES", "ADEPTUS ASTARTES", "SPACE WOLVES"]
+assert um._entry_matches_keywords("Wolf Guard Headtakers", MIXED)
+assert um._entry_matches_keywords("Hunting Wolves", MIXED)
+assert um._entry_matches_keywords("Wolf Guard", MIXED)
+# ...but a word the unit does not carry still fails
+assert not um._entry_matches_keywords("Wolf Guard Terminators", MIXED)
+assert not um._entry_matches_keywords("Blood Claws", MIXED)
+# and a single stray word of a multi-word keyword is not a match
+assert not um._entry_matches_keywords("Guard", MIXED)
+print("a multi-word keyword covers several words of an entry")
+
 print("ALL KW-MATCH TESTS PASS")

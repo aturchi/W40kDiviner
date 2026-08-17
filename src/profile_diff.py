@@ -183,12 +183,18 @@ def _fmt(value) -> str:
     return "\u2205" if value is None else str(value)
 
 
-def _strip_ids(ability: dict) -> dict:
-    """Deep copy of an ability with the volatile 'id' removed, for
-    content comparison."""
-    d = copy.deepcopy(ability)
-    d.pop("id", None)
-    return d
+def _strip_ids(obj):
+    """Deep copy of 'obj' with EVERY 'id' key removed, at any depth.
+    Ids are volatile (random per file, re-stamped on save), so they must
+    never make two otherwise identical items compare as different: a
+    top-level ability id, or one buried in an effect / condition payload,
+    would otherwise show the ability as 'replaced' with an inspector that
+    lists no difference at all."""
+    if isinstance(obj, dict):
+        return {k: _strip_ids(v) for k, v in obj.items() if k != "id"}
+    if isinstance(obj, list):
+        return [_strip_ids(x) for x in obj]
+    return copy.deepcopy(obj)
 
 
 # ---------- diff builders ----------
@@ -478,8 +484,10 @@ def diff_detail(old, new) -> List[Change]:
     two versions of a 'replaced' ability). Returns display-only Change
     records (category 'detail', empty locator - never applied): the
     inspector box shows WHAT changed inside an item, while acceptance
-    stays at whole-item granularity in box 2/3. 'id' is ignored."""
+    stays at whole-item granularity in box 2/3. 'id' is ignored at every
+    depth, including inside a whole sub-object that was added or removed
+    (where it would otherwise be printed as part of the value)."""
     rows: list = []
-    _walk_detail(old, new, (), rows)
+    _walk_detail(_strip_ids(old), _strip_ids(new), (), rows)
     return [Change(op=tag, category="detail", locator=(), key="",
                    label=label, tag=tag) for tag, label in rows]

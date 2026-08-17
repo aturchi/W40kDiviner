@@ -42,26 +42,46 @@ def _kw_key(word):
     return _kw_singular(w)
 
 
+def _covers(words, keyword_words):
+    """True if the word list can be tiled by whole keywords, in order.
+    'keyword_words' is the set of keywords already split into words."""
+    n = len(words)
+    reach = [False] * (n + 1)
+    reach[0] = True
+    for i in range(n):
+        if not reach[i]:
+            continue
+        for seq in keyword_words:
+            j = i + len(seq)
+            if seq and j <= n and tuple(words[i:j]) == seq:
+                reach[j] = True
+    return reach[n]
+
+
 def _entry_matches_keywords(entry, keywords):
     """True if a leadership/support ENTRY matches a unit's keyword list.
     Two datasheet conventions both occur, so either satisfies a match:
       (A) whole-entry: the entry equals a keyword -- Space Marines store the
           full unit name as a single keyword ('Assault Intercessor Squad').
-      (B) word-by-word: EVERY word of the entry is some keyword -- T'au
-          store split keywords ('Crisis','Fireknife','Battlesuit') while the
-          entry is the full name 'Crisis Fireknife Battlesuits'.
+      (B) piece-by-piece: the entry splits into a SEQUENCE of keywords --
+          T'au store split keywords ('Crisis','Fireknife','Battlesuit')
+          while the entry is the full name 'Crisis Fireknife Battlesuits'.
+          A keyword may itself be several words, so 'Wolf Guard
+          Headtakers' matches the pair 'WOLF GUARD' + 'HEADTAKERS'.
     All comparisons use _kw_key (lowercased, singular/plural-insensitive).
     An empty entry never matches."""
     e = entry.strip()
     if not e:
         return False
-    kw = {_kw_key(k) for k in keywords}
     # (A) whole-entry equals a keyword
     if _entry_key(e) in {_entry_key(k) for k in keywords}:
         return True
-    # (B) every word of the entry is a keyword
+    # (B) the entry's words are covered by keywords, in order
     words = [_kw_key(w) for w in _re.split(r"\s+", e) if w.strip()]
-    return bool(words) and all(w in kw for w in words)
+    kw_words = {tuple(_kw_key(w) for w in _re.split(r"\s+", str(k))
+                      if w.strip())
+                for k in keywords}
+    return bool(words) and _covers(words, kw_words)
 
 
 def _entry_key(text):
