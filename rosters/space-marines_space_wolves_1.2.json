@@ -1,0 +1,4486 @@
+{
+ "format": "w40k-sim/6",
+ "armies": [
+  {
+   "name": "Space Wolves",
+   "units": [
+    {
+     "name": "Arjac Rockfist",
+     "profile_name": "Arjac Rockfist",
+     "points": 95,
+     "keywords": [
+      "INFANTRY",
+      "CHARACTER",
+      "EPIC HERO",
+      "IMPERIUM",
+      "TERMINATOR",
+      "ARJAC ROCKFIST",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Deep Strike",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "9740265fd0ae4117adeda07209b51cf2"
+      },
+      {
+       "name": "Leader",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "0eb3666e15224c6185b523e8cfd2b36b"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "018678d318244e7ea28703491d08d738"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Anvil of Endurance",
+       "description": "While this model is leading a unit, each time a model in that unit is destroyed by a melee attack, if that model has not fought this phase, roll one D6: on a 4+, do not remove the destroyed model from play. The destroyed model can fight after the attacking unit has finished making its attacks, and is then removed from play.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "e9083ce12c9e4b3189be8fe63cddcdfb"
+      }
+     ],
+     "leadership": [
+      "Wolf Guard Terminators"
+     ],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Arjac Rockfist – EPIC HERO\nThis model is equipped with:\nFoehammer.",
+     "wargear_options": "",
+     "notes": "",
+     "models": [
+      {
+       "name": "Arjac Rockfist –",
+       "model_count": 1,
+       "M": 6,
+       "T": 5,
+       "Sv": 2,
+       "W": 6,
+       "LD": 6,
+       "OC": 1,
+       "invuln": 4,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [
+        {
+         "name": "Champion of the Kingsguard [hit]",
+         "description": "Each time this model makes a melee attack that targets a CHARACTER unit, you can re-roll the Hit roll and you can re-roll the Wound roll .",
+         "enabled": true,
+         "share_with_unit": false,
+         "conditions": [
+          {
+           "text": "Profile role",
+           "type": "profileRole",
+           "data": {
+            "profileRole": "Attacker",
+            "negate": false
+           },
+           "description": "Require the current profile to be set as the attacker or defender.",
+           "preselected": false
+          },
+          {
+           "text": "Attack type",
+           "type": "attackType",
+           "data": {
+            "attackType": "Melee",
+            "negate": false
+           },
+           "description": "Restrict to just melee attacks or ranged attacks.",
+           "preselected": false
+          },
+          {
+           "text": "Keywords (only)",
+           "type": "keywordsOnly",
+           "data": {
+            "keywords": [
+             "CHARACTER"
+            ],
+            "who": {
+             "title": "Target unit",
+             "key": "target"
+            },
+            "negate": false
+           },
+           "description": "Require one or more keywords. 'Whose keywords' picks the unit they are read from: the target of the attack (the default, and what every older condition means) or the unit the ability belongs to - which is how \"while this model is leading a BLOOD CLAWS unit\" is written.",
+           "preselected": false
+          }
+         ],
+         "effect": {
+          "text": "Re-roll",
+          "type": "reRoll",
+          "data": {
+           "application": {
+            "title": "Hit roll",
+            "key": "hitRoll"
+           },
+           "resultToReRoll": {
+            "title": "All possible failures",
+            "key": "allPossibleFailures"
+           },
+           "valueSingle": "",
+           "valueRange": "",
+           "limit": {
+            "title": "No limit",
+            "key": "none"
+           }
+          }
+         },
+         "id": "5c7bed328b1144fa8714ce6415e6c1f3"
+        },
+        {
+         "name": "Champion of the Kingsguard [wound]",
+         "description": "Each time this model makes a melee attack that targets a CHARACTER unit, you can re-roll the Hit roll and you can re-roll the Wound roll .",
+         "enabled": true,
+         "share_with_unit": false,
+         "conditions": [
+          {
+           "text": "Profile role",
+           "type": "profileRole",
+           "data": {
+            "profileRole": "Attacker",
+            "negate": false
+           },
+           "description": "Require the current profile to be set as the attacker or defender.",
+           "preselected": false
+          },
+          {
+           "text": "Attack type",
+           "type": "attackType",
+           "data": {
+            "attackType": "Melee",
+            "negate": false
+           },
+           "description": "Restrict to just melee attacks or ranged attacks.",
+           "preselected": false
+          },
+          {
+           "text": "Keywords (only)",
+           "type": "keywordsOnly",
+           "data": {
+            "keywords": [
+             "CHARACTER"
+            ],
+            "who": {
+             "title": "Target unit",
+             "key": "target"
+            },
+            "negate": false
+           },
+           "description": "Require one or more keywords. 'Whose keywords' picks the unit they are read from: the target of the attack (the default, and what every older condition means) or the unit the ability belongs to - which is how \"while this model is leading a BLOOD CLAWS unit\" is written.",
+           "preselected": false
+          }
+         ],
+         "effect": {
+          "text": "Re-roll",
+          "type": "reRoll",
+          "data": {
+           "application": {
+            "title": "Wound roll",
+            "key": "woundRoll"
+           },
+           "resultToReRoll": {
+            "title": "All possible failures",
+            "key": "allPossibleFailures"
+           },
+           "valueSingle": "",
+           "valueRange": "",
+           "limit": {
+            "title": "No limit",
+            "key": "none"
+           }
+          }
+         },
+         "id": "6d70effdc4ba44c08c798b71f9cea54f"
+        }
+       ],
+       "weapons": [
+        {
+         "name": "Foehammer",
+         "type": "Ranged",
+         "RNG": 6,
+         "A": "1",
+         "S": 8,
+         "AP": -2,
+         "D": "3",
+         "count": 1,
+         "keywords": [
+          "anti-monster 3+",
+          "anti-vehicle 3+",
+          "assault"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Foehammer",
+         "type": "Melee",
+         "RNG": null,
+         "A": "5",
+         "S": 8,
+         "AP": -2,
+         "D": "3",
+         "count": 1,
+         "keywords": [
+          "anti-monster 3+",
+          "anti-vehicle 3+",
+          "precision"
+         ],
+         "abilities": [],
+         "WS": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Logan Grimnar",
+     "profile_name": "Logan Grimnar",
+     "points": 100,
+     "keywords": [
+      "INFANTRY",
+      "CHARACTER",
+      "EPIC HERO",
+      "IMPERIUM",
+      "TERMINATOR",
+      "CHAPTER MASTER",
+      "LOGAN GRIMNAR",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Deep Strike",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "53378adb23414c0d8599a74ca5626d21"
+      },
+      {
+       "name": "Leader",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "87db65b8d24740f799031761a567e731"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "2ace7fdbd9eb43549d3fd800d8fc9637"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "High King of Fenris",
+       "description": "Once per battle round , in your Movement phase , you can select one friendly SPACE WOLVES unit that is in Reserves . If you do, until the end of the phase, for the purpose of setting up that unit on the battlefield, treat the current battle round number as being one higher than it actually is.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "4fb143dc79e4475394a505109d1cf690"
+      },
+      {
+       "name": "Guile of the Wolf (Aura)",
+       "description": "Once per turn, when your opponent targets a unit from their army within 12\" of this model with a stratagem, you can use this ability. If you do increase the CP cost of that use of that stratagem by 1CP.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "b7c78b66845b4c6b921ca7fb1aaf8fa3"
+      }
+     ],
+     "leadership": [
+      "Wolf Guard Terminators"
+     ],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Logan Grimnar – EPIC HERO\nThis model is equipped with:\nstorm bolter; Axe Morkai; Tyrnak and Fenrir.",
+     "wargear_options": "",
+     "notes": "[EMBARKING WITHIN TRANSPORTS]\nThis model can embark within friendly ADEPTUS ASTARTES TRANSPORT models that can transport TERMINATOR models. When doing so, it takes up the space of 4 INFANTRY models.",
+     "models": [
+      {
+       "name": "Logan Grimnar –",
+       "model_count": 1,
+       "M": 6,
+       "T": 5,
+       "Sv": 2,
+       "W": 8,
+       "LD": 6,
+       "OC": 1,
+       "invuln": 4,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Storm bolter",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "2",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "rapid fire 2"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Axe Morkai – strike",
+         "type": "Melee",
+         "RNG": null,
+         "A": "6",
+         "S": 8,
+         "AP": -2,
+         "D": "3",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "WS": 2
+        },
+        {
+         "name": "Axe Morkai – sweep",
+         "type": "Melee",
+         "RNG": null,
+         "A": "10",
+         "S": 6,
+         "AP": -2,
+         "D": "1",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "WS": 2
+        },
+        {
+         "name": "Tyrnak and Fenrir",
+         "type": "Melee",
+         "RNG": null,
+         "A": "6",
+         "S": 5,
+         "AP": -1,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "extra attacks"
+         ],
+         "abilities": [],
+         "WS": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Njal Stormcaller",
+     "profile_name": "Njal Stormcaller",
+     "points": 75,
+     "keywords": [
+      "INFANTRY",
+      "CHARACTER",
+      "EPIC HERO",
+      "PSYKER",
+      "IMPERIUM",
+      "TACTICUS",
+      "NJAL STORMCALLER",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Leader",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "0cc0fb00a35c42ca8583c01b8ab2dfe1"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "9e01cd62ff6649da820d97909d55c029"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Wind Walker (Psychic)",
+       "description": "While this model is leading a unit, ranged weapons equipped by models in that unit have the [ASSAULT] ability and each time that unit Advances, do not make an Advance roll . Instead, until the end of the phase, add 6\" to the Move characteristic of models in this unit.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "90c70f75a8784a4ead2862168e5fda6f"
+      },
+      {
+       "name": "Tempest’s Wrath (Psychic)",
+       "description": "In your Shooting phase , after this model’s unit has shot, select one enemy unit (excluding MONSTERS and VEHICLES ) hit by one or more of those attacks made with this model’s Living Lightning weapon. Until the start of your next turn, that enemy unit is stormwracked. While a unit is stormwracked, subtract 6\" from the Range characteristic of ranged weapons equipped by models in that unit (to a minimum of 12\").",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "0673a84f600b4bb6b11a2101892605fe"
+      }
+     ],
+     "leadership": [
+      "Blood Claws",
+      "Grey Hunters",
+      "Wolf Guard Headtakers"
+     ],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Njal Stormcaller – EPIC HERO\nThis model is equipped with:\nbolt pistol; Living Lightning; Staff of the Stormcaller.",
+     "wargear_options": "",
+     "notes": "",
+     "models": [
+      {
+       "name": "Njal Stormcaller –",
+       "model_count": 1,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 4,
+       "LD": 6,
+       "OC": 1,
+       "invuln": 4,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Bolt pistol",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Living Lightning – witchfire",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "D6",
+         "S": 7,
+         "AP": -1,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "psychic",
+          "sustained hits 2"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Living Lightning – focused witchfire",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "2D6",
+         "S": 7,
+         "AP": -1,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "hazardous",
+          "psychic",
+          "sustained hits 2"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Staff of the Stormcaller",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 7,
+         "AP": -1,
+         "D": "D3",
+         "count": 1,
+         "keywords": [
+          "psychic",
+          "sustained hits 2"
+         ],
+         "abilities": [],
+         "WS": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Ragnar Blackmane",
+     "profile_name": "Ragnar Blackmane",
+     "points": 90,
+     "keywords": [
+      "INFANTRY",
+      "CHARACTER",
+      "EPIC HERO",
+      "IMPERIUM",
+      "GRENADES",
+      "TACTICUS",
+      "CAPTAIN",
+      "RAGNAR BLACKMANE",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Leader",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "c353debb8fdf4c7c9e66c89e84ab9733"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "d110aa1861d9445390ff9ab4dd7b09dc"
+      }
+     ],
+     "abilities": [],
+     "leadership": [
+      "Blood Claws",
+      "Wolf Guard Headtakers"
+     ],
+     "support": [],
+     "leader_effects": [
+      {
+       "name": "War Howl",
+       "description": "While this model is leading a BLOOD CLAWS unit, each time a model in that unit makes a melee attack, you can re-roll the Wound roll . While this model is leading a WOLF GUARD HEADTAKERS unit, that unit is eligible to declare a charge in a turn in which it Advanced .",
+       "enabled": true,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Attack type",
+         "type": "attackType",
+         "data": {
+          "attackType": "Melee",
+          "negate": false
+         },
+         "description": "Restrict to just melee attacks or ranged attacks.",
+         "preselected": false
+        },
+        {
+         "text": "Keywords (only)",
+         "type": "keywordsOnly",
+         "data": {
+          "keywords": [
+           "BLOOD CLAWS"
+          ],
+          "who": {
+           "title": "This unit",
+           "key": "self"
+          },
+          "negate": false
+         },
+         "description": "Require one or more keywords. 'Whose keywords' picks the unit they are read from: the target of the attack (the default, and what every older condition means) or the unit the ability belongs to - which is how \"while this model is leading a BLOOD CLAWS unit\" is written.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Re-roll",
+        "type": "reRoll",
+        "data": {
+         "application": {
+          "title": "Wound roll",
+          "key": "woundRoll"
+         },
+         "resultToReRoll": {
+          "title": "All possible failures",
+          "key": "allPossibleFailures"
+         },
+         "valueSingle": "",
+         "valueRange": "",
+         "limit": {
+          "title": "No limit",
+          "key": "none"
+         }
+        }
+       },
+       "id": "d4ca27a98ece4d7792bdb51860ec7ca2"
+      }
+     ],
+     "apply_leader_effects_to_self": true,
+     "damageable": false,
+     "unit_composition": "1 Ragnar Blackmane – EPIC HERO\nThis model is equipped with:\nbolt pistol; Frostfang.",
+     "wargear_options": "",
+     "notes": "",
+     "models": [
+      {
+       "name": "Ragnar Blackmane –",
+       "model_count": 1,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 5,
+       "LD": 6,
+       "OC": 1,
+       "invuln": 4,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Bolt pistol",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Frostfang",
+         "type": "Melee",
+         "RNG": null,
+         "A": "8",
+         "S": 6,
+         "AP": -3,
+         "D": "2",
+         "count": 1,
+         "keywords": [
+          "sustained hits 1"
+         ],
+         "abilities": [
+          {
+           "name": "Battle-lust",
+           "description": "Each time this model ends a Charge move , until the end of the turn, add 2 to the Attacks characteristic of this model’s Frostfang weapon.",
+           "enabled": true,
+           "share_with_unit": false,
+           "conditions": [
+            {
+             "text": "Profile role",
+             "type": "profileRole",
+             "data": {
+              "profileRole": "Attacker",
+              "negate": false
+             },
+             "description": "Require the current profile to be set as the attacker or defender.",
+             "preselected": false
+            },
+            {
+             "text": "Attack type",
+             "type": "attackType",
+             "data": {
+              "attackType": "Melee",
+              "negate": false
+             },
+             "description": "Restrict to just melee attacks or ranged attacks.",
+             "preselected": false
+            },
+            {
+             "text": "Attacker charged",
+             "type": "attackerCharged",
+             "data": {
+              "attackerCharged": {
+               "title": "Attacker charged",
+               "key": "attackerCharged"
+              },
+              "negate": false
+             },
+             "description": "Whether the attacker charged.",
+             "preselected": false
+            }
+           ],
+           "effect": {
+            "text": "Increase weapon attacks",
+            "type": "increaseWeaponAttacks",
+            "data": {
+             "increaseWeaponAttacksValue": "2",
+             "applyToExtraAttacks": false
+            }
+           },
+           "id": "b00cf347213d4e20b306d778a400d0a7"
+          }
+         ],
+         "WS": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Ulrik The Slayer",
+     "profile_name": "Ulrik The Slayer",
+     "points": 70,
+     "keywords": [
+      "INFANTRY",
+      "CHARACTER",
+      "EPIC HERO",
+      "GRENADES",
+      "IMPERIUM",
+      "WOLF PRIEST",
+      "ULRIK THE SLAYER",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Leader",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "678e4afbaf45488ea03a8b6b97bd388a"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "e5a01561034a47db8e176dc017d7ba43"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Slayer’s Oath",
+       "description": "At the start of the battle, select one of the following keywords to be this model’s Slayer’s Oath: CHARACTER ; MONSTER ; VEHICLE . The first time this model’s unit destroys a unit with this model’s Slayer’s Oath keyword, if your Detachment rule has a Saga , until the end of the battle, this model’s unit receives the benefits of that Detachment rule as if that Saga had been completed.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "9a86f0f1fa034a02a8549b7084faff2a"
+      }
+     ],
+     "leadership": [
+      "Blood Claws",
+      "Grey Hunters",
+      "Wolf Guard Headtakers"
+     ],
+     "support": [],
+     "leader_effects": [
+      {
+       "name": "Oathbound [hit]",
+       "description": "While this model is leading a unit, each time a model in that unit makes a melee attack, add 1 to the Hit roll . If that attack targets a unit that has this model’s Slayer’s Oath keyword (see above), add 1 to the Wound roll as well.",
+       "enabled": true,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Attack type",
+         "type": "attackType",
+         "data": {
+          "attackType": "Melee",
+          "negate": false
+         },
+         "description": "Restrict to just melee attacks or ranged attacks.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Modify (relative)",
+        "type": "modifyRelative",
+        "data": {
+         "application": {
+          "title": "Hit roll",
+          "key": "hitRoll"
+         },
+         "operator": {
+          "title": "Add",
+          "key": "add"
+         },
+         "relativeValue": "1"
+        }
+       },
+       "id": "b9eb0fd8a33b48e7b93ef6a5eaee7706"
+      },
+      {
+       "name": "Oathbound [wound vs the Slayer’s Oath keyword]",
+       "description": "While this model is leading a unit, each time a model in that unit makes a melee attack, add 1 to the Hit roll . If that attack targets a unit that has this model’s Slayer’s Oath keyword (see above), add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Attack type",
+         "type": "attackType",
+         "data": {
+          "attackType": "Melee",
+          "negate": false
+         },
+         "description": "Restrict to just melee attacks or ranged attacks.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Modify (relative)",
+        "type": "modifyRelative",
+        "data": {
+         "application": {
+          "title": "Wound roll",
+          "key": "woundRoll"
+         },
+         "operator": {
+          "title": "Add",
+          "key": "add"
+         },
+         "relativeValue": "1"
+        }
+       },
+       "id": "ebad4943ab1c48a89cf23c60562b8407"
+      }
+     ],
+     "apply_leader_effects_to_self": true,
+     "damageable": false,
+     "unit_composition": "1 Ulrik the Slayer – EPIC HERO\nThis model is equipped with:\nplasma pistol; artificer crozius arcanum.",
+     "wargear_options": "",
+     "notes": "",
+     "models": [
+      {
+       "name": "Ulrik the Slayer –",
+       "model_count": 1,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 4,
+       "LD": 5,
+       "OC": 1,
+       "invuln": 4,
+       "fnp": 6,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Plasma pistol – standard",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 7,
+         "AP": -2,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Plasma pistol – supercharge",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 8,
+         "AP": -3,
+         "D": "2",
+         "count": 1,
+         "keywords": [
+          "hazardous",
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Artificer crozius arcanum",
+         "type": "Melee",
+         "RNG": null,
+         "A": "5",
+         "S": 6,
+         "AP": -2,
+         "D": "2",
+         "count": 1,
+         "keywords": [
+          "ANTI-MONSTER 4+",
+          "ANTI-VEHICLE 4+"
+         ],
+         "abilities": [],
+         "WS": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Bjorn The Fell-handed",
+     "profile_name": "Bjorn The Fell-handed",
+     "points": 160,
+     "keywords": [
+      "VEHICLE",
+      "WALKER",
+      "CHARACTER",
+      "EPIC HERO",
+      "SMOKE",
+      "IMPERIUM",
+      "DREADNOUGHT",
+      "BJORN THE FELL-HANDED",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Deadly Demise 1",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "3e3264c5775048b5b1698e926ee49c1b"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "fb893b5c16e2401db40f54f5a62dec83"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Legendary Tenacity",
+       "description": "Each time an attack targets this model, if the Strength characteristic of that attack is greater than this model’s Toughness characteristic, subtract 1 from the Wound roll .",
+       "enabled": true,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Defender",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Attack characteristic",
+         "type": "attackCharacteristic",
+         "data": {
+          "attackChar": {
+           "title": "Strength",
+           "key": "strength"
+          },
+          "comparison": {
+           "title": "Greater than",
+           "key": "greaterThan"
+          },
+          "attackCharValue": "9",
+          "attackCharState": {
+           "title": "Modified",
+           "key": "modified"
+          },
+          "negate": false
+         },
+         "description": "Evaluate an attack characteristic.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Modify (relative)",
+        "type": "modifyRelative",
+        "data": {
+         "application": {
+          "title": "Wound roll",
+          "key": "woundRoll"
+         },
+         "operator": {
+          "title": "Subtract",
+          "key": "subtract"
+         },
+         "relativeValue": "1"
+        }
+       },
+       "id": "a56de483671c4b8aa5b9012067112a9a"
+      },
+      {
+       "name": "Ancient Tactician",
+       "description": "At the start of your Command phase , if this model is on the battlefield, you gain 1CP.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "a2136f0c92764e6faa4255dc1a8aa73f"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Bjorn the Fell-Handed– EPIC HERO\nThis model is equipped with:\nassault cannon; heavy flamer; Trueclaw.",
+     "wargear_options": "This model’s assault cannon can be replaced with one of the following:\n  ◦ Helfrost cannon\n  ◦ Multi-melta",
+     "notes": "",
+     "models": [
+      {
+       "name": "Bjorn the Fell-Handed–",
+       "model_count": 1,
+       "M": 9,
+       "T": 9,
+       "Sv": 2,
+       "W": 8,
+       "LD": 6,
+       "OC": 3,
+       "invuln": 5,
+       "fnp": 5,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Assault cannon",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "6",
+         "S": 6,
+         "AP": 0,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "devastating wounds"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Heavy flamer",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D6",
+         "S": 5,
+         "AP": -1,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "ignores cover",
+          "torrent"
+         ],
+         "abilities": [],
+         "BS": null
+        },
+        {
+         "name": "Helfrost cannon – dispersed",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D6",
+         "S": 6,
+         "AP": -1,
+         "D": "2",
+         "count": 1,
+         "keywords": [
+          "torrent"
+         ],
+         "abilities": [],
+         "BS": null
+        },
+        {
+         "name": "Helfrost cannon – focused",
+         "type": "Ranged",
+         "RNG": 36,
+         "A": "1",
+         "S": 10,
+         "AP": -3,
+         "D": "5",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Multi-melta",
+         "type": "Ranged",
+         "RNG": 18,
+         "A": "2",
+         "S": 9,
+         "AP": -4,
+         "D": "D6",
+         "count": 1,
+         "keywords": [
+          "melta 2"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Trueclaw",
+         "type": "Melee",
+         "RNG": null,
+         "A": "6",
+         "S": 12,
+         "AP": -2,
+         "D": "3",
+         "count": 1,
+         "keywords": [
+          "lethal hits"
+         ],
+         "abilities": [],
+         "WS": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Murderfang",
+     "profile_name": "Murderfang",
+     "points": 150,
+     "keywords": [
+      "VEHICLE",
+      "WALKER",
+      "CHARACTER",
+      "EPIC HERO",
+      "IMPERIUM",
+      "DREADNOUGHT",
+      "WULFEN",
+      "MURDERFANG",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Deadly Demise 1",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "d7d8d6be57ff4087aa9c64e24f61e7b5"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Curse of the Wulfen",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "bf129f1095864cd4aa2bbf3b2f15ed20"
+      },
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "2338bae841ac43d3b0a12d7e57450a3d"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Murder-maker (Aura)",
+       "description": "In the Fight phase , each time an attack targets a friendly WULFEN unit within 6\" of this model, if a model in that unit is destroyed as a result of that attack, if that model has not fought this phase, roll one D6: on a 4+, do not remove the destroyed model from play; it can fight after the attacking unit has finished making its attacks, and is then removed from play.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "afb917e8d2c54d7e837cd5adb7378180"
+      },
+      {
+       "name": "Bestial Fury",
+       "description": "You can re-roll Advance and Charge rolls made for this model.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "60152a1cdc53487e81119fef3310a290"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Murderfang – EPIC HERO\nThis model is equipped with:\nheavy flamer; storm bolter; Murderclaws.",
+     "wargear_options": "",
+     "notes": "[FORCE OF UNTAMED DESTRUCTION]\nThis model cannot be your WARLORD .",
+     "models": [
+      {
+       "name": "Murderfang –",
+       "model_count": 1,
+       "M": 9,
+       "T": 9,
+       "Sv": 2,
+       "W": 8,
+       "LD": 6,
+       "OC": 0,
+       "invuln": null,
+       "fnp": 6,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Heavy flamer",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D6",
+         "S": 5,
+         "AP": -1,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "ignores cover",
+          "torrent"
+         ],
+         "abilities": [],
+         "BS": null
+        },
+        {
+         "name": "Storm bolter",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "2",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "rapid fire 2"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Murderclaws",
+         "type": "Melee",
+         "RNG": null,
+         "A": "8",
+         "S": 14,
+         "AP": -2,
+         "D": "3",
+         "count": 1,
+         "keywords": [
+          "sustained hits 1",
+          "twin-linked"
+         ],
+         "abilities": [],
+         "WS": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Iron Priest",
+     "profile_name": "Iron Priest",
+     "points": 50,
+     "keywords": [
+      "INFANTRY",
+      "CHARACTER",
+      "IMPERIUM",
+      "TECHMARINE",
+      "IRON PRIEST",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Leader",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "a9a0bc6c4a0a46d2bb16293256dd0148"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "9b032973f7114bfdb91490df2159de94"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Iron Priest",
+       "description": "While this model is within 3\" of one or more friendly ADEPTUS ASTARTES VEHICLE units, this model has the Lone Operative ability.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "2aebad998aed4ea6a83fcfbccae8ed8a"
+      },
+      {
+       "name": "Gift of the Iron Wolf",
+       "description": "In your Command phase , you can select one friendly ADEPTUS ASTARTES VEHICLE model within 3\" of this model. That model regains up to D3 lost wounds and, until the start of your next Command phase, select one ranged weapon equipped by that model to have the [RAPID FIRE 1] ability. Each model can only be selected for this ability or the Blessing of the Omnissiah ability once per turn.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "4b92b1aee25446f6bc5e7e8fb13f95e0"
+      },
+      {
+       "name": "Judgement of the Omnissiah",
+       "description": "Each time this model makes an attack that targets an enemy unit within Engagement Range of one or more friendly ADEPTUS ASTARTES VEHICLE units, you can re-roll the Wound roll .",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Re-roll",
+        "type": "reRoll",
+        "data": {
+         "application": {
+          "title": "Wound roll",
+          "key": "woundRoll"
+         },
+         "resultToReRoll": {
+          "title": "All possible failures",
+          "key": "allPossibleFailures"
+         },
+         "valueSingle": "",
+         "valueRange": "",
+         "limit": {
+          "title": "No limit",
+          "key": "none"
+         }
+        }
+       },
+       "id": "0dd27f27e5c94a4693da7a00857fff53"
+      }
+     ],
+     "leadership": [
+      "Blood Claws",
+      "Grey Hunters",
+      "Wolf Guard Headtakers"
+     ],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Iron Priest\nThis model is equipped with:\nhelfrost pistol; tempest hammer and servo-arm.",
+     "wargear_options": "",
+     "notes": "",
+     "models": [
+      {
+       "name": "Iron Priest",
+       "model_count": 1,
+       "M": 7,
+       "T": 4,
+       "Sv": 2,
+       "W": 4,
+       "LD": 6,
+       "OC": 1,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Helfrost pistol – dispersed",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D6",
+         "S": 4,
+         "AP": -1,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "pistol",
+          "torrent"
+         ],
+         "abilities": [],
+         "BS": null
+        },
+        {
+         "name": "Helfrost pistol – focused",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 6,
+         "AP": -3,
+         "D": "3",
+         "count": 1,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Tempest hammer and servo-arm",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 8,
+         "AP": -2,
+         "D": "3",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "WS": 4
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Wolf Guard Battle Leader",
+     "profile_name": "Wolf Guard Battle Leader",
+     "points": 65,
+     "keywords": [
+      "INFANTRY",
+      "CHARACTER",
+      "IMPERIUM",
+      "TACTICUS",
+      "WOLF GUARD",
+      "BATTLE LEADER",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Leader",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "828a0a8b39b742c4803813553a8b7f35"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "e3e7a75df5974e0cb1242a2ba5b63610"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Heroic Last Stand",
+       "description": "If this model is destroyed by a melee attack, if it has not fought this phase, roll one D6: on a 2+, do not remove it from play. The destroyed model can fight after the attacking unit has finished making its attacks, and is then removed from play.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "1b24bb5b9d2c48dbb25405df5f34f11f"
+      }
+     ],
+     "leadership": [
+      "Blood Claws",
+      "Grey Hunters",
+      "Wolf Guard Headtakers"
+     ],
+     "support": [],
+     "leader_effects": [
+      {
+       "name": "Tempered Ferocity [SUSTAINED HITS 1]",
+       "description": "While this model is leading a unit, weapons equipped by models in that unit have the [SUSTAINED HITS 1] ability and, each time a model in that unit makes an attack that targets an enemy unit within 6\", re-roll a Hit roll of 1.",
+       "enabled": true,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Critical hit/wound",
+         "type": "crit",
+         "data": {
+          "crit": {
+           "title": "Critical hit",
+           "key": "hitRoll"
+          },
+          "negate": false
+         },
+         "description": "Require a hit or wound to be \"critical\".",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Generate extras",
+        "type": "generateExtras",
+        "data": {
+         "option": {
+          "title": "Extra hits",
+          "key": "extraHits"
+         },
+         "extrasValue": "1"
+        }
+       },
+       "id": "2b5bbeeb5dd543568471ff65fe5ce424"
+      },
+      {
+       "name": "Tempered Ferocity [re-roll 1s within 6\"]",
+       "description": "While this model is leading a unit, weapons equipped by models in that unit have the [SUSTAINED HITS 1] ability and, each time a model in that unit makes an attack that targets an enemy unit within 6\", re-roll a Hit roll of 1.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Re-roll",
+        "type": "reRoll",
+        "data": {
+         "application": {
+          "title": "Hit roll",
+          "key": "hitRoll"
+         },
+         "resultToReRoll": {
+          "title": "Single result",
+          "key": "single"
+         },
+         "valueSingle": "1",
+         "valueRange": "",
+         "limit": {
+          "title": "No limit",
+          "key": "none"
+         }
+        }
+       },
+       "id": "06beb513c7a84820a2f4c0a521fbe5db"
+      }
+     ],
+     "apply_leader_effects_to_self": true,
+     "damageable": false,
+     "unit_composition": "1 Wolf Guard Battle Leader\nThis model is equipped with:\nmaster-crafted power weapon; storm shield.",
+     "wargear_options": "This model's master-crafted power weapon can be replaced with 1 thunder hammer.\nThis model’s storm shield can be replaced with one of the following:\n  ◦ 1 master-crafted bolt carbine\n  ◦ 1 master-crafted heavy bolt pistol\n  ◦ 1 plasma pistol",
+     "notes": "",
+     "models": [
+      {
+       "name": "Wolf Guard Battle Leader",
+       "model_count": 1,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 5,
+       "LD": 6,
+       "OC": 1,
+       "invuln": 4,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [
+        {
+         "name": "Storm Shield",
+         "description": "The bearer has a Wounds characteristic of 6.",
+         "enabled": false,
+         "share_with_unit": false,
+         "conditions": [],
+         "effect": {
+          "text": "Modify (absolute)",
+          "type": "modifyAbsolute",
+          "data": {
+           "application": {
+            "title": "Wounds (W)",
+            "key": "w"
+           },
+           "absoluteValue": "6"
+          }
+         },
+         "id": "2543b59d40d0484fb5adc29acb7a9c81"
+        }
+       ],
+       "weapons": [
+        {
+         "name": "Master-crafted bolt carbine",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "2",
+         "S": 4,
+         "AP": 0,
+         "D": "2",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Master-crafted heavy bolt pistol",
+         "type": "Ranged",
+         "RNG": 18,
+         "A": "1",
+         "S": 4,
+         "AP": -1,
+         "D": "2",
+         "count": 1,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – standard",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 7,
+         "AP": -2,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – supercharge",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 8,
+         "AP": -3,
+         "D": "2",
+         "count": 1,
+         "keywords": [
+          "hazardous",
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Master-crafted power weapon",
+         "type": "Melee",
+         "RNG": null,
+         "A": "7",
+         "S": 5,
+         "AP": -2,
+         "D": "2",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "WS": 2
+        },
+        {
+         "name": "Thunder hammer",
+         "type": "Melee",
+         "RNG": null,
+         "A": "5",
+         "S": 8,
+         "AP": -2,
+         "D": "2",
+         "count": 1,
+         "keywords": [
+          "devastating wounds"
+         ],
+         "abilities": [],
+         "WS": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Wolf Priest",
+     "profile_name": "Wolf Priest",
+     "points": 70,
+     "keywords": [
+      "INFANTRY",
+      "CHARACTER",
+      "IMPERIUM",
+      "TACTICUS",
+      "WOLF PRIEST",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Leader",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "b7ba191e9a374dcdb4efc938c89691ac"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "0536120fd8af43a6b56dc1d3157b3940"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Healing Balms",
+       "description": "While this model is leading a unit, in your Command phase , you can return 1 destroyed model (excluding CHARACTER models) to that unit.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "54b2c94208854f61b8a6af45ab4cac48"
+      }
+     ],
+     "leadership": [
+      "Blood Claws",
+      "Grey Hunters",
+      "Wolf Guard Headtakers"
+     ],
+     "support": [],
+     "leader_effects": [
+      {
+       "name": "Litany of Hate",
+       "description": "While this model is leading a unit, each time a model in that unit makes a melee attack, add 1 to the Wound roll .",
+       "enabled": true,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Attack type",
+         "type": "attackType",
+         "data": {
+          "attackType": "Melee",
+          "negate": false
+         },
+         "description": "Restrict to just melee attacks or ranged attacks.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Modify (relative)",
+        "type": "modifyRelative",
+        "data": {
+         "application": {
+          "title": "Wound roll",
+          "key": "woundRoll"
+         },
+         "operator": {
+          "title": "Add",
+          "key": "add"
+         },
+         "relativeValue": "1"
+        }
+       },
+       "id": "6b1149a7e2ca42dc87869d0f973c7061"
+      }
+     ],
+     "apply_leader_effects_to_self": true,
+     "damageable": false,
+     "unit_composition": "1 Wolf Priest\nThis model is equipped with:\nabsolvor bolt pistol; crozius arcanum.",
+     "wargear_options": "",
+     "notes": "",
+     "models": [
+      {
+       "name": "Wolf Priest",
+       "model_count": 1,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 4,
+       "LD": 6,
+       "OC": 1,
+       "invuln": 4,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Absolvor bolt pistol",
+         "type": "Ranged",
+         "RNG": 18,
+         "A": "1",
+         "S": 5,
+         "AP": -1,
+         "D": "2",
+         "count": 1,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Crozius arcanum",
+         "type": "Melee",
+         "RNG": null,
+         "A": "5",
+         "S": 6,
+         "AP": -1,
+         "D": "2",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "WS": 2
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Blood Claws",
+     "profile_name": "Blood Claws",
+     "points": 135,
+     "keywords": [
+      "INFANTRY",
+      "BATTLELINE",
+      "GRENADES",
+      "IMPERIUM",
+      "TACTICUS",
+      "BLOOD CLAWS",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "0e89ba676b824284bd226157657dbaf9"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Berserk Charge",
+       "description": "This unit is eligible to declare a charge in a turn in which it Advanced .",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "09b3fdfdc9464b4895402a990ab65114"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Blood Claw Pack Leader\n9-19 Blood Claws\nEvery model is equipped with:\nbolt pistol; Astartes chainsword.",
+     "wargear_options": "The Blood Claw Pack Leader’s bolt pistol can be replaced with 1 plasma pistol.\nThe Blood Claw Pack Leader’s Astartes chainsword can be replaced with 1 power weapon.",
+     "notes": "[SUPPORTED BY]\nThis unit can be supported by the following units:\nWOLF GUARD PACK LEADER\nWOLF GUARD PACK LEADER IN TERMINATOR ARMOUR",
+     "models": [
+      {
+       "name": "Blood Claw Pack Leader",
+       "model_count": 1,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 2,
+       "LD": 6,
+       "OC": 2,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Bolt pistol",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 20,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – standard",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 7,
+         "AP": -2,
+         "D": "1",
+         "count": 20,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – supercharge",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 8,
+         "AP": -3,
+         "D": "2",
+         "count": 20,
+         "keywords": [
+          "hazardous",
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Astartes chainsword",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 4,
+         "AP": -1,
+         "D": "1",
+         "count": 20,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Power weapon",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 5,
+         "AP": -2,
+         "D": "1",
+         "count": 20,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        }
+       ]
+      },
+      {
+       "name": "Blood Claws",
+       "model_count": 9,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 2,
+       "LD": 6,
+       "OC": 2,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": []
+      }
+     ]
+    },
+    {
+     "name": "Grey Hunters",
+     "profile_name": "Grey Hunters",
+     "points": 165,
+     "keywords": [
+      "INFANTRY",
+      "BATTLELINE",
+      "GRENADES",
+      "IMPERIUM",
+      "TACTICUS",
+      "GREY HUNTERS",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "be27aa51aa8a409895e414e1f8a09bd8"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Cunning Hunters",
+       "description": "Each time a model in this unit makes an attack, re-roll a Wound roll of 1. If the target is within range of an objective marker, you can re-roll the Wound roll instead.",
+       "enabled": true,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Re-roll",
+        "type": "reRoll",
+        "data": {
+         "application": {
+          "title": "Wound roll",
+          "key": "woundRoll"
+         },
+         "resultToReRoll": {
+          "title": "Single result",
+          "key": "single"
+         },
+         "valueSingle": "1",
+         "valueRange": "",
+         "limit": {
+          "title": "No limit",
+          "key": "none"
+         }
+        }
+       },
+       "id": "75663e3186af4062be2c7507a68ce733"
+      },
+      {
+       "name": "Cunning Hunters [target on an objective]",
+       "description": "Each time a model in this unit makes an attack, re-roll a Wound roll of 1. If the target is within range of an objective marker, you can re-roll the Wound roll instead.",
+       "enabled": true,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Within objective range",
+         "type": "objectiveRange",
+         "data": {
+          "who": {
+           "title": "Defender",
+           "key": "defender"
+          },
+          "negate": false
+         },
+         "description": "A unit is within range of an objective marker.",
+         "preselected": false,
+         "extension": true
+        }
+       ],
+       "effect": {
+        "text": "Re-roll",
+        "type": "reRoll",
+        "data": {
+         "application": {
+          "title": "Wound roll",
+          "key": "woundRoll"
+         },
+         "resultToReRoll": {
+          "title": "All possible failures",
+          "key": "allPossibleFailures"
+         },
+         "valueSingle": "",
+         "valueRange": "",
+         "limit": {
+          "title": "No limit",
+          "key": "none"
+         }
+        }
+       },
+       "id": "bb1e3a5267cd4f938762c4faefdd78de"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Grey Hunter Pack Leader\n9 Grey Hunters\nEvery model is equipped with:\nbolt carbine; bolt pistol; Astartes chainsword.",
+     "wargear_options": "The Grey Hunter Pack Leader’s bolt carbine can be replaced with 1 plasma pistol.\nThe Grey Hunter Pack Leader’s Astartes chainsword can be replaced with one of the following\n  ◦ 1 power fist\n  ◦ 1 power weapon",
+     "notes": "[SUPPORTED BY]\nThis unit can be supported by the following units:\nWOLF GUARD PACK LEADER\nWOLF GUARD PACK LEADER IN TERMINATOR ARMOUR",
+     "models": [
+      {
+       "name": "Grey Hunter Pack Leader",
+       "model_count": 1,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 2,
+       "LD": 6,
+       "OC": 3,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Bolt carbine",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "2",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 10,
+         "keywords": [
+          "rapid fire 1"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Bolt pistol",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 10,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – standard",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 7,
+         "AP": -2,
+         "D": "1",
+         "count": 10,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – supercharge",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 8,
+         "AP": -3,
+         "D": "2",
+         "count": 10,
+         "keywords": [
+          "hazardous",
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Astartes chainsword",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 4,
+         "AP": -1,
+         "D": "1",
+         "count": 10,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Power fist",
+         "type": "Melee",
+         "RNG": null,
+         "A": "3",
+         "S": 8,
+         "AP": -2,
+         "D": "2",
+         "count": 10,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Power weapon",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 5,
+         "AP": -2,
+         "D": "1",
+         "count": 10,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        }
+       ]
+      },
+      {
+       "name": "Grey Hunters",
+       "model_count": 9,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 2,
+       "LD": 6,
+       "OC": 3,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": []
+      }
+     ]
+    },
+    {
+     "name": "Fenrisian Wolves",
+     "profile_name": "Fenrisian Wolves",
+     "points": 45,
+     "keywords": [
+      "BEASTS",
+      "IMPERIUM",
+      "FENRISIAN WOLVES",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "f446aa899eef4e27840f874d20a112cc"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Predatory Instinct",
+       "description": "In your opponent’s Movement phase , if an enemy unit ends a move within 8\" of this unit, if this unit is not within Engagement Range of one or more enemy units, this unit can make a Normal move of up to D6\".",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "59f0125f3dc34221aff67141120959cb"
+      },
+      {
+       "name": "Hunting Hounds",
+       "description": "While this unit is within 6\" of one or more friendly SPACE WOLVES CHARACTER models (excluding WULFEN models), if this unit is not Battle-shocked , models in it have an Objective Control characteristic of 1.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "text": "Modify (absolute)",
+        "type": "modifyAbsolute",
+        "data": {
+         "application": {
+          "title": "Objective Control (OC)",
+          "key": "oc"
+         },
+         "absoluteValue": "1"
+        }
+       },
+       "id": "599fea2d4e3341dba6d50548f7b0e12e"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "5-10 Fenrisian Wolves\nEvery model is equipped with:\nteeth and claws.",
+     "wargear_options": "",
+     "notes": "[SUPPORTED BY]\nThis unit can be supported by the following unit:\nCYBERWOLF",
+     "models": [
+      {
+       "name": "Fenrisian Wolves",
+       "model_count": 5,
+       "M": 10,
+       "T": 4,
+       "Sv": 6,
+       "W": 1,
+       "LD": 8,
+       "OC": 0,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Teeth and claws",
+         "type": "Melee",
+         "RNG": null,
+         "A": "3",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 10,
+         "keywords": [],
+         "abilities": [],
+         "WS": 4
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Wolf Guard Headtakers",
+     "profile_name": "Wolf Guard Headtakers",
+     "points": 85,
+     "keywords": [
+      "INFANTRY",
+      "BEASTS",
+      "IMPERIUM",
+      "TACTICUS",
+      "WOLF GUARD",
+      "HEADTAKERS",
+      "HUNTING WOLVES",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "a8029174916d4cb7995e4c7b5c648ba7"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Let Loose the Wolves",
+       "description": "At the start of the Declare Battle Formations step, split this unit into two units, one containing all of its HEADTAKERS models and one containing all of its HUNTING WOLVES models, with new Starting Strengths accordingly.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "05ba4486beea415b944a08cee1e19a99"
+      },
+      {
+       "name": "Headhunters",
+       "description": "At the start of the battle, select one unit from your opponent’s army to be this unit’s quarry. Weapons equipped by HEADTAKERS models in this unit have the [DEVASTATING WOUNDS] and [PRECISION] abilities while targeting its quarry. Each time this unit’s quarry is destroyed, select one new enemy unit to be this unit’s quarry. This ability can be used even if this unit is embarked within a TRANSPORT .",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Special (core weapon ability)",
+        "type": "special",
+        "data": {
+         "option": {
+          "title": "Devastating wounds",
+          "key": "devastatingWounds"
+         }
+        }
+       },
+       "id": "7731d65f0edc425f938f6e4bd16059fd"
+      },
+      {
+       "name": "Hunting Hounds",
+       "description": "While this unit is within 6\" of one or more friendly SPACE WOLVES CHARACTER models (excluding WULFEN models), if this unit is not Battle-shocked , HUNTING WOLVES models in it have an Objective Control characteristic of 1.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "text": "Modify (absolute)",
+        "type": "modifyAbsolute",
+        "data": {
+         "application": {
+          "title": "Objective Control (OC)",
+          "key": "oc"
+         },
+         "absoluteValue": "1"
+        }
+       },
+       "id": "d222850082a0476db19090835d3cb9ac"
+      },
+      {
+       "name": "Storm Shield",
+       "description": "The bearer has a 4+ invulnerable save.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Defender",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Invulnerable save",
+        "type": "invulnSave",
+        "data": {
+         "invulnValue": "4"
+        }
+       },
+       "id": "877e1f3dceec4fd3b0286115fd84d358"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "3-6 Wolf Guard Headtakers\n0-6 Hunting Wolves\nEvery Wolf Guard Headtaker is equipped with:\nheavy bolt pistol; master-crafted power weapon; storm shield.\nEvery Hunting Wolf is equipped with:\nteeth and claws.",
+     "wargear_options": "All of the models in this unit can each have their master-crafted power weapon and storm shield replaced with 1 paired master-crafted power weapons.",
+     "notes": "[SUPPORTED BY]\nThis unit can be supported by the following unit:\nLIEUTENANT",
+     "models": [
+      {
+       "name": "Wolf Guard Headtakers",
+       "model_count": 3,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 3,
+       "LD": 6,
+       "OC": 1,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Heavy bolt pistol",
+         "type": "Ranged",
+         "RNG": 18,
+         "A": "1",
+         "S": 4,
+         "AP": -1,
+         "D": "1",
+         "count": 12,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Master-crafted power weapon",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 5,
+         "AP": -2,
+         "D": "2",
+         "count": 12,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Paired master-crafted power weapons",
+         "type": "Melee",
+         "RNG": null,
+         "A": "6",
+         "S": 5,
+         "AP": -2,
+         "D": "2",
+         "count": 12,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Teeth and claws",
+         "type": "Melee",
+         "RNG": null,
+         "A": "3",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 12,
+         "keywords": [],
+         "abilities": [],
+         "WS": 4
+        }
+       ]
+      }
+     ],
+     "leader_slots": 1,
+     "support_slots": 1
+    },
+    {
+     "name": "Wolf Guard Terminators",
+     "profile_name": "Wolf Guard Terminators",
+     "points": 150,
+     "keywords": [
+      "INFANTRY",
+      "IMPERIUM",
+      "TERMINATOR",
+      "WOLF GUARD",
+      "WOLF GUARD TERMINATORS",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Deep Strike",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "93d81ef087954f7eb087d390f127d6ee"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "f33a266fc8c341f29c17695da73d8595"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Rugged Resilience",
+       "description": "Each time an attack targets this unit, if the Strength characteristic of that attack is greater than the Toughness characteristic of this unit, subtract 1 from the Wound roll .",
+       "enabled": true,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Defender",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Attack characteristic",
+         "type": "attackCharacteristic",
+         "data": {
+          "attackChar": {
+           "title": "Strength",
+           "key": "strength"
+          },
+          "comparison": {
+           "title": "Greater than",
+           "key": "greaterThan"
+          },
+          "attackCharValue": "5",
+          "attackCharState": {
+           "title": "Modified",
+           "key": "modified"
+          },
+          "negate": false
+         },
+         "description": "Evaluate an attack characteristic.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Modify (relative)",
+        "type": "modifyRelative",
+        "data": {
+         "application": {
+          "title": "Wound roll",
+          "key": "woundRoll"
+         },
+         "operator": {
+          "title": "Subtract",
+          "key": "subtract"
+         },
+         "relativeValue": "1"
+        }
+       },
+       "id": "6202b6de5b894c6690a54f46e0a28082"
+      },
+      {
+       "name": "Storm Shield",
+       "description": "The bearer has a Wounds characteristic of 4.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "text": "Modify (absolute)",
+        "type": "modifyAbsolute",
+        "data": {
+         "application": {
+          "title": "Wounds (W)",
+          "key": "w"
+         },
+         "absoluteValue": "4"
+        }
+       },
+       "id": "4afd6601ac944f37899216b0b9e9ff20"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Wolf Guard Terminator Pack Leader\n4-9 Wolf Guard Terminators\nThe Wolf Guard Terminator Pack Leader is equipped with:\nstorm bolter; master-crafted power weapon.\nEvery Wolf Guard Terminator is equipped with:\nstorm bolter; master-crafted power weapon.",
+     "wargear_options": "Any number of models can each have their storm bolter replaced with 1 storm shield.\nFor every 5 models in this unit, 1 Wolf Guard Terminator can replace its storm bolter and master-crafted power weapon with 1 assault cannon and 1 powerfist.\nThe Wolf Guard Terminator Pack Leader’s storm bolter and master-crafted power weapon can be replaced with 1 of the following:\n  ◦ 1 relic greataxe\n  ◦ 1 twin lightning claws",
+     "notes": "[SUPPORTED BY]\nThis unit can be supported by the following unit:\nLIEUTENANT",
+     "models": [
+      {
+       "name": "Wolf Guard Terminator Pack Leader",
+       "model_count": 1,
+       "M": 6,
+       "T": 5,
+       "Sv": 2,
+       "W": 3,
+       "LD": 6,
+       "OC": 1,
+       "invuln": 4,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Assault cannon",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "6",
+         "S": 6,
+         "AP": 0,
+         "D": "1",
+         "count": 10,
+         "keywords": [
+          "devastating wounds"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Storm bolter",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "2",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 10,
+         "keywords": [
+          "rapid fire 2"
+         ],
+         "abilities": [],
+         "BS": 2
+        },
+        {
+         "name": "Master-crafted power weapon",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 5,
+         "AP": -2,
+         "D": "2",
+         "count": 10,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Power fist",
+         "type": "Melee",
+         "RNG": null,
+         "A": "3",
+         "S": 8,
+         "AP": -2,
+         "D": "2",
+         "count": 10,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Relic greataxe",
+         "type": "Melee",
+         "RNG": null,
+         "A": "3",
+         "S": 7,
+         "AP": -2,
+         "D": "3",
+         "count": 10,
+         "keywords": [
+          "devastating wounds"
+         ],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Twin lightning claws",
+         "type": "Melee",
+         "RNG": null,
+         "A": "6",
+         "S": 5,
+         "AP": -2,
+         "D": "1",
+         "count": 10,
+         "keywords": [
+          "twin-linked"
+         ],
+         "abilities": [],
+         "WS": 3
+        }
+       ]
+      },
+      {
+       "name": "Wolf Guard Terminators",
+       "model_count": 4,
+       "M": 6,
+       "T": 5,
+       "Sv": 2,
+       "W": 3,
+       "LD": 6,
+       "OC": 1,
+       "invuln": 4,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": []
+      }
+     ]
+    },
+    {
+     "name": "Wolf Scouts",
+     "profile_name": "Wolf Scouts",
+     "points": 90,
+     "keywords": [
+      "INFANTRY",
+      "GRENADES",
+      "SMOKE",
+      "IMPERIUM",
+      "PHOBOS",
+      "WOLF SCOUTS",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Infiltrators",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "f3d766ff17cb454493a7f919a1af260a"
+      },
+      {
+       "name": "Scouts 7\"",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "6864c2759ae842ba904a3b57954d3743"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "33d98f83c2f44d6084cfe09673f67cf7"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Deadly Stalkers",
+       "description": "Each time a model in this unit makes an attack that targets an enemy unit, if there are no other units from your opponent’s army within 6\" of that target, add 1 to the Wound roll .",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Modify (relative)",
+        "type": "modifyRelative",
+        "data": {
+         "application": {
+          "title": "Wound roll",
+          "key": "woundRoll"
+         },
+         "operator": {
+          "title": "Add",
+          "key": "add"
+         },
+         "relativeValue": "1"
+        }
+       },
+       "id": "137c9afdd774405faa520b5bfeff4513"
+      },
+      {
+       "name": "Hunting Hounds",
+       "description": "While this unit is within 6\" of one or more friendly SPACE WOLVES CHARACTER models (excluding WULFEN models), if this unit is not Battle-shocked , Hunting Wolves models in this unit have an Objective Control characteristic of 1.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "text": "Modify (absolute)",
+        "type": "modifyAbsolute",
+        "data": {
+         "application": {
+          "title": "Objective Control (OC)",
+          "key": "oc"
+         },
+         "absoluteValue": "1"
+        }
+       },
+       "id": "3d8ce71ee78e45549dd2e3ffdcf5d076"
+      },
+      {
+       "name": "Haywire Mine",
+       "description": "Once per battle, at the start of any phase, you can select one enemy unit within 3\" of the bearer and roll one D6: on a 2+, that enemy unit suffers D3 mortal wounds , or 2D3 mortal wounds instead if it is a VEHICLE unit.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "a27218b53e4949e58982abc1ea9c93c4"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Wolf Scout Pack Leader\n4 Wolf Scouts\n1 Hunting Wolf\nOR\n1 Wolf Scout Pack Leader\n9 Wolf Scouts\n2 Hunting Wolves\nThe Wolf Scout Pack Leader model is equipped with:\nplasma pistol; power weapon.\nEvery Wolf Scout model is equipped with:\nplasma pistol; combat blade.\nEvery Hunting Wolf model is equipped with:\nteeth and claws.",
+     "wargear_options": "1 Wolf Scout’s plasma pistol can be replaced with 1 plasma gun.\n1 Wolf Scout equipped with a plasma pistol can be equipped with 1 haywire mine (That model’s plasma pistol cannot be replaced).\n1 Wolf Scout’s plasma pistol and combat blade can be replaced with 1 bolt pistol, 1 Thunderclap and 1 runic stave.\nIf this unit contains 12 models, 1 Wolf Scout’s plasma pistol can be replaced with 1 instigator bolt carbine.",
+     "notes": "",
+     "models": [
+      {
+       "name": "Wolf Scout Pack Leader",
+       "model_count": 1,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 2,
+       "LD": 6,
+       "OC": 1,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Bolt pistol",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 12,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Instigator bolt carbine",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "1",
+         "S": 4,
+         "AP": -2,
+         "D": "2",
+         "count": 12,
+         "keywords": [
+          "precision"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma gun – standard",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "1",
+         "S": 7,
+         "AP": -2,
+         "D": "1",
+         "count": 12,
+         "keywords": [
+          "rapid fire 1"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma gun – supercharge",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "1",
+         "S": 8,
+         "AP": -3,
+         "D": "2",
+         "count": 12,
+         "keywords": [
+          "hazardous",
+          "rapid fire 1"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – standard",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 7,
+         "AP": -2,
+         "D": "1",
+         "count": 12,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – supercharge",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 8,
+         "AP": -3,
+         "D": "2",
+         "count": 12,
+         "keywords": [
+          "hazardous",
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Thunderclap",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D3",
+         "S": 5,
+         "AP": -1,
+         "D": "2",
+         "count": 12,
+         "keywords": [
+          "blast",
+          "psychic"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Combat blade",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 4,
+         "AP": -1,
+         "D": "1",
+         "count": 12,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Power weapon",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 5,
+         "AP": -2,
+         "D": "1",
+         "count": 12,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Runic stave",
+         "type": "Melee",
+         "RNG": null,
+         "A": "3",
+         "S": 6,
+         "AP": -1,
+         "D": "D3",
+         "count": 12,
+         "keywords": [
+          "psychic"
+         ],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Teeth and claws",
+         "type": "Melee",
+         "RNG": null,
+         "A": "2",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 12,
+         "keywords": [],
+         "abilities": [],
+         "WS": 4
+        }
+       ]
+      },
+      {
+       "name": "Wolf Scouts",
+       "model_count": 4,
+       "M": 7,
+       "T": 4,
+       "Sv": 3,
+       "W": 2,
+       "LD": 6,
+       "OC": 1,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": []
+      },
+      {
+       "name": "Hunting Wolf",
+       "model_count": 1,
+       "M": 10,
+       "T": 4,
+       "Sv": 6,
+       "W": 1,
+       "LD": 8,
+       "OC": 0,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": []
+      }
+     ]
+    },
+    {
+     "name": "Wulfen",
+     "profile_name": "Wulfen",
+     "points": 85,
+     "keywords": [
+      "INFANTRY",
+      "IMPERIUM",
+      "WULFEN",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [],
+     "faction_abilities": [
+      {
+       "name": "Curse of the Wulfen",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "c4bf986aad344fec81ab4a8bc7434628"
+      },
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "3d979c45fa5149c59f9ed00f93dd7ec9"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Savage Frenzy",
+       "description": "Each time an enemy unit (excluding MONSTERS and VEHICLES ) within Engagement Range of this unit Falls Back , all models in that enemy unit must take a Desperate Escape test . When doing so, if that enemy unit is Battle-shocked , subtract 1 from each of those tests.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "ced5b687a68048e0b41337af6af44cdc"
+      },
+      {
+       "name": "Death Totem",
+       "description": "Each time the bearer makes a melee attack, re-roll a Hit roll of 1.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Attack type",
+         "type": "attackType",
+         "data": {
+          "attackType": "Melee",
+          "negate": false
+         },
+         "description": "Restrict to just melee attacks or ranged attacks.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Re-roll",
+        "type": "reRoll",
+        "data": {
+         "application": {
+          "title": "Hit roll",
+          "key": "hitRoll"
+         },
+         "resultToReRoll": {
+          "title": "Single result",
+          "key": "single"
+         },
+         "valueSingle": "1",
+         "valueRange": "",
+         "limit": {
+          "title": "No limit",
+          "key": "none"
+         }
+        }
+       },
+       "id": "9f36094d245445579fa3f45404779ac1"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "5-10 Wulfen\nEvery model is equipped with:\nWulfen weapons; death totem.",
+     "wargear_options": "Any number of models can each have their death totem replaced with 1 stormfrag auto-launcher.",
+     "notes": "",
+     "models": [
+      {
+       "name": "Wulfen",
+       "model_count": 5,
+       "M": 9,
+       "T": 6,
+       "Sv": 4,
+       "W": 2,
+       "LD": 7,
+       "OC": 0,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Stormfrag auto-launcher",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D3",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 10,
+         "keywords": [
+          "assault",
+          "blast"
+         ],
+         "abilities": [],
+         "BS": 4
+        },
+        {
+         "name": "Wulfen weapons",
+         "type": "Melee",
+         "RNG": null,
+         "A": "3",
+         "S": 5,
+         "AP": -2,
+         "D": "2",
+         "count": 10,
+         "keywords": [
+          "sustained hits 1"
+         ],
+         "abilities": [],
+         "WS": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Wulfen with Storm Shields",
+     "profile_name": "Wulfen with Storm Shields",
+     "points": 100,
+     "keywords": [
+      "INFANTRY",
+      "IMPERIUM",
+      "WULFEN",
+      "WULFEN WITH STORM SHIELDS",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [],
+     "faction_abilities": [
+      {
+       "name": "Curse of the Wulfen",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "60e7d957a54e4f64b2de497c6eadb361"
+      },
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "a7d1e9f9cec7466887d1cfaa1186d058"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Hammer Blow",
+       "description": "In the Fight phase , after this unit has fought, select one enemy MONSTER or VEHICLE unit hit by one or more of those attacks. Until the end of the next turn, that enemy unit is suppressed. While a unit is suppressed, each time a model in that unit makes an attack, subtract 1 from the Hit roll .",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "e3a7c66a0315489fb24896ba40b4caf8"
+      },
+      {
+       "name": "Death Totem",
+       "description": "Each time the bearer makes a melee attack, re-roll a Hit roll of 1.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Attacker",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        },
+        {
+         "text": "Attack type",
+         "type": "attackType",
+         "data": {
+          "attackType": "Melee",
+          "negate": false
+         },
+         "description": "Restrict to just melee attacks or ranged attacks.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Re-roll",
+        "type": "reRoll",
+        "data": {
+         "application": {
+          "title": "Hit roll",
+          "key": "hitRoll"
+         },
+         "resultToReRoll": {
+          "title": "Single result",
+          "key": "single"
+         },
+         "valueSingle": "1",
+         "valueRange": "",
+         "limit": {
+          "title": "No limit",
+          "key": "none"
+         }
+        }
+       },
+       "id": "6ce366aacac8432c9ca4d5e2667a067b"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "5-10 Wulfen\nEvery model is equipped with:\nthunder hammer; death totem.",
+     "wargear_options": "Any number of models can each have their death totem replaced with 1 stormfrag auto-launcher.",
+     "notes": "",
+     "models": [
+      {
+       "name": "Wulfen",
+       "model_count": 5,
+       "M": 9,
+       "T": 6,
+       "Sv": 4,
+       "W": 2,
+       "LD": 7,
+       "OC": 0,
+       "invuln": 4,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Stormfrag auto-launcher",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D3",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 10,
+         "keywords": [
+          "assault",
+          "blast"
+         ],
+         "abilities": [],
+         "BS": 4
+        },
+        {
+         "name": "Thunder hammer",
+         "type": "Melee",
+         "RNG": null,
+         "A": "2",
+         "S": 5,
+         "AP": -2,
+         "D": "3",
+         "count": 10,
+         "keywords": [
+          "anti-monster 3+",
+          "anti-vehicle 3+"
+         ],
+         "abilities": [],
+         "WS": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Thunderwolf Cavalry",
+     "profile_name": "Thunderwolf Cavalry",
+     "points": 100,
+     "keywords": [
+      "MOUNTED",
+      "GRENADES",
+      "IMPERIUM",
+      "THUNDERWOLF CAVALRY",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "428af0a7ddfc43f2aa0cc10b15204e3c"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Storm Shield",
+       "description": "The bearer has a 4+ invulnerable save.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Defender",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Invulnerable save",
+        "type": "invulnSave",
+        "data": {
+         "invulnValue": "4"
+        }
+       },
+       "id": "c9eca247a5094edf8560e6f497374f7a"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Thunderwolf Cavalry Pack Leader\n2-5 Thunderwolf Cavalry\nEvery model is equipped with:\nbolt pistol; teeth and claws; Wolf Guard weapon.",
+     "wargear_options": "Any number of models can each have their bolt pistol replaced with one of the following:\n  ◦ 1 boltgun\n  ◦ 1 storm shield\nFor every 3 models in this unit, one model’s bolt pistol can be replaced with 1 plasma pistol.",
+     "notes": "",
+     "models": [
+      {
+       "name": "Thunderwolf Cavalry Pack Leader",
+       "model_count": 1,
+       "M": 12,
+       "T": 6,
+       "Sv": 3,
+       "W": 4,
+       "LD": 6,
+       "OC": 2,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Bolt pistol",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 6,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Boltgun",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "2",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 6,
+         "keywords": [],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – standard",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 7,
+         "AP": -2,
+         "D": "1",
+         "count": 6,
+         "keywords": [
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Plasma pistol – supercharge",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "1",
+         "S": 8,
+         "AP": -3,
+         "D": "2",
+         "count": 6,
+         "keywords": [
+          "hazardous",
+          "pistol"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Teeth and claws",
+         "type": "Melee",
+         "RNG": null,
+         "A": "3",
+         "S": 5,
+         "AP": -1,
+         "D": "1",
+         "count": 6,
+         "keywords": [
+          "extra attacks"
+         ],
+         "abilities": [],
+         "WS": 4
+        },
+        {
+         "name": "Wolf Guard weapon",
+         "type": "Melee",
+         "RNG": null,
+         "A": "4",
+         "S": 5,
+         "AP": -2,
+         "D": "2",
+         "count": 6,
+         "keywords": [],
+         "abilities": [
+          {
+           "name": "Thunderous Charge",
+           "description": "Each time a model in this unit makes a melee attack with its Wolf Guard weapon, if it made a Charge move this turn, add 1 to the Damage characteristic of that attack.",
+           "enabled": true,
+           "share_with_unit": false,
+           "conditions": [
+            {
+             "text": "Profile role",
+             "type": "profileRole",
+             "data": {
+              "profileRole": "Attacker",
+              "negate": false
+             },
+             "description": "Require the current profile to be set as the attacker or defender.",
+             "preselected": false
+            },
+            {
+             "text": "Attack type",
+             "type": "attackType",
+             "data": {
+              "attackType": "Melee",
+              "negate": false
+             },
+             "description": "Restrict to just melee attacks or ranged attacks.",
+             "preselected": false
+            },
+            {
+             "text": "Attacker charged",
+             "type": "attackerCharged",
+             "data": {
+              "attackerCharged": {
+               "title": "Attacker charged",
+               "key": "attackerCharged"
+              },
+              "negate": false
+             },
+             "description": "Whether the attacker charged.",
+             "preselected": false
+            }
+           ],
+           "effect": {
+            "text": "Modify (relative)",
+            "type": "modifyRelative",
+            "data": {
+             "application": {
+              "title": "Damage",
+              "key": "damage"
+             },
+             "operator": {
+              "title": "Add",
+              "key": "add"
+             },
+             "relativeValue": "1"
+            }
+           },
+           "id": "809ec34030d14512a90ef57e34bb85ca"
+          }
+         ],
+         "WS": 3
+        }
+       ]
+      },
+      {
+       "name": "Thunderwolf Cavalry",
+       "model_count": 2,
+       "M": 12,
+       "T": 6,
+       "Sv": 3,
+       "W": 4,
+       "LD": 6,
+       "OC": 2,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": []
+      }
+     ]
+    },
+    {
+     "name": "Venerable Dreadnought",
+     "profile_name": "Venerable Dreadnought",
+     "points": 125,
+     "keywords": [
+      "VEHICLE",
+      "WALKER",
+      "SMOKE",
+      "IMPERIUM",
+      "DREADNOUGHT",
+      "VENERABLE DREADNOUGHT",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Deadly Demise 1",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "e04036e61ad24bfcb02c2f45fcf51821"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "86f829579e814a749354606399b07d43"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Fervour of the Ancients (Aura)",
+       "description": "While a friendly SPACE WOLVES unit is within 6\" of this model, add 1 to Advance and Charge rolls made for that unit.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "0a509495b0b640e4a0c729d076951941"
+      },
+      {
+       "name": "Blizzard Shield",
+       "description": "The bearer has a 4+ invulnerable save.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Defender",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Invulnerable save",
+        "type": "invulnSave",
+        "data": {
+         "invulnValue": "4"
+        }
+       },
+       "id": "ca575d1325964b7ab73f5d2c52d133a9"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Venerable Dreadnought\nThis model is equipped with:\nassault cannon; storm bolter; Dreadnought combat weapon.",
+     "wargear_options": "This model’s assault cannon can be replaced with one of the following:\n  ◦ 1 helfrost cannon\n  ◦ 1 multi-melta\nThis model’s storm bolter can be replaced with 1 heavy flamer.\nThis model’s assault cannon, storm bolter and Dreadnought combat weapon can be replaced with one of the following:\n  ◦ 1 Fenrisian greataxe, 1 blizzard shield and 1 storm bolter\n  ◦ 1 Fenrisian greataxe, 1 blizzard shield and 1 heavy flamer",
+     "notes": "",
+     "models": [
+      {
+       "name": "Venerable Dreadnought",
+       "model_count": 1,
+       "M": 8,
+       "T": 9,
+       "Sv": 2,
+       "W": 8,
+       "LD": 6,
+       "OC": 3,
+       "invuln": null,
+       "fnp": null,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Assault cannon",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "6",
+         "S": 6,
+         "AP": 0,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "devastating wounds"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Heavy flamer",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D6",
+         "S": 5,
+         "AP": -1,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "ignores cover",
+          "torrent"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Helfrost cannon – dispersed",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D6",
+         "S": 6,
+         "AP": -1,
+         "D": "2",
+         "count": 1,
+         "keywords": [
+          "torrent"
+         ],
+         "abilities": [],
+         "BS": null
+        },
+        {
+         "name": "Helfrost cannon – focused",
+         "type": "Ranged",
+         "RNG": 36,
+         "A": "1",
+         "S": 10,
+         "AP": -3,
+         "D": "5",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Multi-melta",
+         "type": "Ranged",
+         "RNG": 18,
+         "A": "2",
+         "S": 9,
+         "AP": -4,
+         "D": "D6",
+         "count": 1,
+         "keywords": [
+          "melta 2"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Storm bolter",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "2",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "rapid fire 2"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Dreadnought combat weapon",
+         "type": "Melee",
+         "RNG": null,
+         "A": "5",
+         "S": 12,
+         "AP": -2,
+         "D": "3",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Fenrisian greataxe – strike",
+         "type": "Melee",
+         "RNG": null,
+         "A": "6",
+         "S": 10,
+         "AP": -2,
+         "D": "D6+1",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        },
+        {
+         "name": "Fenrisian greataxe – sweep",
+         "type": "Melee",
+         "RNG": null,
+         "A": "12",
+         "S": 6,
+         "AP": -2,
+         "D": "1",
+         "count": 1,
+         "keywords": [],
+         "abilities": [],
+         "WS": 3
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "name": "Wulfen Dreadnought",
+     "profile_name": "Wulfen Dreadnought",
+     "points": 135,
+     "keywords": [
+      "VEHICLE",
+      "WALKER",
+      "IMPERIUM",
+      "WULFEN",
+      "DREADNOUGHT",
+      "ADEPTUS ASTARTES",
+      "SPACE WOLVES"
+     ],
+     "core_abilities": [
+      {
+       "name": "Deadly Demise 1",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "fbe38e4dfa3f4d7fb3f5f08468d3f0e6"
+      }
+     ],
+     "faction_abilities": [
+      {
+       "name": "Curse of the Wulfen",
+       "description": "",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "5589071351894ae397c3171e9c6fce29"
+      },
+      {
+       "name": "Oath of Moment",
+       "description": "If your Army Faction is ADEPTUS ASTARTES, at the start of your Command phase, select one unit from your opponent’s army. Until the start of your next Command phase, that enemy unit is your Oath of Moment target. Each time a model with this ability makes an attack that targets your Oath of Moment target:\n* You can re-roll the Hit roll.\n* If you are using a Codex: Space Marines Detachment and your army does not include one or more units with the BLACK TEMPLARS, BLOOD ANGELS, DARK ANGELS, DEATHWATCH or SPACE WOLVES keywords, or one or more units from those factions’ Munitorum Field Manual sections, add 1 to the Wound roll as well.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "54883f52eb61438e8a44dbc917289e57"
+      }
+     ],
+     "abilities": [
+      {
+       "name": "Bestial Rage",
+       "description": "In your opponent’s Shooting phase , when an enemy unit has shot, if this model lost a wound as a result of those attacks, this unit can make a surge move of up to D6+2\".",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [],
+       "effect": {
+        "type": "special",
+        "data": {}
+       },
+       "id": "eef8ef414b4640bd93c7e46af2ce8ce2"
+      },
+      {
+       "name": "Blizzard Shield",
+       "description": "The bearer has a 4+ invulnerable save.",
+       "enabled": false,
+       "share_with_unit": false,
+       "conditions": [
+        {
+         "text": "Profile role",
+         "type": "profileRole",
+         "data": {
+          "profileRole": "Defender",
+          "negate": false
+         },
+         "description": "Require the current profile to be set as the attacker or defender.",
+         "preselected": false
+        }
+       ],
+       "effect": {
+        "text": "Invulnerable save",
+        "type": "invulnSave",
+        "data": {
+         "invulnValue": "4"
+        }
+       },
+       "id": "7645a79579ed4e43a88a8fff336383ca"
+      }
+     ],
+     "leadership": [],
+     "support": [],
+     "leader_effects": [],
+     "apply_leader_effects_to_self": false,
+     "damageable": false,
+     "unit_composition": "1 Wulfen Dreadnought\nThis model is equipped with:\nstorm bolter; Fenrisian greataxe; great wolf claw.",
+     "wargear_options": "This model’s Fenrisian greataxe or great wolf claw and storm bolter can be replaced with 1 blizzard shield and 1 heavy flamer.\nIf this model is not equipped with a storm bolter, its heavy flamer can be replaced with 1 storm bolter.",
+     "notes": "",
+     "models": [
+      {
+       "name": "Wulfen Dreadnought",
+       "model_count": 1,
+       "M": 9,
+       "T": 9,
+       "Sv": 2,
+       "W": 8,
+       "LD": 6,
+       "OC": 0,
+       "invuln": null,
+       "fnp": 6,
+       "keywords": [],
+       "abilities": [],
+       "weapons": [
+        {
+         "name": "Heavy flamer",
+         "type": "Ranged",
+         "RNG": 12,
+         "A": "D6",
+         "S": 5,
+         "AP": -1,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "ignores cover",
+          "torrent"
+         ],
+         "abilities": [],
+         "BS": null
+        },
+        {
+         "name": "Storm bolter",
+         "type": "Ranged",
+         "RNG": 24,
+         "A": "2",
+         "S": 4,
+         "AP": 0,
+         "D": "1",
+         "count": 1,
+         "keywords": [
+          "rapid fire 2"
+         ],
+         "abilities": [],
+         "BS": 3
+        },
+        {
+         "name": "Fenrisian greataxe – strike",
+         "type": "Melee",
+         "RNG": null,
+         "A": "6",
+         "S": 10,
+         "AP": -2,
+         "D": "D6+1",
+         "count": 1,
+         "keywords": [],
+         "abilities": [
+          {
+           "name": "Violent Fury",
+           "description": "If this model is equipped with two melee weapons, those weapon profiles have the [TWIN-LINKED] ability.",
+           "enabled": false,
+           "share_with_unit": false,
+           "conditions": [
+            {
+             "text": "Profile role",
+             "type": "profileRole",
+             "data": {
+              "profileRole": "Attacker",
+              "negate": false
+             },
+             "description": "Require the current profile to be set as the attacker or defender.",
+             "preselected": false
+            },
+            {
+             "text": "Attack type",
+             "type": "attackType",
+             "data": {
+              "attackType": "Melee",
+              "negate": false
+             },
+             "description": "Restrict to just melee attacks or ranged attacks.",
+             "preselected": false
+            }
+           ],
+           "effect": {
+            "text": "Set keyword",
+            "type": "setKeyword",
+            "data": {
+             "target": {
+              "title": "This weapon",
+              "key": "weapon"
+             },
+             "operation": {
+              "title": "Add",
+              "key": "add"
+             },
+             "keyword": "TWIN-LINKED"
+            },
+            "extension": true
+           },
+           "id": "aebb6d6844b84e4fb0c527e8c60202a2"
+          }
+         ],
+         "WS": 3
+        },
+        {
+         "name": "Fenrisian greataxe – sweep",
+         "type": "Melee",
+         "RNG": null,
+         "A": "12",
+         "S": 6,
+         "AP": -2,
+         "D": "1",
+         "count": 1,
+         "keywords": [],
+         "abilities": [
+          {
+           "name": "Violent Fury",
+           "description": "If this model is equipped with two melee weapons, those weapon profiles have the [TWIN-LINKED] ability.",
+           "enabled": false,
+           "share_with_unit": false,
+           "conditions": [
+            {
+             "text": "Profile role",
+             "type": "profileRole",
+             "data": {
+              "profileRole": "Attacker",
+              "negate": false
+             },
+             "description": "Require the current profile to be set as the attacker or defender.",
+             "preselected": false
+            },
+            {
+             "text": "Attack type",
+             "type": "attackType",
+             "data": {
+              "attackType": "Melee",
+              "negate": false
+             },
+             "description": "Restrict to just melee attacks or ranged attacks.",
+             "preselected": false
+            }
+           ],
+           "effect": {
+            "text": "Set keyword",
+            "type": "setKeyword",
+            "data": {
+             "target": {
+              "title": "This weapon",
+              "key": "weapon"
+             },
+             "operation": {
+              "title": "Add",
+              "key": "add"
+             },
+             "keyword": "TWIN-LINKED"
+            },
+            "extension": true
+           },
+           "id": "ab7aeb0b161743799334edab35607bab"
+          }
+         ],
+         "WS": 3
+        },
+        {
+         "name": "Great wolf claw",
+         "type": "Melee",
+         "RNG": null,
+         "A": "6",
+         "S": 10,
+         "AP": -3,
+         "D": "3",
+         "count": 1,
+         "keywords": [],
+         "abilities": [
+          {
+           "name": "Violent Fury",
+           "description": "If this model is equipped with two melee weapons, those weapon profiles have the [TWIN-LINKED] ability.",
+           "enabled": false,
+           "share_with_unit": false,
+           "conditions": [
+            {
+             "text": "Profile role",
+             "type": "profileRole",
+             "data": {
+              "profileRole": "Attacker",
+              "negate": false
+             },
+             "description": "Require the current profile to be set as the attacker or defender.",
+             "preselected": false
+            },
+            {
+             "text": "Attack type",
+             "type": "attackType",
+             "data": {
+              "attackType": "Melee",
+              "negate": false
+             },
+             "description": "Restrict to just melee attacks or ranged attacks.",
+             "preselected": false
+            }
+           ],
+           "effect": {
+            "text": "Set keyword",
+            "type": "setKeyword",
+            "data": {
+             "target": {
+              "title": "This weapon",
+              "key": "weapon"
+             },
+             "operation": {
+              "title": "Add",
+              "key": "add"
+             },
+             "keyword": "TWIN-LINKED"
+            },
+            "extension": true
+           },
+           "id": "6728f7a60dc241e9beeb372d747c19f1"
+          }
+         ],
+         "WS": 3
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}
