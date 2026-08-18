@@ -1,37 +1,632 @@
+# source=real scope=curated
+## damage
+### Intercessor Squad vs Terminator Squad
+  ranged:Astartes grenade launcher – frag | A 30.0/30 | W 1.1111/1 | D 1.1111/1 | Dnet 1.1111/1
+  ranged:Astartes grenade launcher – krak | A 10.0/10 | W 2.2222/2 | D 4.4444/4 | Dnet 4.4444/4
+  ranged:Bolt rifle | A 20.0/20 | W 1.4815/1 | D 1.4815/1 | Dnet 1.4815/1
+  ranged:TOTAL | D 7.037/7 | Dnet 7.037/7 | warn=0
+  melee:Astartes chainsword | A 50.0/50 | W 3.7037/4 | D 3.7037/4 | Dnet 3.7037/4
+  melee:TOTAL | D 3.7037/4 | Dnet 3.7037/4 | warn=0
 ### Assault Intercessor Squad vs Terminator Squad
-  melee:Astartes chainsword | 2.963 | 3
+  ranged:TOTAL | D 0.0/0 | Dnet 0.0/0 | warn=0
+  melee:Astartes chainsword | A 40.0/40 | W 3.4568/3 | D 3.4568/3 | Dnet 3.4568/3
+  melee:TOTAL | D 3.4568/3 | Dnet 3.4568/3 | warn=0
 ### Redemptor Dreadnought vs Riptide Battlesuit
-  ranged:Heavy flamer | 0.3889 | 0
-  ranged:Heavy onslaught gatling cannon | 1.5556 | 1
-  ranged:Icarus rocket pod | 0.7407 | 0
-  ranged:Macro plasma incinerator (standard) | 1.0 | 0
-  ranged:Macro plasma incinerator (supercharge) | 2.25 | 3
-  ranged:Macro plasma incinerator (supercharge) [HAZARDOUS] | 4.0 | 4
-  ranged:Onslaught gatling cannon | 1.037 | 1
-  ranged:Twin fragstorm grenade launcher | 0.1188 | 0
-  ranged:Twin storm bolter | 0.0679 | 0
-  melee:Redemptor fist | 3.3333 | 3
-### Hammerhead Gunship vs Assault Intercessor Squad
-  ranged:Accelerator burst cannon | 0.6667 | 1
-  ranged:Ion cannon (standard) | 2.5 | 2
-  ranged:Ion cannon (overcharge) | 6.25 | 6
-  ranged:Ion cannon (overcharge) [HAZARDOUS] | 10.4167 | 8
-  ranged:Railgun | 3.9583 | 0
-  ranged:Seeker missile | 1.5625 | 0
-  ranged:Smart missile system | 0.3333 | 0
-  ranged:Twin pulse carbine | 0.2963 | 0
-  melee:Armoured hull | 0.2222 | 0
+  ranged:Heavy flamer | A 3.5/3 | W 0.3889/0 | D 0.3889/0 | Dnet 0.3889/0
+  ranged:Heavy onslaught gatling cannon | A 12.0/12 | W 1.5556/1 | D 1.5556/1 | Dnet 1.5556/1
+  ranged:Icarus rocket pod | A 2.0/2 | W 0.3704/0 | D 0.7407/0 | Dnet 0.7407/0
+  ranged:Macro plasma incinerator – standard | A 4.5/4 | W 0.5/0 | D 1.0/0 | Dnet 1.0/0
+  ranged:Macro plasma incinerator – supercharge | A 4.5/4 | W 0.75/1 | D 2.25/3 | Dnet 2.25/3
+  ranged:Onslaught gatling cannon | A 8.0/8 | W 1.037/1 | D 1.037/1 | Dnet 1.037/1
+  ranged:Twin fragstorm grenade launcher | A 3.5/3 | W 0.1188/0 | D 0.1188/0 | Dnet 0.1188/0
+  ranged:Twin storm bolter | A 2.0/2 | W 0.0679/0 | D 0.0679/0 | Dnet 0.0679/0
+  ranged:TOTAL | D 7.159/7 | Dnet 7.159/7 | warn=0
+  melee:Redemptor fist | A 5.0/5 | W 1.1111/1 | D 3.3333/3 | Dnet 3.3333/3
+  melee:TOTAL | D 3.3333/3 | Dnet 3.3333/3 | warn=0
 ### Ballistus Dreadnought vs Crisis Sunforge Battlesuits
-  ranged:Ballistus lascannon | 2.5 | 0
-  ranged:Ballistus missile launcher (frag) | 0.7778 | 1
-  ranged:Ballistus missile launcher (krak) | 1.9444 | 0
-  ranged:Twin storm bolter | 0.2469 | 0
-  melee:Armoured feet | 0.7407 | 1
-### leaders=14 others=70
-ATTACH Captain -> Assault Intercessor Squad | models=6 pts=155
-ATTACH Captain in Gravis Armour -> Aggressor Squad | models=4 pts=160
-ATTACH Captain in Phobos Armour -> Eliminator Squad | models=4 pts=145
-ATTACH Captain in Terminator Armour -> Terminator Assault Squad | models=6 pts=240
-ATTACH Captain with Jump Pack -> Assault Intercessors with Jump Packs | models=6 pts=160
+  ranged:Ballistus missile launcher – frag | A 7.0/7 | W 1.037/1 | D 1.037/1 | Dnet 1.037/1
+  ranged:Ballistus missile launcher – krak | A 2.0/2 | W 0.7407/1 | D 2.5926/2 | Dnet 2.2222/2
+  ranged:Ballistus lascannon | A 2.0/2 | W 0.7407/1 | D 3.3333/3 | Dnet 2.5926/3
+  ranged:Twin storm bolter | A 2.0/2 | W 0.3292/0 | D 0.3292/0 | Dnet 0.3292/0
+  ranged:TOTAL | D 7.2922/7 | Dnet 6.1811/6 | warn=0
+  melee:Armoured feet | A 5.0/5 | W 0.7407/1 | D 0.7407/1 | Dnet 0.7407/1
+  melee:TOTAL | D 0.7407/1 | Dnet 0.7407/1 | warn=0
+### Terminator Squad vs Hammerhead Gunship
+  ranged:Assault cannon | A 60.0/60 | W 8.8889/9 | D 8.8889/9 | Dnet 8.8889/9
+  ranged:Cyclone missile launcher – frag | A 70.0/70 | W 2.5926/2 | D 2.5926/2 | Dnet 2.5926/2
+  ranged:Cyclone missile launcher – krak | A 20.0/20 | W 2.963/3 | D 10.3704/10 | Dnet 10.3704/10
+  ranged:Heavy flamer | A 35.0/35 | W 2.9167/3 | D 2.9167/3 | Dnet 2.9167/3
+  ranged:Storm bolter | A 20.0/20 | W 0.7407/1 | D 0.7407/1 | Dnet 0.7407/1
+  ranged:TOTAL | D 25.5093/25 | Dnet 25.5093/25 | warn=0
+  melee:Chainfist | A 30.0/30 | W 6.6667/7 | D 13.3333/14 | Dnet 13.3333/14
+  melee:TOTAL | D 13.3333/14 | Dnet 13.3333/14 | warn=0
+### Captain vs Bladeguard Veteran Squad
+  ranged:Master-crafted bolter | A 2.0/2 | W 0.4167/0 | D 0.8333/0 | Dnet 0.8333/0
+  ranged:TOTAL | D 0.8333/0 | Dnet 0.8333/0 | warn=0
+  melee:Close combat weapon | A 6.0/6 | W 0.8333/1 | D 0.8333/1 | Dnet 0.8333/1
+  melee:TOTAL | D 0.8333/1 | Dnet 0.8333/1 | warn=0
+### Bladeguard Veteran Squad vs Intercessor Squad
+  ranged:TOTAL | D 0.0/0 | Dnet 0.0/0 | warn=0
+  melee:Master-crafted power weapon | A 24.0/24 | W 7.1111/7 | D 14.2222/14 | Dnet 14.2222/14
+  melee:TOTAL | D 14.2222/14 | Dnet 14.2222/14 | warn=0
+### Hammerhead Gunship vs Intercessor Squad
+  ranged:Accelerator burst cannon | A 4.0/4 | W 0.6667/1 | D 0.6667/1 | Dnet 0.6667/1
+  ranged:Ion cannon (standard) | A 7.5/7 | W 1.25/1 | D 2.5/2 | Dnet 2.5/2
+  ranged:Ion cannon (overcharge) | A 7.5/7 | W 2.0833/2 | D 6.25/6 | Dnet 4.1667/4
+  ranged:Railgun | A 1.0/1 | W 0.4167/0 | D 3.9583/0 | Dnet 0.8333/0
+  ranged:Seeker missile | A 1.0/1 | W 0.3472/0 | D 1.5625/0 | Dnet 0.6944/0
+  ranged:Smart missile system | A 3.0/3 | W 0.3333/0 | D 0.3333/0 | Dnet 0.3333/0
+  ranged:Twin pulse carbine | A 2.0/2 | W 0.2963/0 | D 0.2963/0 | Dnet 0.2963/0
+  ranged:TOTAL | D 15.5671/15 | Dnet 9.4907/9 | warn=0
+  melee:Armoured hull | A 3.0/3 | W 0.2222/0 | D 0.2222/0 | Dnet 0.2222/0
+  melee:TOTAL | D 0.2222/0 | Dnet 0.2222/0 | warn=0
+### Riptide Battlesuit vs Assault Intercessor Squad
+  ranged:Missile Drone (Missile pod) | A 2.0/2 | W 0.2222/0 | D 0.4444/0 | Dnet 0.4444/0
+  ranged:Heavy burst cannon | A 12.0/12 | W 2.0/2 | D 4.0/4 | Dnet 4.0/4
+  ranged:Ion accelerator (standard) | A 6.0/6 | W 1.6667/2 | D 5.0/6 | Dnet 3.3333/4
+  ranged:Ion accelerator (overcharge) | A 6.0/6 | W 2.0833/2 | D 8.3333/8 | Dnet 4.1667/4
+  ranged:Twin fusion blaster | A 1.0/1 | W 0.4861/0 | D 1.7014/0 | Dnet 0.8912/0
+  ranged:Twin plasma rifle | A 1.0/1 | W 0.4051/0 | D 1.2153/0 | Dnet 0.8102/0
+  ranged:Twin smart missile system | A 3.0/3 | W 0.4444/0 | D 0.4444/0 | Dnet 0.4444/0
+  ranged:TOTAL | D 21.1389/21 | Dnet 14.0903/14 | warn=0
+  melee:Riptide fists | A 6.0/6 | W 0.4444/0 | D 0.8889/0 | Dnet 0.8889/0
+  melee:TOTAL | D 0.8889/0 | Dnet 0.8889/0 | warn=0
+### Crisis Sunforge Battlesuits vs Ballistus Dreadnought
+  ranged:Gun Drone (Twin pulse carbine) | A 6.0/6 | W 0.1019/0 | D 0.1019/0 | Dnet 0.1019/0
+  ranged:Fusion blaster | A 3.0/3 | W 0.6944/1 | D 2.9514/2 | Dnet 2.9514/2
+  ranged:TOTAL | D 3.0532/2 | Dnet 3.0532/2 | warn=0
+  melee:Battlesuit fists | A 9.0/9 | W 0.0833/0 | D 0.0833/0 | Dnet 0.0833/0
+  melee:TOTAL | D 0.0833/0 | Dnet 0.0833/0 | warn=0
+## profiles
+  *Terminator Squad | Terminator Sergeant  (T5 Sv2+ W3 inv4+) | D 10.8735/11
+  *Riptide Battlesuit | Riptide Battlesuit  (T9 Sv2+ W14 inv4+) | D 7.159/7
+  *Crisis Sunforge Battlesuits | Crisis Sunforge Shas’vre  (T5 Sv3+ W4 inv4+) | D 11.8133/12
+  *Hammerhead Gunship | Hammerhead Gunship  (T10 Sv3+ W14) | D 9.1096/9
+  *Bladeguard Veteran Squad | Bladeguard Veteran Sergeant  (T4 Sv3+ W3 inv4+) | D 13.8889/14
+  *Intercessor Squad | Intercessor Sergeant  (T4 Sv3+ W2) | D 22.0648/22
+  *Assault Intercessor Squad | Assault Intercessor Sergeant  (T4 Sv3+ W2) | D 22.0648/22
+  *Ballistus Dreadnought | Ballistus Dreadnought  (T10 Sv2+ W12) | D 6.9552/7
+  *Aun’va | Aun’Va –  (T3 Sv5+ W5 inv4+) | D 10.1563/10
+  *Aun’va | Ethereal Guards  (T3 Sv5+ W2 inv4+) | D 10.1563/10
+## flags
+### Redemptor Dreadnought vs Intercessor Squad
+  ranged:(none) | D 22.0648
+  ranged:half_range | D 22.3981
+  ranged:attacker_stationary | D 22.0648
+  ranged:charged | D 22.0648
+  ranged:cover | D 16.8403
+  ranged:plunging | D 27.2894
+  ranged:damaged | D 16.8403
+  ranged:attacker_below_half | D 22.0648
+  ranged:defender_below_half | D 22.0648
+  ranged:attacker_below_full | D 22.0648
+  ranged:defender_below_full | D 22.0648
+  ranged:attacker_on_objective | D 22.0648
+  ranged:defender_on_objective | D 22.0648
+  ranged:overwatch | D 6.3912
+  melee:(none) | D 5.5556
+  melee:half_range | D 5.5556
+  melee:attacker_stationary | D 5.5556
+  melee:charged | D 5.5556
+  melee:cover | D 5.5556
+  melee:plunging | D 5.5556
+  melee:damaged | D 4.1667
+  melee:attacker_below_half | D 5.5556
+  melee:defender_below_half | D 5.5556
+  melee:attacker_below_full | D 5.5556
+  melee:defender_below_full | D 5.5556
+  melee:attacker_on_objective | D 5.5556
+  melee:defender_on_objective | D 5.5556
+  melee:overwatch | D 1.3889
+## selection
+### BLAST: Ballistus Dreadnought
+  ranged | kept=4 skipped=0
+  ranged+indirect | SKIP Ballistus missile launcher – frag | inapplicable due to indirect fire
+  ranged+indirect | SKIP Ballistus missile launcher – krak | inapplicable due to indirect fire
+  ranged+indirect | SKIP Ballistus lascannon | inapplicable due to indirect fire
+  ranged+indirect | SKIP Twin storm bolter | inapplicable due to indirect fire
+  ranged+indirect | kept=0 skipped=4
+  close_quarters | SKIP Ballistus missile launcher – frag | BLAST cannot target an engaged unit
+  close_quarters | kept=3 skipped=1
+  melee | kept=1 skipped=0
+### CLOSE-QUARTERS: Chaplain With Jump Pack
+  ranged | SKIP Absolvor bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Grav-pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Hand flamer | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Inferno pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Plasma pistol – standard | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Plasma pistol – supercharge | CLOSE-QUARTERS: fires only in close quarters
+  ranged | kept=3 skipped=7
+  ranged+indirect | SKIP Absolvor bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Boltgun | inapplicable due to indirect fire
+  ranged+indirect | SKIP Combi-weapon | inapplicable due to indirect fire
+  ranged+indirect | SKIP Grav-pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Hand flamer | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Inferno pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Plasma pistol – standard | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Plasma pistol – supercharge | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Storm bolter | inapplicable due to indirect fire
+  ranged+indirect | kept=0 skipped=10
+  close_quarters | SKIP Boltgun | not a CLOSE-QUARTERS weapon
+  close_quarters | SKIP Combi-weapon | not a CLOSE-QUARTERS weapon
+  close_quarters | SKIP Storm bolter | not a CLOSE-QUARTERS weapon
+  close_quarters | kept=7 skipped=3
+  melee | kept=1 skipped=0
+### HAZARDOUS: Ancient On Bike
+  ranged | SKIP Bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Grav-pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Plasma pistol – standard | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Plasma pistol – supercharge | CLOSE-QUARTERS: fires only in close quarters
+  ranged | kept=4 skipped=4
+  ranged+indirect | SKIP Bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Boltgun | inapplicable due to indirect fire
+  ranged+indirect | SKIP Combi-weapon | inapplicable due to indirect fire
+  ranged+indirect | SKIP Grav-pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Plasma pistol – standard | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Plasma pistol – supercharge | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Storm bolter | inapplicable due to indirect fire
+  ranged+indirect | SKIP Twin boltgun | inapplicable due to indirect fire
+  ranged+indirect | kept=0 skipped=8
+  close_quarters | SKIP Boltgun | not a CLOSE-QUARTERS weapon
+  close_quarters | SKIP Combi-weapon | not a CLOSE-QUARTERS weapon
+  close_quarters | SKIP Storm bolter | not a CLOSE-QUARTERS weapon
+  close_quarters | SKIP Twin boltgun | not a CLOSE-QUARTERS weapon
+  close_quarters | kept=4 skipped=4
+  melee | kept=1 skipped=0
+### INDIRECT FIRE: Desolation Squad
+  ranged | SKIP Bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged | kept=4 skipped=1
+  ranged+indirect | SKIP Bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Superfrag rocket launcher | inapplicable due to indirect fire
+  ranged+indirect | SKIP Superkrak rocket launcher | inapplicable due to indirect fire
+  ranged+indirect | kept=2 skipped=3
+  close_quarters | SKIP Castellan launcher | not a CLOSE-QUARTERS weapon
+  close_quarters | SKIP Superfrag rocket launcher | not a CLOSE-QUARTERS weapon
+  close_quarters | SKIP Superkrak rocket launcher | not a CLOSE-QUARTERS weapon
+  close_quarters | SKIP Vengor launcher | not a CLOSE-QUARTERS weapon
+  close_quarters | kept=1 skipped=4
+  melee | kept=1 skipped=0
+### PISTOL: Ancient
+  ranged | SKIP Bolt Pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged | kept=1 skipped=1
+  ranged+indirect | SKIP Bolt Pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Bolt rifle | inapplicable due to indirect fire
+  ranged+indirect | kept=0 skipped=2
+  close_quarters | SKIP Bolt rifle | not a CLOSE-QUARTERS weapon
+  close_quarters | kept=1 skipped=1
+  melee | kept=1 skipped=0
+### TORRENT: Assault Intercessor Squad
+  ranged | SKIP Hand flamer | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Heavy bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Plasma pistol – standard | CLOSE-QUARTERS: fires only in close quarters
+  ranged | SKIP Plasma pistol – supercharge | CLOSE-QUARTERS: fires only in close quarters
+  ranged | kept=0 skipped=4
+  ranged+indirect | SKIP Hand flamer | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Heavy bolt pistol | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Plasma pistol – standard | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | SKIP Plasma pistol – supercharge | CLOSE-QUARTERS: fires only in close quarters
+  ranged+indirect | kept=0 skipped=4
+  close_quarters | kept=4 skipped=0
+  melee | kept=1 skipped=0
+## attach
+### leaders=21 supports=9 others=61
+ATTACH Canis Wolfborn -> Fenrisian Wolves | models=6 | pts=120
+  ranged vs Riptide Battlesuit | D 0.0 -> 0.0
+  melee vs Riptide Battlesuit | D 0.4167 -> 0.7778
+ATTACH Captain -> Assault Intercessor Squad | models=6 | pts=155
+  ranged vs Riptide Battlesuit | D 0.0 -> 0.1852
+  melee vs Riptide Battlesuit | D 1.7284 -> 1.7284
+ATTACH Captain With Jump Pack -> Skyclaws | models=6 | pts=165
+  ranged vs Riptide Battlesuit | D 26.3194 -> 26.3194
+  melee vs Riptide Battlesuit | D 1.6667 -> 1.9907
+ATTACH Chaplain -> Assault Intercessor Squad | models=6 | pts=135
+  ranged vs Riptide Battlesuit | D 0.0 -> 0.0
+  melee vs Riptide Battlesuit | D 1.7284 -> 3.4568
+ATTACH Chaplain In Terminator Armour -> Relic Terminator Squad | models=6 | pts=275
+  ranged vs Riptide Battlesuit | D 23.5185 -> 23.5556
+  melee vs Riptide Battlesuit | D 10.0 -> 10.0
+ATTACH Chaplain On Bike -> Outrider Squad | models=4 | pts=140
+  ranged vs Riptide Battlesuit | D 14.037 -> 14.1728
+  melee vs Riptide Battlesuit | D 0.8889 -> 1.7778
+SUPPORT Ancient -> Assault Intercessor Squad | models=6 | pts=115
+SUPPORT Ancient In Terminator Armour -> Relic Terminator Squad | models=6 | pts=265
+SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
+## attachments resolved (join=41 led=30)
+## abilities (curated)
+  Ancient | Unbreakable Duty | feelNoPain/grant | def ranged Probe Shooter | flags=on | 3.3333 -> 1.6667
+  Ancient | Unbreakable Duty | feelNoPain/grant | def melee Probe Shooter | flags=on | 5.0 -> 2.5
+  Ancient | Unbreakable Duty | feelNoPain/grant | def ranged Probe Lance | flags=on | 3.3333 -> 1.6667
+  Ancient | Unbreakable Duty | feelNoPain/grant | def melee Probe Lance | flags=on | 4.3333 -> 2.1667
+  Ancient | Unbreakable Duty | feelNoPain/grant | def close_quarters Probe Lance | flags=on | 3.3333 -> 1.6667
+  Ancient | Unbreakable Duty | feelNoPain/grant | def ranged Probe Psyker | flags=on | 2.963 -> 1.4815
+  Ancient | Unbreakable Duty | feelNoPain/grant | def melee Probe Psyker | flags=on | 2.963 -> 1.4815
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Infantry | flags=on | 39.1111 -> 51.4444
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Infantry | flags=on | 13.3333 -> 19.6296
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Elite | flags=on | 15.2963 -> 20.2593
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Elite | flags=on | 5.3333 -> 7.8519
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Vehicle | flags=on | 13.0926 -> 17.9259
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Vehicle | flags=on | 8.0 -> 11.7778
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Monster | flags=on | 17.9444 -> 23.1667
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Monster | flags=on | 4.0 -> 5.8889
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Colossus | flags=on | 13.0926 -> 17.9259
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Colossus | flags=on | 8.0 -> 11.7778
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Flyer | flags=on | 19.0556 -> 24.8333
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Flyer | flags=on | 10.6667 -> 15.7037
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Infantry | flags=on | 39.1111 -> 45.9907
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Elite | flags=on | 15.2963 -> 18.963
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [wound] [leader_effects] | modifyRelative/woundRoll | att melee Probe Elite | flags=on | 5.3333 -> 6.6667
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Vehicle | flags=on | 13.0926 -> 18.963
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Monster | flags=on | 17.9444 -> 25.75
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [wound] [leader_effects] | modifyRelative/woundRoll | att melee Probe Monster | flags=on | 4.0 -> 6.0
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Colossus | flags=on | 13.0926 -> 18.963
+  Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Flyer | flags=on | 19.0556 -> 27.4167
+  Assault Intercessor Squad | Shock Assault | reRoll/woundRoll | att melee Probe Infantry | flags=off | 6.6667 -> 7.7778
+  Assault Intercessor Squad | Shock Assault | reRoll/woundRoll | att melee Probe Elite | flags=off | 1.9753 -> 2.3045
+  Assault Intercessor Squad | Shock Assault | reRoll/woundRoll | att melee Probe Vehicle | flags=off | 1.4815 -> 1.7284
+  Assault Intercessor Squad | Shock Assault | reRoll/woundRoll | att melee Probe Monster | flags=off | 2.2222 -> 2.5926
+  Assault Intercessor Squad | Shock Assault | reRoll/woundRoll | att melee Probe Colossus | flags=off | 1.4815 -> 1.7284
+  Assault Intercessor Squad | Shock Assault | reRoll/woundRoll | att melee Probe Flyer | flags=off | 2.2222 -> 2.5926
+  Assault Intercessor Squad | Shock Assault [target on an objective] | reRoll/woundRoll | att melee Probe Infantry | flags=on | 5.0 -> 7.5
+  Assault Intercessor Squad | Shock Assault [target on an objective] | reRoll/woundRoll | att melee Probe Elite | flags=on | 1.4815 -> 2.4691
+  Assault Intercessor Squad | Shock Assault [target on an objective] | reRoll/woundRoll | att melee Probe Vehicle | flags=on | 1.1111 -> 2.037
+  Assault Intercessor Squad | Shock Assault [target on an objective] | reRoll/woundRoll | att melee Probe Monster | flags=on | 1.6667 -> 3.0556
+  Assault Intercessor Squad | Shock Assault [target on an objective] | reRoll/woundRoll | att melee Probe Colossus | flags=on | 1.1111 -> 2.037
+  Assault Intercessor Squad | Shock Assault [target on an objective] | reRoll/woundRoll | att melee Probe Flyer | flags=on | 1.6667 -> 3.0556
+  Aun’va | Paradox of Duality [hit] | modifyRelative/hitRoll | def ranged Probe Shooter | flags=off | 6.6667 -> 5.0
+  Aun’va | Paradox of Duality [hit] | modifyRelative/hitRoll | def melee Probe Shooter | flags=off | 6.6667 -> 5.0
+  Aun’va | Paradox of Duality [hit] | modifyRelative/hitRoll | def ranged Probe Lance | flags=off | 4.0 -> 3.0
+  Aun’va | Paradox of Duality [hit] | modifyRelative/hitRoll | def melee Probe Lance | flags=off | 4.0 -> 3.0
+  Aun’va | Paradox of Duality [wound] | modifyRelative/woundRoll | def ranged Probe Shooter | flags=off | 6.6667 -> 5.0
+  Aun’va | Paradox of Duality [wound] | modifyRelative/woundRoll | def melee Probe Shooter | flags=off | 6.6667 -> 5.0
+  Aun’va | Paradox of Duality [wound] | modifyRelative/woundRoll | def ranged Probe Lance | flags=off | 4.0 -> 3.3333
+  Aun’va | Paradox of Duality [wound] | modifyRelative/woundRoll | def melee Probe Lance | flags=off | 4.0 -> 3.3333
+  Aun’va | Paradox of Duality [wound] | modifyRelative/woundRoll | def close_quarters Probe Lance | flags=off | 3.0 -> 2.5
+  Aun’va | Paradox of Duality [wound] | modifyRelative/woundRoll | def ranged Probe Psyker | flags=off | 2.2222 -> 1.7778
+  Aun’va | Paradox of Duality [wound] | modifyRelative/woundRoll | def melee Probe Psyker | flags=off | 2.2222 -> 1.7778
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att ranged Probe Infantry | flags=off | 8.4259 -> 11.2346
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att close_quarters Probe Infantry | flags=off | 5.3194 -> 7.9792
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att ranged Probe Elite | flags=off | 3.3416 -> 4.4554
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att close_quarters Probe Elite | flags=off | 2.284 -> 3.4259
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att ranged Probe Vehicle | flags=off | 4.0309 -> 5.3745
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att close_quarters Probe Vehicle | flags=off | 2.9259 -> 4.3889
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att ranged Probe Monster | flags=off | 4.2099 -> 5.6132
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att close_quarters Probe Monster | flags=off | 2.7685 -> 4.1528
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att ranged Probe Colossus | flags=off | 2.9753 -> 3.9671
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att close_quarters Probe Colossus | flags=off | 2.1343 -> 3.2014
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att ranged Probe Flyer | flags=off | 5.3951 -> 7.1934
+  Ballistus Dreadnought | Ballistus Strike | reRoll/hitRoll | att close_quarters Probe Flyer | flags=off | 3.6574 -> 5.4861
+  Bjorn The Fell-handed | Legendary Tenacity | modifyRelative/woundRoll | def ranged Probe Lance | flags=off | 2.6667 -> 2.0741
+  Bjorn The Fell-handed | Legendary Tenacity | modifyRelative/woundRoll | def melee Probe Lance | flags=off | 2.6667 -> 2.0741
+  Bjorn The Fell-handed | Legendary Tenacity | modifyRelative/woundRoll | def close_quarters Probe Lance | flags=off | 2.0 -> 1.5556
+  Broadside Battlesuits | Advanced Armour | feelNoPain/grant | def ranged Probe Lance | flags=off | 5.7778 -> 5.1111
+  Broadside Battlesuits | Advanced Armour | feelNoPain/grant | def melee Probe Lance | flags=off | 4.8889 -> 4.2222
+  Broadside Battlesuits | Advanced Armour | feelNoPain/grant | def close_quarters Probe Lance | flags=off | 4.3333 -> 3.8333
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att ranged Probe Infantry | flags=off | 7.0988 -> 10.8519
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att close_quarters Probe Infantry | flags=off | 1.1111 -> 2.2222
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att ranged Probe Elite | flags=off | 2.7469 -> 4.1821
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att close_quarters Probe Elite | flags=off | 0.2778 -> 0.5556
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att ranged Probe Vehicle | flags=off | 2.1049 -> 3.2315
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att close_quarters Probe Vehicle | flags=off | 0.1389 -> 0.2778
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att ranged Probe Monster | flags=off | 3.7963 -> 5.787
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att close_quarters Probe Monster | flags=off | 0.5556 -> 1.1111
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att ranged Probe Colossus | flags=off | 1.3642 -> 2.1204
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att close_quarters Probe Colossus | flags=off | 0.1389 -> 0.2778
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att ranged Probe Flyer | flags=off | 3.8642 -> 5.9074
+  Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att close_quarters Probe Flyer | flags=off | 0.5556 -> 1.1111
+  Canis Wolfborn +leader on Fenrisian Wolves | Born of Wolves [leader_effects] | generateExtras/extraHits | att melee Probe Infantry | flags=off | 3.0 -> 4.0
+  Canis Wolfborn +leader on Fenrisian Wolves | Born of Wolves [leader_effects] | generateExtras/extraHits | att melee Probe Elite | flags=off | 0.7222 -> 0.963
+  Canis Wolfborn +leader on Fenrisian Wolves | Born of Wolves [leader_effects] | generateExtras/extraHits | att melee Probe Vehicle | flags=off | 0.5 -> 0.6667
+  Canis Wolfborn +leader on Fenrisian Wolves | Born of Wolves [leader_effects] | generateExtras/extraHits | att melee Probe Monster | flags=off | 1.0833 -> 1.4444
+  Canis Wolfborn +leader on Fenrisian Wolves | Born of Wolves [leader_effects] | generateExtras/extraHits | att melee Probe Colossus | flags=off | 0.5 -> 0.6667
+  Canis Wolfborn +leader on Fenrisian Wolves | Born of Wolves [leader_effects] | generateExtras/extraHits | att melee Probe Flyer | flags=off | 1.0833 -> 1.4444
+  Captain With Jump Pack +leader on Skyclaws | Angel’s Wrath [leader_effects] | modifyRelative/strength | att melee Probe Infantry | flags=on | 6.7917 -> 9.0556
+  Captain With Jump Pack +leader on Skyclaws | Angel’s Wrath [leader_effects] | modifyRelative/strength | att melee Probe Elite | flags=on | 2.0123 -> 3.0185
+  Captain With Jump Pack +leader on Skyclaws | Angel’s Wrath [leader_effects] | modifyRelative/strength | att melee Probe Monster | flags=on | 2.2639 -> 4.5278
+  Captain With Jump Pack +leader on Skyclaws | Angel’s Wrath [leader_effects] | modifyRelative/strength | att melee Probe Flyer | flags=on | 2.2639 -> 4.5278
+  Carab Culln The Risen | Death-hold | disableMechanic/closeQuartersPenalty | att close_quarters Probe Infantry | flags=off | 5.4537 -> 6.6366
+  Carab Culln The Risen | Death-hold | disableMechanic/closeQuartersPenalty | att close_quarters Probe Elite | flags=off | 2.1481 -> 2.6435
+  Carab Culln The Risen | Death-hold | disableMechanic/closeQuartersPenalty | att close_quarters Probe Vehicle | flags=off | 2.4259 -> 3.0648
+  Carab Culln The Risen | Death-hold | disableMechanic/closeQuartersPenalty | att close_quarters Probe Monster | flags=off | 3.1389 -> 3.8704
+  Carab Culln The Risen | Death-hold | disableMechanic/closeQuartersPenalty | att close_quarters Probe Colossus | flags=off | 2.3704 -> 2.9907
+  Carab Culln The Risen | Death-hold | disableMechanic/closeQuartersPenalty | att close_quarters Probe Flyer | flags=off | 3.3981 -> 4.1944
+  Centurion Assault Squad | Annihilator Protocols | generateExtras/extraHits | att melee Probe Vehicle | flags=off | 13.5 -> 20.25
+  Centurion Assault Squad | Annihilator Protocols | generateExtras/extraHits | att melee Probe Monster | flags=off | 16.0 -> 24.0
+  Centurion Assault Squad | Annihilator Protocols | generateExtras/extraHits | att melee Probe Colossus | flags=off | 10.0 -> 15.0
+  Centurion Assault Squad | Annihilator Protocols | generateExtras/extraHits | att melee Probe Flyer | flags=off | 21.3333 -> 32.0
+  Centurion Devastator Squad | Decimator Protocols | reRoll/hitRoll | att ranged Probe Infantry | flags=off | 60.6944 -> 70.8102
+  Centurion Devastator Squad | Decimator Protocols | reRoll/hitRoll | att ranged Probe Elite | flags=off | 22.2407 -> 25.9475
+  Centurion Devastator Squad | Decimator Protocols | reRoll/hitRoll | att ranged Probe Vehicle | flags=off | 27.0 -> 31.5
+  Centurion Devastator Squad | Decimator Protocols | reRoll/hitRoll | att ranged Probe Monster | flags=off | 27.5556 -> 32.1481
+  Centurion Devastator Squad | Decimator Protocols | reRoll/hitRoll | att ranged Probe Colossus | flags=off | 25.3333 -> 29.5556
+  Centurion Devastator Squad | Decimator Protocols | reRoll/hitRoll | att ranged Probe Flyer | flags=off | 40.5556 -> 47.3148
+  Centurion Devastator Squad | Decimator Protocols [target on an objective] | reRoll/hitRoll | att ranged Probe Infantry | flags=on | 33.1806 -> 55.3009
+  Centurion Devastator Squad | Decimator Protocols [target on an objective] | reRoll/hitRoll | att ranged Probe Elite | flags=on | 11.9907 -> 19.9846
+  Centurion Devastator Squad | Decimator Protocols [target on an objective] | reRoll/hitRoll | att ranged Probe Vehicle | flags=on | 14.1111 -> 23.5185
+  Centurion Devastator Squad | Decimator Protocols [target on an objective] | reRoll/hitRoll | att ranged Probe Monster | flags=on | 15.2222 -> 25.3704
+  Centurion Devastator Squad | Decimator Protocols [target on an objective] | reRoll/hitRoll | att ranged Probe Colossus | flags=on | 13.2778 -> 22.1296
+  Centurion Devastator Squad | Decimator Protocols [target on an objective] | reRoll/hitRoll | att ranged Probe Flyer | flags=on | 21.7222 -> 36.2037
+  Chaplain +leader on Assault Intercessor Squad | Litany of Hate [leader_effects] | modifyRelative/woundRoll | att melee Probe Infantry | flags=off | 6.6667 -> 8.8889
+  Chaplain +leader on Assault Intercessor Squad | Litany of Hate [leader_effects] | modifyRelative/woundRoll | att melee Probe Elite | flags=off | 1.9753 -> 2.963
+  Chaplain +leader on Assault Intercessor Squad | Litany of Hate [leader_effects] | modifyRelative/woundRoll | att melee Probe Vehicle | flags=off | 1.4815 -> 2.963
+  Chaplain +leader on Assault Intercessor Squad | Litany of Hate [leader_effects] | modifyRelative/woundRoll | att melee Probe Monster | flags=off | 2.2222 -> 4.4444
+  Chaplain +leader on Assault Intercessor Squad | Litany of Hate [leader_effects] | modifyRelative/woundRoll | att melee Probe Colossus | flags=off | 1.4815 -> 2.963
+  Chaplain +leader on Assault Intercessor Squad | Litany of Hate [leader_effects] | modifyRelative/woundRoll | att melee Probe Flyer | flags=off | 2.2222 -> 4.4444
+  Commander in Enforcer Battlesuit +leader on Crisis Fireknife Battlesuits | Enforcer Commander [leader_effects] | modifyRelative/ap | def ranged Probe Shooter | flags=off | 5.0 -> 3.3333
+  Commander in Enforcer Battlesuit +leader on Crisis Fireknife Battlesuits | Enforcer Commander [leader_effects] | modifyRelative/ap | def ranged Probe Lance | flags=off | 6.6667 -> 5.7778
+  Commander in Enforcer Battlesuit +leader on Crisis Fireknife Battlesuits | Enforcer Commander [leader_effects] | modifyRelative/ap | def close_quarters Probe Lance | flags=off | 5.0 -> 4.3333
+  Commander in Enforcer Battlesuit +leader on Crisis Fireknife Battlesuits | Enforcer Commander [leader_effects] | modifyRelative/ap | def ranged Probe Psyker | flags=off | 2.3704 -> 1.7778
+  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def ranged Probe Shooter | flags=off | 6.6667 -> 5.0
+  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def melee Probe Shooter | flags=off | 6.6667 -> 5.0
+  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def ranged Probe Lance | flags=off | 6.6667 -> 5.3333
+  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def melee Probe Lance | flags=off | 5.7778 -> 4.6667
+  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def close_quarters Probe Lance | flags=off | 5.0 -> 4.0
+  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def ranged Probe Psyker | flags=off | 2.963 -> 2.3704
+  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def melee Probe Psyker | flags=off | 2.963 -> 2.3704
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att ranged Probe Infantry | flags=off | 5.7176 -> 8.6752
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att close_quarters Probe Infantry | flags=off | 3.713 -> 6.2377
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att ranged Probe Elite | flags=off | 2.0556 -> 3.1111
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att close_quarters Probe Elite | flags=off | 1.3426 -> 2.2515
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att ranged Probe Vehicle | flags=off | 1.7685 -> 2.6698
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att close_quarters Probe Vehicle | flags=off | 1.162 -> 1.9452
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att ranged Probe Monster | flags=off | 2.1204 -> 3.2423
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att close_quarters Probe Monster | flags=off | 1.3519 -> 2.284
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att ranged Probe Colossus | flags=off | 1.7685 -> 2.6698
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att close_quarters Probe Colossus | flags=off | 1.162 -> 1.9452
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att ranged Probe Flyer | flags=off | 2.3704 -> 3.6173
+  Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att close_quarters Probe Flyer | flags=off | 1.5185 -> 2.5617
+  Crisis Fireknife Battlesuits | Weapon Support Systems | ignoreMalus/Hit | att close_quarters Probe Infantry | flags=off | 3.713 -> 5.7176
+  Crisis Fireknife Battlesuits | Weapon Support Systems | ignoreMalus/Hit | att close_quarters Probe Elite | flags=off | 1.3426 -> 2.0556
+  Crisis Fireknife Battlesuits | Weapon Support Systems | ignoreMalus/Hit | att close_quarters Probe Vehicle | flags=off | 1.162 -> 1.7685
+  Crisis Fireknife Battlesuits | Weapon Support Systems | ignoreMalus/Hit | att close_quarters Probe Monster | flags=off | 1.3519 -> 2.1204
+  Crisis Fireknife Battlesuits | Weapon Support Systems | ignoreMalus/Hit | att close_quarters Probe Colossus | flags=off | 1.162 -> 1.7685
+  Crisis Fireknife Battlesuits | Weapon Support Systems | ignoreMalus/Hit | att close_quarters Probe Flyer | flags=off | 1.5185 -> 2.3704
+  Crisis Starscythe Battlesuits | Starscythe | modifyRelative/ap | att ranged Probe Infantry | flags=off | 3.6759 -> 5.5139
+  Crisis Starscythe Battlesuits | Starscythe | modifyRelative/ap | att close_quarters Probe Infantry | flags=off | 2.9352 -> 4.4028
+  Crisis Starscythe Battlesuits | Starscythe | modifyRelative/ap | att ranged Probe Elite | flags=off | 0.8889 -> 1.7778
+  Crisis Starscythe Battlesuits | Starscythe | modifyRelative/ap | att close_quarters Probe Elite | flags=off | 0.6944 -> 1.3889
+  Crisis Sunforge Battlesuits | Sunforge [wound] | reRoll/woundRoll | att ranged Probe Vehicle | flags=off | 1.2685 -> 2.0463
+  Crisis Sunforge Battlesuits | Sunforge [wound] | reRoll/woundRoll | att close_quarters Probe Vehicle | flags=off | 0.8287 -> 1.3472
+  Crisis Sunforge Battlesuits | Sunforge [wound] | reRoll/woundRoll | att ranged Probe Monster | flags=off | 1.6829 -> 2.3391
+  Crisis Sunforge Battlesuits | Sunforge [wound] | reRoll/woundRoll | att close_quarters Probe Monster | flags=off | 1.0602 -> 1.4977
+  Crisis Sunforge Battlesuits | Sunforge [wound] | reRoll/woundRoll | att ranged Probe Colossus | flags=off | 1.2685 -> 2.0463
+  Crisis Sunforge Battlesuits | Sunforge [wound] | reRoll/woundRoll | att close_quarters Probe Colossus | flags=off | 0.8287 -> 1.3472
+  Crisis Sunforge Battlesuits | Sunforge [wound] | reRoll/woundRoll | att ranged Probe Flyer | flags=off | 2.1204 -> 2.9954
+  Crisis Sunforge Battlesuits | Sunforge [wound] | reRoll/woundRoll | att close_quarters Probe Flyer | flags=off | 1.3519 -> 1.9352
+  Crisis Sunforge Battlesuits | Sunforge [damage] | reRoll/damage | att ranged Probe Vehicle | flags=off | 1.2685 -> 1.5185
+  Crisis Sunforge Battlesuits | Sunforge [damage] | reRoll/damage | att close_quarters Probe Vehicle | flags=off | 0.8287 -> 0.9954
+  Crisis Sunforge Battlesuits | Sunforge [damage] | reRoll/damage | att ranged Probe Monster | flags=off | 1.6829 -> 1.9641
+  Crisis Sunforge Battlesuits | Sunforge [damage] | reRoll/damage | att close_quarters Probe Monster | flags=off | 1.0602 -> 1.2477
+  Crisis Sunforge Battlesuits | Sunforge [damage] | reRoll/damage | att ranged Probe Colossus | flags=off | 1.2685 -> 1.5185
+  Crisis Sunforge Battlesuits | Sunforge [damage] | reRoll/damage | att close_quarters Probe Colossus | flags=off | 0.8287 -> 0.9954
+  Crisis Sunforge Battlesuits | Sunforge [damage] | reRoll/damage | att ranged Probe Flyer | flags=off | 2.1204 -> 2.4954
+  Crisis Sunforge Battlesuits | Sunforge [damage] | reRoll/damage | att close_quarters Probe Flyer | flags=off | 1.3519 -> 1.6019
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att ranged Probe Infantry | flags=off | 23.5718 -> 26.9171
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att melee Probe Infantry | flags=off | 0.3333 -> 0.3889
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att close_quarters Probe Infantry | flags=off | 12.5995 -> 14.1161
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att ranged Probe Elite | flags=off | 7.9336 -> 9.0183
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att melee Probe Elite | flags=off | 0.1111 -> 0.1296
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att close_quarters Probe Elite | flags=off | 4.8194 -> 5.385
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att ranged Probe Vehicle | flags=off | 7.8796 -> 9.0309
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att melee Probe Vehicle | flags=off | 0.0833 -> 0.0972
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att close_quarters Probe Vehicle | flags=off | 5.3148 -> 6.0386
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att ranged Probe Monster | flags=off | 8.463 -> 9.5818
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att melee Probe Monster | flags=off | 0.1667 -> 0.1944
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att close_quarters Probe Monster | flags=off | 5.9167 -> 6.6111
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att ranged Probe Colossus | flags=off | 6.6389 -> 7.6481
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att melee Probe Colossus | flags=off | 0.0417 -> 0.0486
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att close_quarters Probe Colossus | flags=off | 4.287 -> 4.9043
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att ranged Probe Flyer | flags=off | 10.1204 -> 11.5154
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att melee Probe Flyer | flags=off | 0.1667 -> 0.1944
+  Deimos Predator | Armoured Spearhead | reRoll/hitRoll | att close_quarters Probe Flyer | flags=off | 6.8148 -> 7.659
+  Eradicator Squad | Total Obliteration [hit] | reRoll/hitRoll | att ranged Probe Vehicle | flags=off | 7.7778 -> 11.1481
+  Eradicator Squad | Total Obliteration [hit] | reRoll/hitRoll | att close_quarters Probe Vehicle | flags=off | 0.1111 -> 0.1481
+  Eradicator Squad | Total Obliteration [hit] | reRoll/hitRoll | att ranged Probe Monster | flags=off | 8.75 -> 12.5417
+  Eradicator Squad | Total Obliteration [hit] | reRoll/hitRoll | att close_quarters Probe Monster | flags=off | 0.2222 -> 0.2963
+  Eradicator Squad | Total Obliteration [hit] | reRoll/hitRoll | att ranged Probe Colossus | flags=off | 7.7778 -> 11.1481
+  Eradicator Squad | Total Obliteration [hit] | reRoll/hitRoll | att close_quarters Probe Colossus | flags=off | 0.1111 -> 0.1481
+  Eradicator Squad | Total Obliteration [hit] | reRoll/hitRoll | att ranged Probe Flyer | flags=off | 11.6667 -> 16.7222
+  Eradicator Squad | Total Obliteration [hit] | reRoll/hitRoll | att close_quarters Probe Flyer | flags=off | 0.2222 -> 0.2963
+  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def ranged Probe Shooter | flags=off | 8.8889 -> 5.9259
+  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def melee Probe Shooter | flags=off | 8.8889 -> 5.9259
+  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def ranged Probe Lance | flags=off | 6.6667 -> 4.4444
+  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def melee Probe Lance | flags=off | 6.6667 -> 4.4444
+  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def close_quarters Probe Lance | flags=off | 5.0 -> 3.3333
+  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def ranged Probe Psyker | flags=off | 3.7037 -> 2.4691
+  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def melee Probe Psyker | flags=off | 3.7037 -> 2.4691
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Infantry | flags=on | 10.9583 -> 14.4722
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Elite | flags=on | 3.8025 -> 5.0494
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Vehicle | flags=on | 3.2222 -> 4.3426
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Monster | flags=on | 3.9306 -> 4.9167
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Colossus | flags=on | 3.2222 -> 4.3426
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Flyer | flags=on | 4.4861 -> 5.75
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Infantry | flags=on | 5.0 -> 6.6667
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Infantry | flags=on | 10.9583 -> 14.4722
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Elite | flags=on | 1.4815 -> 1.9753
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Elite | flags=on | 3.8025 -> 5.0494
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Vehicle | flags=on | 1.1111 -> 1.4815
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Vehicle | flags=on | 3.2222 -> 4.3426
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Monster | flags=on | 1.6667 -> 2.2222
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Monster | flags=on | 3.9306 -> 4.9167
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Colossus | flags=on | 1.1111 -> 1.4815
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Colossus | flags=on | 3.2222 -> 4.3426
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Flyer | flags=on | 1.6667 -> 2.2222
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Flyer | flags=on | 4.4861 -> 5.75
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att ranged Probe Infantry | flags=off | 18.5262 -> 22.9356
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att close_quarters Probe Infantry | flags=off | 14.1169 -> 18.5262
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att ranged Probe Elite | flags=off | 7.5751 -> 9.3855
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att close_quarters Probe Elite | flags=off | 5.7647 -> 7.5751
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att ranged Probe Vehicle | flags=off | 8.3395 -> 10.3735
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att close_quarters Probe Vehicle | flags=off | 6.3056 -> 8.3395
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att ranged Probe Monster | flags=off | 11.3889 -> 14.0972
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att close_quarters Probe Monster | flags=off | 8.6806 -> 11.3889
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att ranged Probe Colossus | flags=off | 6.3457 -> 7.8812
+  Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att close_quarters Probe Colossus | flags=off | 4.8102 -> 6.3457
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att ranged Probe Infantry | flags=off | 2.2222 -> 2.5926
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att melee Probe Infantry | flags=off | 6.6667 -> 7.7778
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att close_quarters Probe Infantry | flags=off | 13.3333 -> 15.5556
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att ranged Probe Elite | flags=off | 0.4938 -> 0.5761
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att melee Probe Elite | flags=off | 1.9753 -> 2.3045
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att close_quarters Probe Elite | flags=off | 4.6914 -> 5.4733
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att ranged Probe Vehicle | flags=off | 0.3704 -> 0.4321
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att melee Probe Vehicle | flags=off | 1.4815 -> 1.7284
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att close_quarters Probe Vehicle | flags=off | 4.2593 -> 4.9691
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att ranged Probe Monster | flags=off | 0.7407 -> 0.8642
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att melee Probe Monster | flags=off | 2.2222 -> 2.5926
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att close_quarters Probe Monster | flags=off | 3.7037 -> 4.321
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att ranged Probe Colossus | flags=off | 0.3704 -> 0.4321
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att melee Probe Colossus | flags=off | 1.4815 -> 1.7284
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att close_quarters Probe Colossus | flags=off | 4.2593 -> 4.9691
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att ranged Probe Flyer | flags=off | 0.7407 -> 0.8642
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att melee Probe Flyer | flags=off | 2.2222 -> 2.5926
+  Grey Hunters | Cunning Hunters | reRoll/woundRoll | att close_quarters Probe Flyer | flags=off | 4.8148 -> 5.6173
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att ranged Probe Infantry | flags=on | 1.6667 -> 2.5
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att melee Probe Infantry | flags=on | 5.0 -> 7.5
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att close_quarters Probe Infantry | flags=on | 6.6667 -> 8.2099
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att ranged Probe Elite | flags=on | 0.3704 -> 0.6173
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att melee Probe Elite | flags=on | 1.4815 -> 2.4691
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att close_quarters Probe Elite | flags=on | 2.3457 -> 3.1687
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att ranged Probe Vehicle | flags=on | 0.2778 -> 0.5093
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att melee Probe Vehicle | flags=on | 1.1111 -> 2.037
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att close_quarters Probe Vehicle | flags=on | 2.1296 -> 3.5648
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att ranged Probe Monster | flags=on | 0.5556 -> 1.0185
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att melee Probe Monster | flags=on | 1.6667 -> 3.0556
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att close_quarters Probe Monster | flags=on | 1.8519 -> 3.1173
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att ranged Probe Colossus | flags=on | 0.2778 -> 0.5093
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att melee Probe Colossus | flags=on | 1.1111 -> 2.037
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att close_quarters Probe Colossus | flags=on | 2.1296 -> 3.5648
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att ranged Probe Flyer | flags=on | 0.5556 -> 1.0185
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att melee Probe Flyer | flags=on | 1.6667 -> 3.0556
+  Grey Hunters | Cunning Hunters [target on an objective] | reRoll/woundRoll | att close_quarters Probe Flyer | flags=on | 2.4074 -> 4.0432
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att ranged Probe Vehicle | flags=off | 6.5648 -> 8.7531
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att melee Probe Vehicle | flags=off | 0.0556 -> 0.0833
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att close_quarters Probe Vehicle | flags=off | 2.8117 -> 4.2176
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att ranged Probe Monster | flags=off | 6.5185 -> 8.6914
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att melee Probe Monster | flags=off | 0.1111 -> 0.1667
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att close_quarters Probe Monster | flags=off | 2.5401 -> 3.8102
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att ranged Probe Colossus | flags=off | 5.9259 -> 7.9012
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att melee Probe Colossus | flags=off | 0.0278 -> 0.0417
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att close_quarters Probe Colossus | flags=off | 2.3858 -> 3.5787
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att ranged Probe Flyer | flags=off | 7.838 -> 10.4506
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att melee Probe Flyer | flags=off | 0.1111 -> 0.1667
+  Hammerhead Gunship | Armour Hunter | modifyRelative/hitRoll | att close_quarters Probe Flyer | flags=off | 3.0586 -> 4.588
+  Heavy Intercessor Squad | Unyielding in the Face of the Foe | modifyRelative/saveRoll | def ranged Probe Shooter | flags=on | 1.6667 -> 1.1111
+  Heavy Intercessor Squad | Unyielding in the Face of the Foe | modifyRelative/saveRoll | def melee Probe Shooter | flags=on | 2.5 -> 1.6667
+  Ironclad Dreadnought | Siege-breaker Protocols [hit] | modifyRelative/hitRoll | att melee Probe Vehicle | flags=off | 2.6667 -> 3.3333
+  Ironclad Dreadnought | Siege-breaker Protocols [hit] | modifyRelative/hitRoll | att melee Probe Colossus | flags=off | 2.6667 -> 3.3333
+  Ironclad Dreadnought | Siege-breaker Protocols [hit] | modifyRelative/hitRoll | att melee Probe Flyer | flags=off | 3.5556 -> 4.4444
+  Ironclad Dreadnought | Siege-breaker Protocols [wound] | modifyRelative/woundRoll | att melee Probe Vehicle | flags=off | 2.6667 -> 3.3333
+  Ironclad Dreadnought | Siege-breaker Protocols [wound] | modifyRelative/woundRoll | att melee Probe Flyer | flags=off | 3.5556 -> 4.4444
+  Leviathan Dreadnought | Duty Eternal | damageReduction/add | def ranged Probe Lance | flags=off | 4.0 -> 3.3333
+  Leviathan Dreadnought | Duty Eternal | damageReduction/add | def melee Probe Lance | flags=off | 4.0 -> 3.0
+  Leviathan Dreadnought | Duty Eternal | damageReduction/add | def close_quarters Probe Lance | flags=off | 3.0 -> 2.5
+  Leviathan Dreadnought | Duty Eternal | damageReduction/add | def ranged Probe Psyker | flags=off | 0.8889 -> 0.4444
+  Leviathan Dreadnought | Duty Eternal | damageReduction/add | def melee Probe Psyker | flags=off | 0.8889 -> 0.4444
+  Librarian +leader on Assault Intercessor Squad | Psychic Hood [leader_effects] | feelNoPain/grant | def ranged Probe Psyker | flags=off | 2.963 -> 1.4815
+  Librarian +leader on Assault Intercessor Squad | Psychic Hood [leader_effects] | feelNoPain/grant | def melee Probe Psyker | flags=off | 2.963 -> 1.4815
+  Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def ranged Probe Lance | flags=off | 6.6667 -> 4.0
+  Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def melee Probe Lance | flags=off | 5.7778 -> 4.0
+  Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def close_quarters Probe Lance | flags=off | 5.0 -> 3.0
+  Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def ranged Probe Psyker | flags=off | 2.963 -> 2.2222
+  Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def melee Probe Psyker | flags=off | 2.963 -> 2.2222
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att ranged Probe Infantry | flags=off | 65.4722 -> 78.25
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att melee Probe Infantry | flags=off | 16.6667 -> 22.2222
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att ranged Probe Elite | flags=off | 26.6605 -> 31.9969
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att melee Probe Elite | flags=off | 6.6667 -> 8.8889
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att ranged Probe Vehicle | flags=off | 23.8611 -> 28.9769
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att melee Probe Vehicle | flags=off | 10.0 -> 13.3333
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att ranged Probe Monster | flags=off | 29.6019 -> 35.1343
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att melee Probe Monster | flags=off | 5.0 -> 6.6667
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att ranged Probe Colossus | flags=off | 23.4722 -> 28.4907
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att melee Probe Colossus | flags=off | 10.0 -> 13.3333
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att ranged Probe Flyer | flags=off | 31.9537 -> 38.0741
+  Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att melee Probe Flyer | flags=off | 13.3333 -> 17.7778
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att ranged Probe Infantry | flags=on | 87.3056 -> 100.1065
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att close_quarters Probe Infantry | flags=on | 4.0 -> 4.6667
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att ranged Probe Elite | flags=on | 27.2037 -> 31.2191
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att close_quarters Probe Elite | flags=on | 1.4074 -> 1.642
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att ranged Probe Vehicle | flags=on | 27.6667 -> 31.9861
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att close_quarters Probe Vehicle | flags=on | 1.2778 -> 1.4907
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att ranged Probe Monster | flags=on | 29.6111 -> 33.7685
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att close_quarters Probe Monster | flags=on | 1.1111 -> 1.2963
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att ranged Probe Colossus | flags=on | 26.6667 -> 30.8194
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att close_quarters Probe Colossus | flags=on | 1.2778 -> 1.4907
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att ranged Probe Flyer | flags=on | 41.7778 -> 47.963
+  Long Fangs | Fire Discipline | reRoll/hitRoll | att close_quarters Probe Flyer | flags=on | 1.4444 -> 1.6852
+  Outrider Squad | Thunderous Impact [damage] | modifyRelative/damage | att melee Probe Infantry | flags=on | 3.0 -> 6.0
+  Outrider Squad | Thunderous Impact [damage] | modifyRelative/damage | att melee Probe Elite | flags=on | 0.8889 -> 1.7778
+  Outrider Squad | Thunderous Impact [damage] | modifyRelative/damage | att melee Probe Vehicle | flags=on | 0.6667 -> 1.3333
+  Outrider Squad | Thunderous Impact [damage] | modifyRelative/damage | att melee Probe Monster | flags=on | 1.0 -> 2.0
+  Outrider Squad | Thunderous Impact [damage] | modifyRelative/damage | att melee Probe Colossus | flags=on | 0.6667 -> 1.3333
+  Outrider Squad | Thunderous Impact [damage] | modifyRelative/damage | att melee Probe Flyer | flags=on | 1.0 -> 2.0
+  Predator Destructor | Destructor | modifyRelative/ap | att ranged Probe Infantry | flags=off | 9.331 -> 11.9306
+  Predator Destructor | Destructor | modifyRelative/ap | att close_quarters Probe Infantry | flags=off | 7.1829 -> 9.1806
+  Predator Destructor | Destructor | modifyRelative/ap | att ranged Probe Elite | flags=off | 3.4336 -> 4.3534
+  Predator Destructor | Destructor | modifyRelative/ap | att close_quarters Probe Elite | flags=off | 2.6435 -> 3.3472
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att ranged Probe Infantry | flags=on | 19.287 -> 27.6667
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att melee Probe Infantry | flags=on | 0.5556 -> 0.8333
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att close_quarters Probe Infantry | flags=on | 8.7778 -> 10.8611
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att ranged Probe Elite | flags=on | 5.8056 -> 8.2778
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att melee Probe Elite | flags=on | 0.1481 -> 0.2222
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att close_quarters Probe Elite | flags=on | 3.0741 -> 3.7685
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att ranged Probe Vehicle | flags=on | 6.4815 -> 9.1157
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att melee Probe Vehicle | flags=on | 0.1111 -> 0.1667
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att close_quarters Probe Vehicle | flags=on | 3.7037 -> 4.8148
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att ranged Probe Monster | flags=on | 6.5694 -> 9.2986
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att melee Probe Monster | flags=on | 0.2222 -> 0.3333
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att close_quarters Probe Monster | flags=on | 4.1111 -> 4.9444
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att ranged Probe Colossus | flags=on | 6.3704 -> 8.9491
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att melee Probe Colossus | flags=on | 0.1111 -> 0.1667
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att close_quarters Probe Colossus | flags=on | 3.5926 -> 4.7037
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att ranged Probe Flyer | flags=on | 8.5741 -> 12.1667
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att melee Probe Flyer | flags=on | 0.2222 -> 0.3333
+  Repulsor Executioner | Executioner | modifyRelative/hitRoll | att close_quarters Probe Flyer | flags=on | 5.2963 -> 6.4074
+  Shas’o R’alai | Assassin | reRoll/hitRoll | att ranged Probe Elite | flags=off | 0.6667 -> 0.8889
+  Shas’o R’alai | Assassin | reRoll/hitRoll | att melee Probe Elite | flags=off | 0.0833 -> 0.125
+  Shas’o R’alai | Assassin | reRoll/hitRoll | att close_quarters Probe Elite | flags=off | 0.1667 -> 0.25
+  Skyclaws | Headstrong | modifyRelative/hitRoll | att melee Probe Infantry | flags=on | 5.625 -> 7.5
+  Skyclaws | Headstrong | modifyRelative/hitRoll | att melee Probe Elite | flags=on | 1.6667 -> 2.2222
+  Skyclaws | Headstrong | modifyRelative/hitRoll | att melee Probe Vehicle | flags=on | 1.25 -> 1.6667
+  Skyclaws | Headstrong | modifyRelative/hitRoll | att melee Probe Monster | flags=on | 1.875 -> 2.5
+  Skyclaws | Headstrong | modifyRelative/hitRoll | att melee Probe Colossus | flags=on | 1.25 -> 1.6667
+  Skyclaws | Headstrong | modifyRelative/hitRoll | att melee Probe Flyer | flags=on | 1.875 -> 2.5
+  Typhon | Sunderer of Fortresses [S vs VEHICLE] | modifyRelative/strength | att ranged Probe Vehicle | flags=off | 12.7315 -> 13.7222
+  Typhon | Sunderer of Fortresses [S vs VEHICLE] | modifyRelative/strength | att close_quarters Probe Vehicle | flags=off | 2.2222 -> 3.0278
+  Typhon | Sunderer of Fortresses [S vs VEHICLE] | modifyRelative/strength | att ranged Probe Flyer | flags=off | 14.2315 -> 14.8241
+  Typhon | Sunderer of Fortresses [S vs VEHICLE] | modifyRelative/strength | att melee Probe Flyer | flags=off | 0.3333 -> 0.5
+  Typhon | Sunderer of Fortresses [S vs VEHICLE] | modifyRelative/strength | att close_quarters Probe Flyer | flags=off | 3.4722 -> 3.9167
+  Typhon | Sunderer of Fortresses [D vs VEHICLE] | modifyRelative/damage | att ranged Probe Vehicle | flags=off | 12.7315 -> 16.5093
+  Typhon | Sunderer of Fortresses [D vs VEHICLE] | modifyRelative/damage | att melee Probe Vehicle | flags=off | 0.1667 -> 0.3333
+  Typhon | Sunderer of Fortresses [D vs VEHICLE] | modifyRelative/damage | att close_quarters Probe Vehicle | flags=off | 2.2222 -> 3.0
+  Typhon | Sunderer of Fortresses [D vs VEHICLE] | modifyRelative/damage | att ranged Probe Flyer | flags=off | 14.2315 -> 18.8611
+  Typhon | Sunderer of Fortresses [D vs VEHICLE] | modifyRelative/damage | att melee Probe Flyer | flags=off | 0.3333 -> 0.6667
+  Typhon | Sunderer of Fortresses [D vs VEHICLE] | modifyRelative/damage | att close_quarters Probe Flyer | flags=off | 3.4722 -> 5.0
+  Typhon | Sunderer of Fortresses [S vs FORTIFICATION] | modifyRelative/strength | att ranged Probe Colossus | flags=off | 12.3981 -> 13.2037
+  Typhon | Sunderer of Fortresses [S vs FORTIFICATION] | modifyRelative/strength | att close_quarters Probe Colossus | flags=off | 1.9722 -> 2.6389
+  Typhon | Sunderer of Fortresses [D vs FORTIFICATION] | modifyRelative/damage | att ranged Probe Colossus | flags=off | 12.3981 -> 19.8056
+  Typhon | Sunderer of Fortresses [D vs FORTIFICATION] | modifyRelative/damage | att melee Probe Colossus | flags=off | 0.1667 -> 0.5
+  Typhon | Sunderer of Fortresses [D vs FORTIFICATION] | modifyRelative/damage | att close_quarters Probe Colossus | flags=off | 1.9722 -> 3.4167
+  Ulrik The Slayer +leader on Blood Claws | Oathbound [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Infantry | flags=on | 2.963 -> 3.7037
+  Ulrik The Slayer +leader on Blood Claws | Oathbound [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Elite | flags=on | 1.4815 -> 1.8519
+  Ulrik The Slayer +leader on Blood Claws | Oathbound [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Vehicle | flags=on | 1.6667 -> 2.0833
+  Ulrik The Slayer +leader on Blood Claws | Oathbound [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Monster | flags=on | 1.6667 -> 2.0833
+  Ulrik The Slayer +leader on Blood Claws | Oathbound [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Colossus | flags=on | 1.6667 -> 2.0833
+  Ulrik The Slayer +leader on Blood Claws | Oathbound [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Flyer | flags=on | 2.2222 -> 2.7778
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att ranged Probe Infantry | flags=off | 7.7778 -> 9.7222
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att close_quarters Probe Infantry | flags=off | 15.7639 -> 19.0972
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att ranged Probe Elite | flags=off | 2.9012 -> 3.7037
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att close_quarters Probe Elite | flags=off | 5.5864 -> 6.7593
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att ranged Probe Vehicle | flags=off | 1.7593 -> 2.2222
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att close_quarters Probe Vehicle | flags=off | 5.1157 -> 6.1806
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att ranged Probe Monster | flags=off | 2.5926 -> 3.2407
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att close_quarters Probe Monster | flags=off | 4.6065 -> 5.5324
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att ranged Probe Colossus | flags=off | 1.7593 -> 2.2222
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att close_quarters Probe Colossus | flags=off | 5.1157 -> 6.1806
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att ranged Probe Flyer | flags=off | 2.5926 -> 3.2407
+  Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att close_quarters Probe Flyer | flags=off | 5.8565 -> 7.0602
+## abilities inert (2 of 55)
+  Ancient +support on Assault Intercessor Squad | Astartes Banner [leader_effects] | modifyRelative/oc
+  Commander in Coldstar Battlesuit +leader on Crisis Fireknife Battlesuits | Coldstar Commander [leader_effects] | modifyAbsolute/m
 
-DIGEST 7dfb2b7bf29cc9a0  (35 lines)
+DIGEST 83bdb148d6d39fcf  (630 lines)

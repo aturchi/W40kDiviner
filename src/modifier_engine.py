@@ -157,11 +157,15 @@ def _c_battle_round(d, env):
 
 
 def _c_psychic_attack(d, env):
-    # True when the weapon in scope carries the PSYCHIC keyword. This is a
-    # per-weapon property, so at unit/model scope (no weapon) it cannot
-    # apply -> False (a weapon-scoped ability always has env.weapon set).
+    # True when the weapon in scope carries the PSYCHIC keyword. With no
+    # weapon in scope the condition refers to the INCOMING attack (the
+    # defender role, and the weapon-free passes of the attacker role):
+    # defer it, exactly like attackType. The attack maths decides it -
+    # there the attacking weapon is known - so a defensive "only against
+    # Psychic attacks" ability now works instead of silently never
+    # firing.
     if env.weapon is None:
-        return False
+        return DYNAMIC
     return "PSYCHIC" in {k.upper() for k in (env.weapon.keywords or [])}
 
 
@@ -203,6 +207,9 @@ def _dynamic_prefix(cond) -> str:
     t, d = cond.get("type"), cond.get("data", {})
     if t == "attackType":
         return f"{_key(d.get('attackType')).upper()}_ATTACK"
+    if t == "psychicAttack":
+        # Decided by parse_effect_strings, where the weapon is known.
+        return "PSYCHIC_ATTACK"
     if t == "crit":
         return "CRIT_HIT" if _key(d.get("crit")) == "hitroll" else "CRIT_WOUND"
     if t == "attackStepRoll":

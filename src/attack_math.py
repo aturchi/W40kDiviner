@@ -281,6 +281,18 @@ def effective_fnp(defender_ref: dict, mech, mw: bool):
     return fnp, mod
 
 
+def effective_invuln(defender_ref: dict, mech):
+    """The invulnerable save in force for this attack: the defender's own,
+    or one granted by an ability (mech.invuln_grant). Like Feel No Pain,
+    an invulnerable save never stacks - the BEST (lowest) value wins.
+    Shared by both engines so they cannot drift apart."""
+    inv = defender_ref.get("invuln")
+    if mech.invuln_grant is not None:
+        inv = mech.invuln_grant if inv is None \
+            else min(inv, mech.invuln_grant)
+    return inv
+
+
 def damage_reroll_range(char):
     """Which die results a free "re-roll the Damage roll" should re-roll.
 
@@ -326,6 +338,13 @@ class WeaponMechanics:
 
     def __init__(self):
         self.sustained = 0          # extra hits per critical hit
+        self.extra_hits = 0         # extra hits per SUCCESSFUL hit (any
+        #                             hit, not just a critical one); the
+        #                             bonus hits are never critical and
+        #                             never generate further extras
+        self.extra_wounds = 0       # extra (normal) wounds per wound
+        self.extra_wounds_crit = 0  # ...and per CRITICAL wound only
+        self.extra_attacks = 0      # extra attacks with this weapon
         self.lethal = False         # crit hit auto-wounds
         self.lethal_crit = False    # crit hit scores a CRITICAL wound
         self.devastating = False    # crit wound -> MW = damage (replaces)
@@ -368,6 +387,8 @@ class WeaponMechanics:
         self.fnp_set_mw = None      # ...vs mortal wounds only
         self.fnp_mod_mw = 0         # FNP roll modifier vs mortal wounds only
         self.invuln_mw = None       # invulnerable save vs mortal wounds only
+        self.invuln_grant = None    # invulnerable save granted for this
+        #                             attack (best value wins, like FNP)
         self.dmg_reroll = None      # (lo, hi) damage re-roll range
         self.dmg_reroll_any = False # "you can re-roll the Damage roll"
         #                             with no range given: the range is
@@ -730,6 +751,13 @@ def parse_effect_strings(strings, attack_type: str, mech: WeaponMechanics,
         for c in conds:
             if c in ("RANGED_ATTACK", "MELEE_ATTACK"):
                 applies &= (c.split("_")[0].title() == attack_type)
+            elif c == "PSYCHIC_ATTACK":
+                # "only against Psychic attacks": a property of the
+                # ATTACKING weapon, which the defender view cannot see -
+                # so modifier_engine defers it to here.
+                kws = {str(k).strip().upper()
+                       for k in (getattr(weapon, "keywords", None) or ())}
+                applies &= "PSYCHIC" in kws
             elif _CHAR_RE.match(c):
                 applies &= _eval_char_cond(_CHAR_RE.match(c), weapon)
             else:
@@ -850,6 +878,38 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             mech.dmg_set_zero = True
         elif tok[0] in ("EXTRAATTACKS", "WEAPON_DISABLED"):
             pass                    # selection-level tokens, no maths
+        elif tok[0] == "EXTRA_HITS":
+            # generateExtras "extra hits" with no roll-time condition:
+            # every successful hit yields X more. Under a critical-hit
+            # condition the same token becomes SUSTAINED HITS instead
+            # (see the CRIT_HIT branch below).
+            add = parse_x_value(tok[1], mech.warnings.append)
+            if x_active(add):
+                mech.extra_hits = (add if not x_active(mech.extra_hits)
+                                   else _x_sum(mech.extra_hits, add))
+        elif tok[0] == "EXTRA_WOUNDS":
+            # Every successful wound yields X more. Like the bonus hits
+            # of SUSTAINED HITS, the bonus wounds are NORMAL wounds: they
+            # are not rolled, so they can never be critical.
+            add = parse_x_value(tok[1], mech.warnings.append)
+            if x_active(add):
+                mech.extra_wounds = (add if not x_active(mech.extra_wounds)
+                                     else _x_sum(mech.extra_wounds, add))
+        elif tok[0] == "EXTRA_ATTACKS":
+            # X further attacks with this weapon. It is a count, not a
+            # roll-time event, so it joins the Rapid Fire / Blast extras.
+            add = parse_x_value(tok[1], mech.warnings.append)
+            if x_active(add):
+                mech.extra_attacks = (add if not x_active(mech.extra_attacks)
+                                      else _x_sum(mech.extra_attacks, add))
+        elif tok[0] == "SETINVULN":
+            # An ability granting an invulnerable save for this attack
+            # (a conditional one, e.g. "only against Ranged attacks",
+            # arrives here once parse_effect_strings has decided the
+            # condition). The best value wins; it never stacks.
+            v = int(tok[1])
+            mech.invuln_grant = v if mech.invuln_grant is None \
+                else min(mech.invuln_grant, v)
         elif tok[0] == "CONVERSION":
             mech.conversion = True
         elif tok[0] == "HUNTER" and len(tok) >= 2:
@@ -894,7 +954,17 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             return False
         return True
     if dyn == ["CRIT_WOUND"]:
-        if tok[0] == "MORTAL_WOUNDS":
+        if tok[0] == "EXTRA_WOUNDS":
+            # Bonus wounds on a CRITICAL wound only - the wound-stage
+            # counterpart of SUSTAINED HITS. Like every bonus wound they
+            # are normal wounds: not rolled, so never critical, and they
+            # generate no extras of their own.
+            add = parse_x_value(tok[1], mech.warnings.append)
+            if x_active(add):
+                mech.extra_wounds_crit = (
+                    add if not x_active(mech.extra_wounds_crit)
+                    else _x_sum(mech.extra_wounds_crit, add))
+        elif tok[0] == "MORTAL_WOUNDS":
             mw = _parse_mw_payload(tok)
             if mw is None:
                 return False        # CAP not modelled
@@ -1016,6 +1086,11 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         if groups and x_active(src):
             for _ in range(groups):
                 extra_pmf = convolve(extra_pmf, x_pmf(src))
+    # generateExtras "extra attacks": X further attacks with the weapon,
+    # unconditional (a roll-time condition cannot change a count decided
+    # before the dice are rolled).
+    if x_active(mech.extra_attacks):
+        extra_pmf = convolve(extra_pmf, x_pmf(mech.extra_attacks))
     per_copy = char_pmf(weapon.A)
     if mech.attacks_mod:
         # Defender ability on the attack's Attacks characteristic: it
@@ -1170,7 +1245,7 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
 
     def p_uns(ap_val):
         sv, smod, imod, srr, irr = common
-        return save_fail_prob(sv, ap_val, defender_ref.get("invuln"),
+        return save_fail_prob(sv, ap_val, effective_invuln(defender_ref, mech),
                               smod, imod, srr, irr)
 
     p_unsaved = p_uns(ap)
@@ -1291,6 +1366,20 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     # that may have failed: they are hits, not hit rolls.)
     single_extra = {}
 
+    def _with_extras(base, count, unit):
+        """*base* plus *count* further copies of *unit*, where count may
+        itself be a die: mix over its PMF, the same way the total mixes
+        over the number of attacks."""
+        if not x_active(count):
+            return base
+        n_pmf, cur, parts = x_pmf(count), base, []
+        for k, pk in enumerate(n_pmf):
+            if pk:
+                parts.append((pk, cur))
+            if k < len(n_pmf) - 1:
+                cur = convolve(cur, unit)
+        return mix(parts)
+
     def build_chain(key):
         """Per-attack outcome PMF for one metric ('damage',
         'damage_net' or 'wounds')."""
@@ -1305,26 +1394,36 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                        else convolve(leaf_mw, after_save_crit))
         else:
             cw_leaf = after_save_crit
-        per_hit = mix([(q_nw, after_save), (q_cw, cw_leaf),
+        # EXTRA WOUNDS: a scored wound yields X more (extra_wounds on
+        # any wound, extra_wounds_crit on a critical one). They are not
+        # rolled, so they are always NORMAL wounds - even the ones a
+        # critical wound generated, and even when the critical branch
+        # ends the sequence for itself.
+        nw_branch = _with_extras(after_save, mech.extra_wounds, after_save)
+        # A critical wound collects both kinds of bonus. Stacking them as
+        # two successive draws, rather than summing the two X values, is
+        # what the rules describe when they come from two abilities: each
+        # rolls its own die.
+        cw_branch = _with_extras(
+            _with_extras(cw_leaf, mech.extra_wounds, after_save),
+            mech.extra_wounds_crit, after_save)
+        per_hit = mix([(q_nw, nw_branch), (q_cw, cw_branch),
                        (1 - q_w, zero)])
         if mech.lethal_crit:
-            crit_hit_base = cw_leaf
+            crit_hit_base = cw_branch
         elif mech.lethal:
-            crit_hit_base = after_save
+            crit_hit_base = nw_branch
         else:
             crit_hit_base = per_hit
-        crit_branch = crit_hit_base
-        if x_active(mech.sustained):
-            # The number of bonus hits may itself be a die: mix over it,
-            # the same way the total mixes over the number of attacks.
-            n_pmf, cur, parts = x_pmf(mech.sustained), crit_hit_base, []
-            for k, pk in enumerate(n_pmf):
-                if pk:
-                    parts.append((pk, cur))
-                if k < len(n_pmf) - 1:
-                    cur = convolve(cur, per_hit)
-            crit_branch = mix(parts)
-        pairs = [(p_norm_hit, per_hit), (p_crit_hit, crit_branch),
+        # SUSTAINED HITS: bonus hits on a CRITICAL hit only.
+        crit_branch = _with_extras(crit_hit_base, mech.sustained, per_hit)
+        # EXTRA HITS: bonus hits on ANY successful hit. Both kinds of
+        # bonus hit are hits, not hit rolls, so they are never critical
+        # and never generate extras of their own - which is why the unit
+        # convolved in is per_hit and not the branch itself.
+        norm_branch = _with_extras(per_hit, mech.extra_hits, per_hit)
+        crit_branch = _with_extras(crit_branch, mech.extra_hits, per_hit)
+        pairs = [(p_norm_hit, norm_branch), (p_crit_hit, crit_branch),
                  (1 - p_hit - p_mw_hit, zero)]
         if p_mw_hit:
             pairs.append((p_mw_hit, streams["hmw"][key]))

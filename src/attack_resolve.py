@@ -148,7 +148,7 @@ def _save_made(rng, ref, ap_eff, mech) -> bool:
     arm_t = None
     if sv is not None:
         arm_t = rules_config.clamp_characteristic("Sv", sv) + abs(ap_eff)
-    inv_t = ref.get("invuln")
+    inv_t = am.effective_invuln(ref, mech)
     if inv_t is not None:
         inv_t = rules_config.clamp_characteristic("invuln", inv_t)
     smod, imod = mech.save_mod, mech.invuln_mod
@@ -199,6 +199,9 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         for src in (mech.blast, mech.cleave):
             if groups and am.x_active(src):
                 extra_a += sum(am.x_value(src, rng) for _ in range(groups))
+        # generateExtras "extra attacks": X further attacks per copy.
+        if am.x_active(mech.extra_attacks):
+            extra_a += am.x_value(mech.extra_attacks, rng)
         a_char = rules_config.clamp_characteristic(
             "A", (weapon.A.value(rng) or 0) + mech.attacks_mod)
         n_att += a_char + extra_a
@@ -303,6 +306,22 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         if not wounded:
             fails["wound"] = True
             return
+        resolve_wound(wound_crit)
+        # EXTRA WOUNDS: a scored wound yields X more - extra_wounds on
+        # any wound, extra_wounds_crit on a critical one, and a critical
+        # wound collects both. They are not rolled, so they are always
+        # NORMAL wounds; mirrors nw_branch / cw_branch of analyze_weapon.
+        extras = 0
+        if am.x_active(mech.extra_wounds):
+            extras += am.x_value(mech.extra_wounds, rng)
+        if wound_crit and am.x_active(mech.extra_wounds_crit):
+            extras += am.x_value(mech.extra_wounds_crit, rng)
+        for _ in range(extras):
+            resolve_wound(False)
+
+    def resolve_wound(wound_crit: bool):
+        """Everything after a wound has been scored: the critical
+        mortal-wound branch, the save, the damage."""
         ap_eff, go_on = ap, True
         if wound_crit and crit_mw:
             raw = (_roll_damage(rng, weapon.D, mech, half)
@@ -325,9 +344,23 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
 
     # Did any hit / wound roll fail? A "one re-roll per activation"
     # ability (mech.single_reroll) spends its re-roll on one of them.
+    def resolve_hit(hit_is_crit: bool):
+        """One scored hit and the bonus hits it generates. SUSTAINED HITS
+        fire on a CRITICAL hit, EXTRA HITS on ANY hit. Bonus hits are
+        hits, not hit rolls: never critical, and they generate no extras
+        of their own - mirrors the crit_branch / norm_branch split of
+        analyze_weapon."""
+        resolve_hit_chain(hit_is_crit)
+        if hit_is_crit:
+            for _ in range(am.x_value(mech.sustained, rng)):
+                resolve_hit_chain(False)
+        if am.x_active(mech.extra_hits):
+            for _ in range(am.x_value(mech.extra_hits, rng)):
+                resolve_hit_chain(False)
+
     def one_attack():
         if auto:
-            resolve_hit_chain(False)
+            resolve_hit(False)
             return
         # +1 BS makes the target easier; a characteristic never beats 1+.
         tgt = skill_target
@@ -348,7 +381,7 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             if not ok(r):
                 fails["hit"] = True
                 return
-            resolve_hit_chain(False)
+            resolve_hit(False)
             return
         if mech.hit_unmod_only:
             x = max(mech.hit_unmod_only, unmod_min)
@@ -363,10 +396,7 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             fails["hit"] = True
             return
         crit = (r >= crit_hit_on and r >= unmod_min)
-        resolve_hit_chain(crit)
-        if crit:
-            for _ in range(am.x_value(mech.sustained, rng)):
-                resolve_hit_chain(False)
+        resolve_hit(crit)
 
     for _ in range(n_att):
         one_attack()

@@ -31,9 +31,31 @@ units = um.units_from_native(data)
 by_name = {u.name: u for u in units}
 leaders, rest = lc.split_leaders(units)
 supports, others = lc.split_supports(rest)
-att = next(u for u in others if any(w.type == "Ranged"
-                                    for m in u.models() for w in m.weapons))
-dfn = next(u for u in others if u.name != att.name)
+# The attacker must have a ranged weapon whose damage really goes through
+# the defender's save, or the save-modifier assertion below is testing
+# nothing: DEVASTATING WOUNDS turns critical wounds into mortal wounds,
+# which ignore saves entirely, and a weapon that also carries ANTI-X can
+# end up with every wound critical (a real case in the Space Marine
+# roster: the Lieutenant's Combi-weapon, ANTI-INFANTRY 4+ + DEVASTATING
+# WOUNDS, does no save-able damage at all to INFANTRY). PISTOL /
+# CLOSE-QUARTERS weapons are excluded too: they do not fire in the ranged
+# attack setup used here.
+_EXCLUDED_KW = set(ac.CLOSE_QUARTERS_KW) | {"DEVASTATING WOUNDS"}
+
+
+def _rolls_saves(unit) -> bool:
+    for model in unit.models():
+        for w in model.weapons:
+            kws = {str(k).strip().upper() for k in (w.keywords or [])}
+            if w.type == "Ranged" and not (kws & _EXCLUDED_KW):
+                return True
+    return False
+
+
+att = next(u for u in others if _rolls_saves(u))
+dfn = next(u for u in others
+           if u.name != att.name
+           and any(m.Sv is not None for m in u.models()))
 
 
 def total(mods, mode="ranged"):

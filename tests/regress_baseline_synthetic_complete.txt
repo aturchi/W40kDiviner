@@ -1,4 +1,4 @@
-# source=synthetic scope=curated
+# source=synthetic scope=complete
 ## damage
 ### Intercessor Squad vs Terminator Squad
   ranged:Weapon 05 | A 10.0/10 | W 0.463/0 | D 0.463/0 | Dnet 0.463/0
@@ -146,7 +146,7 @@ ATTACH Captain -> Assault Intercessor Squad | models=6 | pts=155
 SUPPORT Ancient -> Assault Intercessor Squad | models=6 | pts=135
 SUPPORT Bladeguard Ancient -> Assault Intercessor Squad | models=6 | pts=140
 ## attachments resolved (join=3 led=3)
-## abilities (curated)
+## abilities (complete)
   Ancient | Sacred Standard | feelNoPain/override | def ranged Probe Lance | flags=off | 6.6667 -> 6.0
   Ancient | Sacred Standard | feelNoPain/override | def melee Probe Lance | flags=off | 5.7778 -> 5.1111
   Ancient | Sacred Standard | feelNoPain/override | def close_quarters Probe Lance | flags=off | 5.0 -> 4.5
@@ -231,6 +231,9 @@ SUPPORT Bladeguard Ancient -> Assault Intercessor Squad | models=6 | pts=140
   Crisis Sunforge | Fusion Overload | mortalWounds | att ranged Probe Monster | flags=off | 1.5 -> 2.0
   Crisis Sunforge | Fusion Overload | mortalWounds | att ranged Probe Colossus | flags=off | 1.3333 -> 1.8333
   Crisis Sunforge | Fusion Overload | mortalWounds | att ranged Probe Flyer | flags=off | 2.0 -> 2.5
+  Crisis Sunforge | Stealth | special/benefitOfCover | def ranged Probe Shooter | flags=off | 5.0 -> 3.75
+  Crisis Sunforge | Stealth | special/benefitOfCover | def ranged Probe Lance | flags=off | 4.0 -> 3.0
+  Crisis Sunforge | Stealth | special/benefitOfCover | def close_quarters Probe Lance | flags=off | 3.0 -> 2.0
   Hammerhead Gunship | Railgun Overcharge | modifyAbsolute/damage | att ranged Probe Infantry | flags=off | 3.8333 -> 14.0
   Hammerhead Gunship | Railgun Overcharge | modifyAbsolute/damage | att close_quarters Probe Infantry | flags=off | 3.0 -> 12.8889
   Hammerhead Gunship | Railgun Overcharge | modifyAbsolute/damage | att ranged Probe Elite | flags=off | 1.1667 -> 3.7778
@@ -316,6 +319,6 @@ SUPPORT Bladeguard Ancient -> Assault Intercessor Squad | models=6 | pts=140
   Terminator Squad | Warded Plate | invulnSave | def close_quarters Probe Lance | flags=off | 2.0 -> 1.5556
   Terminator Squad | Warded Plate | invulnSave | def ranged Probe Psyker | flags=off | 1.1852 -> 0.7901
   Terminator Squad | Warded Plate | invulnSave | def melee Probe Psyker | flags=off | 1.1852 -> 0.7901
-## abilities inert (0 of 22)
+## abilities inert (0 of 23)
 
-DIGEST 4fc41b375dd4f66f  (319 lines)
+DIGEST 06020e1fde4a0830  (322 lines)

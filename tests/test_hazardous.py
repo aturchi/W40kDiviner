@@ -74,11 +74,24 @@ print("the Hazardous test is rolled per weapon copy, and only then")
 # --- 3. the analysis lists ONE row per weapon -------------------------
 data = json.load(open(testpaths.roster("space-marines.json")))
 units = {u.name: u for u in um.units_from_native(data)}
-# give a weapon the keyword, whatever the synthetic roster carries
+# Give a weapon the keyword, whatever roster is active. It must be a
+# weapon the RANGED attack setup actually keeps: PISTOL / CLOSE-QUARTERS
+# weapons fire only in close quarters and INDIRECT FIRE / HUNTER ones can
+# be greyed out too, so "the first Ranged weapon in the file" is not
+# necessarily one the analysis will report a row for.
+_SKIPPABLE = set(ac.CLOSE_QUARTERS_KW) | {"INDIRECT FIRE"}
+
+
+def _analysable(weapon) -> bool:
+    kws = {str(k).strip().upper() for k in (weapon.get("keywords") or [])}
+    return not (kws & _SKIPPABLE) and not any(k.startswith("HUNTER")
+                                              for k in kws)
+
+
 raw = json.loads(json.dumps(data))
 target = next(w for a in raw["armies"] for u in a["units"]
               for m in u["models"] for w in m["weapons"]
-              if w["type"] == "Ranged")
+              if w["type"] == "Ranged" and _analysable(w))
 target["keywords"] = list(target.get("keywords") or []) + ["HAZARDOUS"]
 owner = next(u["name"] for a in raw["armies"] for u in a["units"]
              for m in u["models"] for w in m["weapons"] if w is target)

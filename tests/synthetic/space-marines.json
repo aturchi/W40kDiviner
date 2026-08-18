@@ -33,6 +33,67 @@
                 "type": "special",
                 "data": {}
               }
+            },
+            {
+              "name": "Charge Fury",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Melee",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attacker charged",
+                  "type": "attackerCharged",
+                  "data": {
+                    "attackerCharged": {
+                      "title": "Attacker charged",
+                      "key": "attackerCharged"
+                    },
+                    "negate": false
+                  },
+                  "description": "Whether the attacker charged.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Re-roll",
+                "type": "reRoll",
+                "data": {
+                  "application": {
+                    "title": "woundRoll",
+                    "key": "woundRoll"
+                  },
+                  "resultToReRoll": {
+                    "title": "allPossibleFailures",
+                    "key": "allPossibleFailures"
+                  },
+                  "valueSingle": "",
+                  "valueRange": "",
+                  "limit": {
+                    "title": "none",
+                    "key": "none"
+                  }
+                }
+              }
             }
           ],
           "leader_effects": [],
@@ -112,6 +173,45 @@
                 "type": "special",
                 "data": {}
               }
+            },
+            {
+              "name": "Precision Strikes",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Melee",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Generate extras",
+                "type": "generateExtras",
+                "data": {
+                  "option": {
+                    "title": "extraWounds",
+                    "key": "extraWounds"
+                  },
+                  "extrasValue": "1"
+                }
+              }
             }
           ],
           "leader_effects": [],
@@ -180,6 +280,109 @@
                 "type": "special",
                 "data": {}
               }
+            },
+            {
+              "name": "Steady Aim",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Ranged",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                },
+                {
+                  "text": "Remained stationary",
+                  "type": "remainedStationary",
+                  "data": {
+                    "remainedStationary": {
+                      "title": "Attacker remained stationary",
+                      "key": "attackerStationary"
+                    },
+                    "negate": false
+                  },
+                  "description": "Whether a profile remained stationary this turn.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Modify (relative)",
+                "type": "modifyRelative",
+                "data": {
+                  "application": {
+                    "title": "hitRoll",
+                    "key": "hitRoll"
+                  },
+                  "operator": {
+                    "title": "add",
+                    "key": "add"
+                  },
+                  "relativeValue": "1"
+                }
+              }
+            },
+            {
+              "name": "Squad Discipline",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Leader attached",
+                  "type": "leaderAttached",
+                  "data": {
+                    "who": {
+                      "title": "attacker",
+                      "key": "attacker"
+                    },
+                    "negate": false
+                  },
+                  "description": "A unit is being led (a CHARACTER is attached).",
+                  "preselected": false,
+                  "extension": true
+                }
+              ],
+              "effect": {
+                "text": "Modify (relative)",
+                "type": "modifyRelative",
+                "data": {
+                  "application": {
+                    "title": "woundRoll",
+                    "key": "woundRoll"
+                  },
+                  "operator": {
+                    "title": "add",
+                    "key": "add"
+                  },
+                  "relativeValue": "1"
+                }
+              }
             }
           ],
           "leader_effects": [],
@@ -215,6 +418,22 @@
                 },
                 {
                   "name": "Weapon 06",
+                  "type": "Ranged",
+                  "RNG": 48,
+                  "A": 3,
+                  "S": 5,
+                  "AP": -1,
+                  "D": 1,
+                  "count": 1,
+                  "keywords": [
+                    "Indirect Fire",
+                    "Blast"
+                  ],
+                  "abilities": [],
+                  "BS": 4
+                },
+                {
+                  "name": "Weapon 07",
                   "type": "Melee",
                   "RNG": null,
                   "A": 2,
@@ -259,6 +478,112 @@
                 "type": "special",
                 "data": {}
               }
+            },
+            {
+              "name": "Grim Resolve",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Defender",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Feel no pain",
+                "type": "feelNoPain",
+                "data": {
+                  "operator": {
+                    "title": "grant",
+                    "key": "grant"
+                  },
+                  "value": "4"
+                }
+              }
+            },
+            {
+              "name": "Storm of Fire",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Ranged",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                },
+                {
+                  "text": "Critical hit/wound",
+                  "type": "crit",
+                  "data": {
+                    "crit": {
+                      "title": "woundRoll",
+                      "key": "woundRoll"
+                    },
+                    "negate": false
+                  },
+                  "description": "Require a hit or wound to be \"critical\".",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Generate extras",
+                "type": "generateExtras",
+                "data": {
+                  "option": {
+                    "title": "extraWounds",
+                    "key": "extraWounds"
+                  },
+                  "extrasValue": "1"
+                }
+              }
+            },
+            {
+              "name": "Warded Plate",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Defender",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Invulnerable save",
+                "type": "invulnSave",
+                "data": {
+                  "invulnValue": "3"
+                }
+              }
             }
           ],
           "leader_effects": [],
@@ -278,7 +603,7 @@
               "abilities": [],
               "weapons": [
                 {
-                  "name": "Weapon 07",
+                  "name": "Weapon 08",
                   "type": "Ranged",
                   "RNG": 24,
                   "A": 2,
@@ -293,7 +618,7 @@
                   "BS": 3
                 },
                 {
-                  "name": "Weapon 08",
+                  "name": "Weapon 09",
                   "type": "Melee",
                   "RNG": null,
                   "A": 3,
@@ -327,6 +652,108 @@
                 "type": "special",
                 "data": {}
               }
+            },
+            {
+              "name": "Duty Eternal",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Defender",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Damage modifier (defender)",
+                "type": "damageReduction",
+                "data": {
+                  "operator": {
+                    "title": "add",
+                    "key": "add"
+                  },
+                  "value": "-1"
+                }
+              }
+            },
+            {
+              "name": "Focused Fire",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Ranged",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Critical hit/wound on N+",
+                "type": "criticalThreshold",
+                "data": {
+                  "application": {
+                    "title": "hit",
+                    "key": "hit"
+                  },
+                  "value": "5"
+                }
+              }
+            },
+            {
+              "name": "Warding Rune",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Defender",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Psychic attack",
+                  "type": "psychicAttack",
+                  "data": {
+                    "negate": false
+                  },
+                  "description": "Require the attacking weapon to be a Psychic weapon (PSYCHIC keyword).",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Invulnerable save",
+                "type": "invulnSave",
+                "data": {
+                  "invulnValue": "3"
+                }
+              }
             }
           ],
           "leader_effects": [],
@@ -346,7 +773,7 @@
               "abilities": [],
               "weapons": [
                 {
-                  "name": "Weapon 09",
+                  "name": "Weapon 10",
                   "type": "Ranged",
                   "RNG": 48,
                   "A": 6,
@@ -361,7 +788,35 @@
                   "BS": 3
                 },
                 {
-                  "name": "Weapon 10",
+                  "name": "Weapon 09 – standard",
+                  "type": "Ranged",
+                  "RNG": 24,
+                  "A": 3,
+                  "S": 7,
+                  "AP": -2,
+                  "D": 2,
+                  "count": 1,
+                  "keywords": [],
+                  "abilities": [],
+                  "BS": 3
+                },
+                {
+                  "name": "Weapon 09 – supercharge",
+                  "type": "Ranged",
+                  "RNG": 24,
+                  "A": 3,
+                  "S": 9,
+                  "AP": -3,
+                  "D": 4,
+                  "count": 1,
+                  "keywords": [
+                    "Hazardous"
+                  ],
+                  "abilities": [],
+                  "BS": 3
+                },
+                {
+                  "name": "Weapon 13",
                   "type": "Melee",
                   "RNG": null,
                   "A": 5,
@@ -382,6 +837,7 @@
           "profile_name": "Ballistus Dreadnought",
           "points": 150,
           "keywords": [
+            "VEHICLE",
             "Ballistus Dreadnought"
           ],
           "abilities": [
@@ -394,6 +850,90 @@
               "effect": {
                 "type": "special",
                 "data": {}
+              }
+            },
+            {
+              "name": "Target Lock",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Ranged",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Ignore negative modifiers to a roll",
+                "type": "ignoreMalus",
+                "data": {
+                  "roll": "Hit"
+                }
+              }
+            },
+            {
+              "name": "Armour Hunter",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Keywords (only)",
+                  "type": "keywordsOnly",
+                  "data": {
+                    "keywords": [
+                      "VEHICLE"
+                    ],
+                    "who": {
+                      "title": "target",
+                      "key": "target"
+                    },
+                    "negate": false
+                  },
+                  "description": "Require one or more keywords. 'Whose keywords' picks the unit they are read from: the target of the attack (the default, and what every older condition means) or the unit the ability belongs to - which is how \"while this model is leading a BLOOD CLAWS unit\" is written.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Modify (relative)",
+                "type": "modifyRelative",
+                "data": {
+                  "application": {
+                    "title": "woundRoll",
+                    "key": "woundRoll"
+                  },
+                  "operator": {
+                    "title": "add",
+                    "key": "add"
+                  },
+                  "relativeValue": "1"
+                }
               }
             }
           ],
@@ -414,7 +954,7 @@
               "abilities": [],
               "weapons": [
                 {
-                  "name": "Weapon 11",
+                  "name": "Weapon 14",
                   "type": "Ranged",
                   "RNG": 48,
                   "A": 3,
@@ -429,7 +969,7 @@
                   "BS": 3
                 },
                 {
-                  "name": "Weapon 12",
+                  "name": "Weapon 15",
                   "type": "Ranged",
                   "RNG": 36,
                   "A": 6,
@@ -444,7 +984,7 @@
                   "BS": 3
                 },
                 {
-                  "name": "Weapon 13",
+                  "name": "Weapon 16",
                   "type": "Melee",
                   "RNG": null,
                   "A": 3,
@@ -489,9 +1029,132 @@
                 "type": "special",
                 "data": {}
               }
+            },
+            {
+              "name": "Psychic Smite",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Psychic attack",
+                  "type": "psychicAttack",
+                  "data": {
+                    "negate": false
+                  },
+                  "description": "Require the attacking weapon to be a Psychic weapon (PSYCHIC keyword).",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Modify (relative)",
+                "type": "modifyRelative",
+                "data": {
+                  "application": {
+                    "title": "woundRoll",
+                    "key": "woundRoll"
+                  },
+                  "operator": {
+                    "title": "add",
+                    "key": "add"
+                  },
+                  "relativeValue": "1"
+                }
+              }
+            },
+            {
+              "name": "Rites of Battle",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": true,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Re-roll",
+                "type": "reRoll",
+                "data": {
+                  "application": {
+                    "title": "hitRoll",
+                    "key": "hitRoll"
+                  },
+                  "resultToReRoll": {
+                    "title": "single",
+                    "key": "single"
+                  },
+                  "valueSingle": "1",
+                  "valueRange": "",
+                  "limit": {
+                    "title": "none",
+                    "key": "none"
+                  }
+                }
+              }
             }
           ],
-          "leader_effects": [],
+          "leader_effects": [
+            {
+              "name": "Chapter Master's Wrath",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Critical hit/wound",
+                  "type": "crit",
+                  "data": {
+                    "crit": {
+                      "title": "hitRoll",
+                      "key": "hitRoll"
+                    },
+                    "negate": false
+                  },
+                  "description": "Require a hit or wound to be \"critical\".",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Generate extras",
+                "type": "generateExtras",
+                "data": {
+                  "option": {
+                    "title": "extraHits",
+                    "key": "extraHits"
+                  },
+                  "extrasValue": "1"
+                }
+              }
+            }
+          ],
           "models": [
             {
               "name": "Captain Model",
@@ -508,7 +1171,7 @@
               "abilities": [],
               "weapons": [
                 {
-                  "name": "Weapon 14",
+                  "name": "Weapon 17",
                   "type": "Ranged",
                   "RNG": 18,
                   "A": 4,
@@ -521,7 +1184,22 @@
                   "BS": 2
                 },
                 {
-                  "name": "Weapon 15",
+                  "name": "Weapon 18",
+                  "type": "Ranged",
+                  "RNG": 12,
+                  "A": 2,
+                  "S": 4,
+                  "AP": -1,
+                  "D": 1,
+                  "count": 1,
+                  "keywords": [
+                    "Pistol"
+                  ],
+                  "abilities": [],
+                  "BS": 2
+                },
+                {
+                  "name": "Weapon 19",
                   "type": "Melee",
                   "RNG": null,
                   "A": 6,
@@ -529,7 +1207,9 @@
                   "AP": -2,
                   "D": 2,
                   "count": 1,
-                  "keywords": [],
+                  "keywords": [
+                    "Psychic"
+                  ],
                   "abilities": [],
                   "WS": 2
                 }
@@ -560,6 +1240,42 @@
                 "type": "special",
                 "data": {}
               }
+            },
+            {
+              "name": "Standard Bearer",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Melee",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Increase weapon attacks",
+                "type": "increaseWeaponAttacks",
+                "data": {
+                  "increaseWeaponAttacksValue": "1",
+                  "applyToExtraAttacks": false
+                }
+              }
             }
           ],
           "leader_effects": [],
@@ -579,7 +1295,7 @@
               "abilities": [],
               "weapons": [
                 {
-                  "name": "Weapon 16",
+                  "name": "Weapon 20",
                   "type": "Melee",
                   "RNG": null,
                   "A": 4,
@@ -617,6 +1333,48 @@
                 "type": "special",
                 "data": {}
               }
+            },
+            {
+              "name": "Sacred Standard",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Defender",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Wound type",
+                  "type": "woundType",
+                  "data": {
+                    "woundType": {
+                      "title": "mortalWounds",
+                      "key": "mortalWounds"
+                    },
+                    "negate": false
+                  },
+                  "description": "Only apply to a given wound type.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Feel no pain",
+                "type": "feelNoPain",
+                "data": {
+                  "operator": {
+                    "title": "override",
+                    "key": "override"
+                  },
+                  "value": "4"
+                }
+              }
             }
           ],
           "leader_effects": [],
@@ -636,7 +1394,7 @@
               "abilities": [],
               "weapons": [
                 {
-                  "name": "Weapon 17",
+                  "name": "Weapon 21",
                   "type": "Melee",
                   "RNG": null,
                   "A": 3,

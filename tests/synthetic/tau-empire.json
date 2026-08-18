@@ -9,6 +9,7 @@
           "profile_name": "Riptide Battlesuit",
           "points": 180,
           "keywords": [
+            "MONSTER",
             "Riptide Battlesuit"
           ],
           "abilities": [
@@ -21,6 +22,116 @@
               "effect": {
                 "type": "special",
                 "data": {}
+              }
+            },
+            {
+              "name": "Nova Reactor",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Ranged",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                },
+                {
+                  "text": "Remained stationary",
+                  "type": "remainedStationary",
+                  "data": {
+                    "remainedStationary": {
+                      "title": "Attacker remained stationary",
+                      "key": "attackerStationary"
+                    },
+                    "negate": false
+                  },
+                  "description": "Whether a profile remained stationary this turn.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Generate extras",
+                "type": "generateExtras",
+                "data": {
+                  "option": {
+                    "title": "extraAttacks",
+                    "key": "extraAttacks"
+                  },
+                  "extrasValue": "1"
+                }
+              }
+            },
+            {
+              "name": "Guided Strike",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Ranged",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                },
+                {
+                  "text": "Within objective range",
+                  "type": "objectiveRange",
+                  "data": {
+                    "who": {
+                      "title": "defender",
+                      "key": "defender"
+                    },
+                    "negate": false
+                  },
+                  "description": "A unit is within range of an objective marker.",
+                  "preselected": false,
+                  "extension": true
+                }
+              ],
+              "effect": {
+                "text": "Override requirements",
+                "type": "overrideReqs",
+                "data": {
+                  "outcome": {
+                    "title": "wound",
+                    "key": "wound"
+                  },
+                  "type": {
+                    "title": "always",
+                    "key": "always"
+                  },
+                  "crit": false,
+                  "irrespective": false
+                }
               }
             }
           ],
@@ -41,7 +152,7 @@
               "abilities": [],
               "weapons": [
                 {
-                  "name": "Weapon 18",
+                  "name": "Weapon 22",
                   "type": "Ranged",
                   "RNG": 36,
                   "A": 6,
@@ -56,7 +167,7 @@
                   "BS": 4
                 },
                 {
-                  "name": "Weapon 19",
+                  "name": "Weapon 23",
                   "type": "Melee",
                   "RNG": null,
                   "A": 3,
@@ -77,6 +188,7 @@
           "profile_name": "Hammerhead Gunship",
           "points": 160,
           "keywords": [
+            "VEHICLE",
             "Hammerhead Gunship"
           ],
           "abilities": [
@@ -89,6 +201,74 @@
               "effect": {
                 "type": "special",
                 "data": {}
+              }
+            },
+            {
+              "name": "Railgun Overcharge",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Ranged",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Modify (absolute)",
+                "type": "modifyAbsolute",
+                "data": {
+                  "application": {
+                    "title": "damage",
+                    "key": "damage"
+                  },
+                  "absoluteValue": "8"
+                }
+              }
+            },
+            {
+              "name": "Siege Shield",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Disable mechanic",
+                "type": "disableMechanic",
+                "data": {
+                  "mechanic": {
+                    "title": "closeQuartersPenalty",
+                    "key": "closeQuartersPenalty"
+                  }
+                },
+                "extension": true
               }
             }
           ],
@@ -109,7 +289,7 @@
               "abilities": [],
               "weapons": [
                 {
-                  "name": "Weapon 20",
+                  "name": "Weapon 24",
                   "type": "Ranged",
                   "RNG": 48,
                   "A": 1,
@@ -122,7 +302,7 @@
                   "BS": 4
                 },
                 {
-                  "name": "Weapon 21",
+                  "name": "Weapon 25",
                   "type": "Ranged",
                   "RNG": 18,
                   "A": 6,
@@ -137,7 +317,7 @@
                   "BS": 4
                 },
                 {
-                  "name": "Weapon 22",
+                  "name": "Weapon 26",
                   "type": "Melee",
                   "RNG": null,
                   "A": 3,
@@ -171,6 +351,86 @@
                 "type": "special",
                 "data": {}
               }
+            },
+            {
+              "name": "Fusion Overload",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Attacker",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                },
+                {
+                  "text": "Attack type",
+                  "type": "attackType",
+                  "data": {
+                    "attackType": "Ranged",
+                    "negate": false
+                  },
+                  "description": "Restrict to just melee attacks or ranged attacks.",
+                  "preselected": false
+                },
+                {
+                  "text": "Critical hit/wound",
+                  "type": "crit",
+                  "data": {
+                    "crit": {
+                      "title": "woundRoll",
+                      "key": "woundRoll"
+                    },
+                    "negate": false
+                  },
+                  "description": "Require a hit or wound to be \"critical\".",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Mortal wounds",
+                "type": "mortalWounds",
+                "data": {
+                  "mortalWoundsValue": "1",
+                  "matchWeaponDamage": false,
+                  "attackSequenceEnds": false,
+                  "noSpillOver": false,
+                  "cap": ""
+                }
+              }
+            },
+            {
+              "name": "Stealth",
+              "description": "",
+              "enabled": true,
+              "share_with_unit": false,
+              "conditions": [
+                {
+                  "text": "Profile role",
+                  "type": "profileRole",
+                  "data": {
+                    "profileRole": "Defender",
+                    "negate": false
+                  },
+                  "description": "Require the current profile to be set as the attacker or defender.",
+                  "preselected": false
+                }
+              ],
+              "effect": {
+                "text": "Special (core weapon ability)",
+                "type": "special",
+                "data": {
+                  "option": {
+                    "title": "benefitOfCover",
+                    "key": "benefitOfCover"
+                  }
+                }
+              }
             }
           ],
           "leader_effects": [],
@@ -190,7 +450,7 @@
               "abilities": [],
               "weapons": [
                 {
-                  "name": "Weapon 23",
+                  "name": "Weapon 27",
                   "type": "Ranged",
                   "RNG": 18,
                   "A": 2,
@@ -205,7 +465,7 @@
                   "BS": 4
                 },
                 {
-                  "name": "Weapon 24",
+                  "name": "Weapon 28",
                   "type": "Melee",
                   "RNG": null,
                   "A": 2,

@@ -21,6 +21,13 @@ lead_u = next(l for l in leaders if any(u.can_attach(l) for u in others))
 unit_u = next(u for u in others if u.can_attach(lead_u))
 unit_d = copy.deepcopy(uds[unit_u.name])
 lead_d = copy.deepcopy(uds[lead_u.name])
+# Normalise the shape: the checks below index the model groups by
+# position (bodyguard 0, the added profile 1, the leader 2), so the base
+# unit is reduced to its FIRST model group whatever the datasheet
+# happens to carry -- real squads list a body AND a sergeant profile,
+# which would shift every index. The weapons live on that first group.
+unit_d["models"] = [unit_d["models"][0]]
+lead_d["models"] = [lead_d["models"][0]]
 
 # Two bodyguard profiles (T3 / T4) and a tougher leader (T6): the rules
 # default is the T4 BODYGUARD, never the T6 leader.

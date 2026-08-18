@@ -29,11 +29,16 @@ Usage:
     python3 run_all.py --real_data    # run everything on the real data
     python3 run_all.py --save         # let test_regress.py (re)write its baseline
     python3 run_all.py --real_data --save   # rewrite the real baseline
+    python3 run_all.py --complete     # test_regress.py probes every ability
     python3 run_all.py -v             # also stream each test's own output
     python3 run_all.py -k damage      # only tests whose name contains 'damage'
 
---real_data and --save are forwarded to test_regress.py; --real_data also selects
-the real source for every other roster-reading test.
+--real_data, --save and --complete are forwarded to test_regress.py;
+--real_data also selects the real source for every other roster-reading
+test. Note the two harnesses read different data under --real_data:
+test_regress.py uses its own committed fixture in tests/regress_data/
+(built from rosters/ by make_regress_data.py), while the other tests use
+the ArmyFetcher tree resolved by testpaths.
 
 Exit code: the number of FAIL/ERROR tests (0 when all pass), so CI can
 gate on it directly.
@@ -166,6 +171,11 @@ def main(argv=None):
     ap.add_argument("--save", action="store_true",
                     help="pass --save to test_regress.py so it (re)writes its "
                          "baseline for the active source instead of comparing")
+    ap.add_argument("--complete", action="store_true",
+                    help="pass --complete to test_regress.py: probe EVERY "
+                         "enabled ability of the roster instead of one "
+                         "representative per delicate mechanic (slower, and "
+                         "compared against its own baseline)")
     args = ap.parse_args(argv)
 
     tests = discover()
@@ -190,6 +200,8 @@ def main(argv=None):
             extra.append("--real_data")
         if args.save:
             extra.append("--save")
+        if args.complete:
+            extra.append("--complete")
         # In verbose mode, ask test_regress.py for its full digest too; run_all's
         # own -v then prints that captured output under the test.
         if args.verbose:
