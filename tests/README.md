@@ -160,6 +160,9 @@ below.
   model level.
 - `test_leadercore.py` — `leader_core` native-level 3-segment split/masking.
 - `test_dialog_logic.py` — the two-pass leader->support join logic (no Tk).
+- `test_ability_rows.py` — the game assistant's ability rows: the `tree_ids`
+  row-id grammar, the row index -> ability mapping (`leader_core`), and the
+  end-to-end effect of masking a row (no Tk). No external data.
 - `test_integration.py` — end-to-end leader+support build + damage pipeline.
 - `test_analyzer_logic.py` — attack-analyzer join logic via a stub panel.
 - `test_joinstate.py` — the pure `ArmyJoinState` join model (incl. combo join).

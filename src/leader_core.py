@@ -337,6 +337,59 @@ def entry_ability_dicts(entry):
             yield (pref + scope, ab)
 
 
+POSITIONAL_KEY = "#"          # prefix of the fallback key, see below
+
+
+def entry_ability_keys(entry):
+    """[(key, scope_label, ability_dict)] for the entry, in
+    entry_ability_dicts order.
+
+    'key' identifies the ability inside the entry and is what the game
+    assistant stores in its table row id. It is the ability's own 'id'
+    whenever that id exists and is unique within the entry, so the row
+    keeps pointing at the SAME ability even if the entry's parts change
+    (a leader joined or removed shifts every later position).
+
+    Rosters that never went through ability_ids.normalize may carry
+    abilities without an id, or two parts may repeat one; those fall
+    back to the position, '#<index>'. A uuid hex never contains '#', so
+    the two key spaces cannot collide."""
+    pairs = list(entry_ability_dicts(entry))
+    ids = [str(ab.get("id") or "").strip() for _s, ab in pairs]
+    dup = {i for i in ids if i and ids.count(i) > 1}
+    return [(aid if aid and aid not in dup else f"{POSITIONAL_KEY}{idx}",
+             scope, ab)
+            for idx, ((scope, ab), aid) in enumerate(zip(pairs, ids))]
+
+
+def entry_ability_by_key(entry, key):
+    """The (scope_label, ability_dict) with that key, or (None, None)
+    when the entry has no such ability (a stale row id)."""
+    for k, scope, ab in entry_ability_keys(entry):
+        if k == str(key):
+            return (scope, ab)
+    return (None, None)
+
+
+def set_entry_ability_enabled(entry, key, enabled) -> bool:
+    """Switch the ability with that key on or off, writing the flag on
+    the entry's own native dict (so a unit rebuilt from the roster sees
+    it). Returns False when the key does not resolve."""
+    _scope, ab = entry_ability_by_key(entry, key)
+    if ab is None:
+        return False
+    ab["enabled"] = bool(enabled)
+    return True
+
+
+def entry_ability_label(scope, ab) -> str:
+    """Row text of one ability: '[scope] Name'. The NAME identifies it -
+    core and faction abilities are usually stored with an empty
+    description, so a description-only label would show blank rows."""
+    name = (ab.get("name") or "").strip() or "<unnamed ability>"
+    return f"[{scope}] {name}"
+
+
 def attach_support_to_entry(entry, support_dict):
     """Return a copy of 'entry' with support_dict added to its support
     slot (compatibility and capacity already checked by the caller)."""
@@ -500,6 +553,9 @@ def ability_dicts_of_unit(unit):
     them affects the next analysis; for a joined unit this spans both
     the unit's and the leader's abilities."""
     pairs = [("unit", ab) for ab in unit.abilities]
+    # Leader/support effects are kept apart from the unit's own abilities
+    # but obey the same 'enabled' flag, so they belong in the same list.
+    pairs += [("leader effect", ab) for ab in unit.leader_effects]
     for m in unit.models():
         for ab in m.abilities:
             pairs.append((f"model: {m.name}", ab))

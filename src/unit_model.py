@@ -12,6 +12,7 @@ Conventions:
 from characteristics import Characteristic
 
 import re as _re
+import weakref as _weakref
 
 
 def _kw_singular(word):
@@ -422,6 +423,20 @@ class Unit:
 
 # ---------- loader from native format ----------
 
+# Back-reference Weapon object -> the native dict it was built from, used
+# by the inspect editor to write a count edit back into the roster data.
+# A WEAK map instead of an attribute on purpose: the combat views are
+# deep copies of a Unit, and an attribute would make every copy clone the
+# whole roster dict behind each weapon.
+_NATIVE_WEAPON = _weakref.WeakKeyDictionary()
+
+
+def native_weapon_dict(weapon):
+    """The native weapon dict 'weapon' was built from, or None (combat
+    copies and hand-built Weapons are not registered)."""
+    return _NATIVE_WEAPON.get(weapon)
+
+
 def _as_dicts(items):
     """Ability list where any legacy bare-name string is wrapped into an
     ability dict (native_format normalises on load; this guards direct
@@ -442,14 +457,19 @@ def units_from_native(native: dict) -> list:
         for u in army.get("units", []):
             models = []
             for md in u.get("models", []):
-                weapons = [Weapon(
-                    name=w.get("name", "?"), wtype=w.get("type", "Ranged"),
-                    A=w.get("A"),
-                    skill=w.get("WS") if w.get("type") == "Melee" else w.get("BS"),
-                    S=w.get("S"), AP=w.get("AP"), D=w.get("D"), RNG=w.get("RNG"),
-                    count=w.get("count", 1), keywords=w.get("keywords", []),
-                    abilities=w.get("abilities", []))
-                    for w in md.get("weapons", [])]
+                weapons = []
+                for w in md.get("weapons", []):
+                    wo = Weapon(
+                        name=w.get("name", "?"), wtype=w.get("type", "Ranged"),
+                        A=w.get("A"),
+                        skill=w.get("WS") if w.get("type") == "Melee"
+                        else w.get("BS"),
+                        S=w.get("S"), AP=w.get("AP"), D=w.get("D"),
+                        RNG=w.get("RNG"),
+                        count=w.get("count", 1), keywords=w.get("keywords", []),
+                        abilities=w.get("abilities", []))
+                    _NATIVE_WEAPON[wo] = w      # see native_weapon_dict()
+                    weapons.append(wo)
                 models.append(Model(
                     name=md.get("name", "?"),
                     model_count=md.get("model_count", 1),

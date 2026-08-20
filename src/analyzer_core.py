@@ -146,6 +146,7 @@ CQ_BLAST_SKIP = "BLAST cannot target an engaged unit"
 CQ_NOT_CQ_SKIP = "not a CLOSE-QUARTERS weapon"
 CQ_ONLY_SKIP = "CLOSE-QUARTERS: fires only in close quarters"
 DISABLED_SKIP = "unusable in this attack setup"
+ZERO_COUNT_SKIP = "count set to 0"
 _DISABLED = "WEAPON_DISABLED"
 
 
@@ -256,7 +257,11 @@ def select_weapons_split(aview, mode: str, melee_name: str = None,
                 pass
             else:
                 continue
-            if _DISABLED in (w.effects or ()):
+            if (w.count or 0) <= 0:
+                # Count 0 = weapon switched off by the user (inspect
+                # window): reported like any other exclusion, not hidden.
+                skipped.append((w, ZERO_COUNT_SKIP))
+            elif _DISABLED in (w.effects or ()):
                 skipped.append((w, DISABLED_SKIP))
             elif indirect and w.type == "Ranged" \
                     and "INDIRECT FIRE" not in kw:
@@ -279,7 +284,7 @@ def mechanics_for_attack(weapon, dview, attack_type, manual, flags=None,
 def melee_choices(aview):
     """Names of melee weapons selectable as the main fight weapon."""
     return sorted({w.name for m in aview.models() for w in m.weapons
-                   if w.type == "Melee"
+                   if w.type == "Melee" and (w.count or 0) > 0
                    and "EXTRA ATTACKS" not in {str(k).strip().upper()
                                                for k in w.keywords}})
 

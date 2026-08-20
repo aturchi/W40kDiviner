@@ -31,7 +31,9 @@ import attack_math            # noqa: E402
 import attack_resolve         # noqa: E402
 from unit_model import units_from_native      # noqa: E402
 from editor_widgets import PickerDialog       # noqa: E402
+import ability_ids                            # noqa: E402
 import leader_core as lc                      # noqa: E402
+import tree_ids                               # noqa: E402
 import inspect_dialog                         # noqa: E402
 import session_io                             # noqa: E402
 from search_widget import attach_search       # noqa: E402
@@ -242,6 +244,11 @@ class GameAssistantApp(tk.Tk):
         except Exception as exc:
             messagebox.showerror("Load failed", str(exc))
             return
+        # Stamp the missing (or colliding) ability ids in memory: the
+        # table's ability rows key on them, and files merged from
+        # several sources are only unique per source. Nothing is written
+        # back to disk - only the profile editor saves ids.
+        ability_ids.normalize(data)
         self.fmt = data.get("format", "w40k-sim/4")
         dlg = ArmySetupDialog(self, data)
         self.wait_window(dlg)
@@ -276,24 +283,27 @@ class GameAssistantApp(tk.Tk):
         tree = self.trees[side]
         tree.delete(*tree.get_children())
         for ui, entry in enumerate(self.rosters[side]):
-            uid = tree.insert("", tk.END, iid=f"u{ui}",
+            uid = tree.insert("", tk.END, iid=tree_ids.unit_iid(ui),
                               text=f"{lc.entry_label(entry)} "
                                    f"({lc.entry_points(entry)} pts)",
                               open=False)
             for mi, m in lc.entry_models(entry):
                 count = m.get("model_count") or 1
-                mid = tree.insert(uid, tk.END, iid=f"u{ui}m{mi}",
+                mid = tree.insert(uid, tk.END,
+                                  iid=tree_ids.model_iid(ui, mi),
                                   text=f"{m['name']} x{count}")
                 for wi, w in enumerate(m.get("weapons", [])):
                     one = " [ONE SHOT]" if any(
                         k.upper() == "ONE SHOT"
                         for k in w.get("keywords", [])) else ""
-                    tree.insert(mid, tk.END, iid=f"u{ui}m{mi}w{wi}",
+                    tree.insert(mid, tk.END,
+                                iid=tree_ids.weapon_iid(ui, mi, wi),
                                 text=f"[{w['type'][0]}] {w['name']}{one}",
                                 values=(w.get("count", 1),))
                 # visual separator between the weapons and the models
                 if m.get("weapons"):
-                    tree.insert(mid, tk.END, iid=f"u{ui}m{mi}sep",
+                    tree.insert(mid, tk.END,
+                                iid=tree_ids.models_sep_iid(ui, mi),
                                 text="\u2500" * 8 + " models "
                                      + "\u2500" * 8,
                                 tags=("sep",))
@@ -301,33 +311,60 @@ class GameAssistantApp(tk.Tk):
                 # lowers the effective model_count by one (and the
                 # weapon counts are scaled accordingly at resolution)
                 for ci in range(count):
-                    tree.insert(mid, tk.END, iid=f"u{ui}m{mi}c{ci}",
+                    tree.insert(mid, tk.END,
+                                iid=tree_ids.copy_iid(ui, mi, ci),
                                 text=f"Model {ci + 1}",
                                 values=(m.get("W") or 0,))
+            self._fill_abilities(tree, ui, entry, uid)
+
+    def _fill_abilities(self, tree, ui, entry, uid):
+        """One row per ability of the entry (unit, leader and support
+        parts alike), under the unit row. Masking a row switches the
+        ability off, exactly as masking a model copy removes it. The row
+        id carries the ability's key (its own id where available), so a
+        row keeps pointing at its ability whatever else changes."""
+        abilities = lc.entry_ability_keys(entry)
+        if not abilities:
+            return
+        tree.insert(uid, tk.END, iid=tree_ids.abilities_sep_iid(ui),
+                    text="\u2500" * 8 + " abilities " + "\u2500" * 8,
+                    tags=("sep",))
+        for key, scope, ab in abilities:
+            # The flag on the roster dict is the single source of truth:
+            # the row only mirrors it, so a session reload shows the
+            # abilities exactly as they were switched.
+            tags = () if ab.get("enabled", True) else (MASK_TAG,)
+            tree.insert(uid, tk.END, iid=tree_ids.ability_iid(ui, key),
+                        text=lc.entry_ability_label(scope, ab), tags=tags)
 
     @staticmethod
     def _parse_iid(iid):
         """'u3m1w2' / 'u3m1c0' -> (ui, mi, wi, ci), None where absent;
-        all None for non-structural rows (separators)."""
-        import re
-        m = re.fullmatch(r"u(\d+)(?:m(\d+))?(?:w(\d+))?(?:c(\d+))?", iid)
-        if m is None:
-            return (None, None, None, None)
-        return tuple(None if g is None else int(g) for g in m.groups())
+        all None for the rows that are not model-side (separators and
+        ability rows). See tree_ids for the full grammar."""
+        return tree_ids.parse(iid)
 
     # ---------- masking and wounds ----------
 
     def cmd_mask(self):
-        """Toggle the removed/masked state of the selected model group so it
-        no longer contributes to the units output."""
+        """Toggle the removed/masked state of the selected rows: a model
+        group or copy no longer contributes to the unit, a weapon is not
+        fired, an ability is switched off (its 'enabled' flag)."""
         for side in ("A", "B"):
             tree = self.trees[side]
             for iid in tree.selection():
-                if iid.endswith("sep"):
+                if tree_ids.is_separator(iid):
                     continue                # separators are decoration
                 tags = set(tree.item(iid, "tags"))
                 tags ^= {MASK_TAG}
                 tree.item(iid, tags=tuple(tags))
+                # An ability row masks nothing by itself: it carries the
+                # 'enabled' flag of the roster dict, so the flag is
+                # written here rather than read back at resolution time.
+                ui, key = tree_ids.parse_ability(iid)
+                if ui is not None:
+                    lc.set_entry_ability_enabled(
+                        self.rosters[side][ui], key, MASK_TAG not in tags)
 
     def _is_masked(self, side, iid):
         return MASK_TAG in self.trees[side].item(iid, "tags")
@@ -378,19 +415,19 @@ class GameAssistantApp(tk.Tk):
 
     def cmd_inspect(self):
         """Full profile popup of the unit selected in either panel
-        (joined entries are shown combined, masks ignored). Abilities
-        can be toggled on/off for the session via checkboxes."""
+        (joined entries are shown combined, masks ignored). Read-only:
+        weapon counts and ability flags are edited in the table."""
         for side in ("A", "B"):
             ui = self._selected_unit(side)
             if ui is None:
                 continue
             entry = self.rosters[side][ui]
             unit = lc.build_entry_unit(entry, {}, set(), {}, self.fmt)
-            # collect the native ability dicts of all parts (unit, leader,
-            # support) so toggles act on the roster (session-persistent)
-            pairs = [(scope, ab)
-                     for scope, ab in lc.entry_ability_dicts(entry)]
-            inspect_dialog.open_inspect(self, unit, ability_dicts=pairs)
+            # Read-only here on purpose: the table owns both the weapon
+            # counts (its cells act as overrides) and the ability flags
+            # (one maskable row per ability), so a second editing path
+            # would fight with them.
+            inspect_dialog.open_inspect(self, unit)
             return
         messagebox.showinfo("Inspect", "Select a unit first.")
 
@@ -435,6 +472,14 @@ class GameAssistantApp(tk.Tk):
                                           | {MASK_TAG}))
             if "wounds" in rec:
                 tree.set(iid, "wounds", rec["wounds"])
+            # An ability row carries its state on the roster dict, which
+            # the session restores separately; write it again from the
+            # restored tag so the two can never disagree (a session
+            # saved before the ability rows existed has no flag at all).
+            ui, key = tree_ids.parse_ability(iid)
+            if ui is not None:
+                lc.set_entry_ability_enabled(self.rosters[side][ui], key,
+                                             not rec.get("masked"))
 
     def _session_state(self):
         """State written to the session file (None aborts the save)."""
@@ -468,10 +513,12 @@ class GameAssistantApp(tk.Tk):
     # ---------- attack resolution ----------
 
     def _selected_unit(self, side):
+        """Roster index of the selected unit, whatever kind of row of it
+        is selected (unit, model, weapon, copy or ability)."""
         sel = self.trees[side].selection()
         if not sel:
             return None
-        return self._parse_iid(sel[0])[0]
+        return tree_ids.entry_index(sel[0])
 
     def _masks_for(self, side, ui):
         """Table state for one unit: (masked_copies {mi: n},
@@ -482,7 +529,7 @@ class GameAssistantApp(tk.Tk):
         tree = self.trees[side]
         masked_copies, masked_weapons, weapon_counts = {}, set(), {}
         entry_models = dict(lc.entry_models(self.rosters[side][ui]))
-        for mid in tree.get_children(f"u{ui}"):
+        for mid in tree.get_children(tree_ids.unit_iid(ui)):
             _u, mi, _w, _c = self._parse_iid(mid)
             if mi is None:
                 continue
@@ -543,8 +590,8 @@ class GameAssistantApp(tk.Tk):
                                 f"Army {a_side} and the defender in "
                                 f"Army {d_side}.")
             return
-        if self._is_masked(a_side, f"u{a_ui}") \
-                or self._is_masked(d_side, f"u{d_ui}"):
+        if self._is_masked(a_side, tree_ids.unit_iid(a_ui)) \
+                or self._is_masked(d_side, tree_ids.unit_iid(d_ui)):
             messagebox.showinfo("Attack", "A masked unit cannot take "
                                 "part in an attack.")
             return

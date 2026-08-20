@@ -344,12 +344,19 @@ and the **units** list:
   shared abilities active). A separate **support** relationship is handled the
   same way — a unit can carry one leader **and** one support.
 - Re-clicking a selected row **deselects** it.
-- **Inspect** shows the full profile of the last selected unit.
+- **Inspect** shows the full profile of the last selected unit, plus two
+  editable sections: an on/off checkbox per **ability** and an editable
+  **count per weapon** (`0` = weapon disabled, reported as skipped in the
+  results). Both changes apply to the session and travel with a saved
+  session; neither is written back to the roster file.
 
 **Running an analysis.** Pick the attacker and the defender(s), set the attack
 context (see below), and press **Analyze**. The popup gives a **per-weapon**
 damage breakdown plus totals, using the exact PMF/CDF — mean, median and
 percentiles are all exact.
+
+The **Effective** column is the number of attacks that ended up dealing damage,
+i.e. that got past the save / invulnerable save **and** Feel No Pain.
 
 **Attack context / modifiers** (via the setup panel, `src/setup_panel.py`):
 
@@ -383,9 +390,12 @@ Resolves attacks with **real dice rolls** during a game.
 
 **Tracking aids**
 
-- **Masking** — units, models and weapons (e.g. a `ONE SHOT` weapon) can be
-  greyed out; masked entries are excluded from attack resolution. This lets you
-  reflect casualties and spent one-use weapons.
+- **Masking** — units, models, weapons (e.g. a `ONE SHOT` weapon) and
+  **abilities** can be greyed out. A masked model or weapon is excluded from
+  attack resolution; a masked ability row switches that ability off
+  (`enabled: false` on the roster entry, so it stays off until unmasked).
+  This lets you reflect casualties, spent one-use weapons and abilities
+  already used or not in play.
 - **Wounds boxes** — each model row has an editable wounds box (double-click),
   initialised to `W × model count`, so you can track remaining wounds as the
   game goes on.
@@ -436,7 +446,10 @@ Both modes:
 
 - **Search** — list widgets across the GUIs support incremental search
   (`src/search_widget.py`).
-- **Inspect** — a read-only full-profile view of a unit (`src/inspect_dialog.py`).
+- **Inspect** — full-profile view of a unit (`src/inspect_dialog.py`). In the
+  Analyzer it also edits the ability flags and the weapon counts; in the Game
+  Assistant it is read-only, because the table already owns both (one maskable
+  row per ability, an editable count cell per weapon).
 - **Font size** — a global font-scaling dialog is available in the Analyzer and
   Game Assistant for accessibility.
 - **Options / caps** — modifier and re-roll caps are set once per session and
@@ -516,6 +529,7 @@ W40kDiviner/
 │   ├── analyzer_core.py     #   glue: object model → attack maths
 │   ├── modifier_engine.py   #   context flags & modifier application
 │   ├── leader_core.py       #   leader/support attachment + masking
+│   ├── tree_ids.py          #   game assistant table row-id grammar (pure)
 │   ├── rules_config.py      #   session-wide caps
 │   ├── keywords_config.py   #   keyword vocabulary loader
 │   ├── ability_editor.py    #   structured ability editor

@@ -402,8 +402,12 @@ class AnalyzerApp(tk.Tk):
             sel = self._panel_selection(key)
             if sel:
                 pairs = inspect_dialog.ability_dicts_of_unit(sel[0])
-                inspect_dialog.open_inspect(self, sel[0],
-                                            ability_dicts=pairs)
+                # Weapon counts are edited on the live objects the next
+                # analysis reads (and mirrored into the native dicts, so
+                # they are kept by a saved session).
+                inspect_dialog.open_inspect(
+                    self, sel[0], ability_dicts=pairs,
+                    weapon_refs=inspect_dialog.weapon_refs_of_unit(sel[0]))
                 return
         messagebox.showinfo("Inspect", "Select a unit first.")
 
@@ -538,9 +542,18 @@ class AnalyzerApp(tk.Tk):
         ttk.Label(parent, text=f"Defender profile: {label}  |  values are "
                                "exact (analytic)").pack(anchor=tk.W,
                                                         padx=6, pady=4)
-        cols = ("count", "att_m", "w_mean", "w_med", "d_mean", "d_med",
+        # 'Effective' counts the attacks that still dealt damage after the
+        # save / invuln and Feel No Pain. It is NOT the wound roll: the
+        # old 'Wounds' heading clashed both with that phase and with the
+        # wounds actually inflicted (one D6-damage attack counts once,
+        # not D6 times), so the meaning is spelled out under the header.
+        ttk.Label(parent, foreground="#666666",
+                  text="Effective = attacks that dealt damage (past the "
+                       "save/invuln and FNP), not wound rolls").pack(
+            anchor=tk.W, padx=6, pady=(0, 4))
+        cols = ("count", "att_m", "eff_mean", "eff_med", "d_mean", "d_med",
                 "self")
-        heads = ("xN", "Attacks μ", "Wounds μ", "Wounds med",
+        heads = ("xN", "Attacks μ", "Effective μ", "Effective med",
                  "Damage μ", "Damage med", "Self-dmg μ")
         tree = ttk.Treeview(parent, columns=cols, show="tree headings",
                             height=10)
@@ -548,7 +561,10 @@ class AnalyzerApp(tk.Tk):
         tree.column("#0", width=240)
         for c, h in zip(cols, heads):
             tree.heading(c, text=h)
-            tree.column(c, width=72, anchor=tk.E)
+            # 'Effective med' is the widest heading: give those two a few
+            # more pixels so the label is not clipped.
+            tree.column(c, width=88 if c.startswith("eff") else 72,
+                        anchor=tk.E)
         for r in results["weapons"]:
             tree.insert("", tk.END, text=r["name"], values=(
                 r["count"], f"{r['attacks']['mean']:.2f}",
