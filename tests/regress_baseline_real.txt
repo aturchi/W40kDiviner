@@ -240,8 +240,8 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Ancient | Unbreakable Duty | feelNoPain/grant | def ranged Probe Lance | flags=on | 3.3333 -> 1.6667
   Ancient | Unbreakable Duty | feelNoPain/grant | def melee Probe Lance | flags=on | 4.3333 -> 2.1667
   Ancient | Unbreakable Duty | feelNoPain/grant | def close_quarters Probe Lance | flags=on | 3.3333 -> 1.6667
-  Ancient | Unbreakable Duty | feelNoPain/grant | def ranged Probe Psyker | flags=on | 2.963 -> 1.4815
-  Ancient | Unbreakable Duty | feelNoPain/grant | def melee Probe Psyker | flags=on | 2.963 -> 1.4815
+  Ancient | Unbreakable Duty | feelNoPain/grant | def ranged Probe Psyker | flags=on | 2.8148 -> 1.4074
+  Ancient | Unbreakable Duty | feelNoPain/grant | def melee Probe Psyker | flags=on | 2.8148 -> 1.4074
   Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Infantry | flags=on | 39.1111 -> 51.4444
   Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Infantry | flags=on | 13.3333 -> 19.6296
   Ancient In Terminator Armour +support on Relic Terminator Squad | Keep the Banner High [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Elite | flags=on | 15.2963 -> 20.2593
@@ -303,6 +303,8 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Broadside Battlesuits | Advanced Armour | feelNoPain/grant | def ranged Probe Lance | flags=off | 5.7778 -> 5.1111
   Broadside Battlesuits | Advanced Armour | feelNoPain/grant | def melee Probe Lance | flags=off | 4.8889 -> 4.2222
   Broadside Battlesuits | Advanced Armour | feelNoPain/grant | def close_quarters Probe Lance | flags=off | 4.3333 -> 3.8333
+  Broadside Battlesuits | Advanced Armour | feelNoPain/grant | def ranged Probe Psyker | flags=off | 1.7778 -> 1.5556
+  Broadside Battlesuits | Advanced Armour | feelNoPain/grant | def melee Probe Psyker | flags=off | 1.7778 -> 1.5556
   Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att ranged Probe Infantry | flags=off | 7.0988 -> 10.8519
   Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att close_quarters Probe Infantry | flags=off | 1.1111 -> 2.2222
   Cadre Fireblade +leader on Breacher Team | Volley Fire [leader_effects] | increaseWeaponAttacks | att ranged Probe Elite | flags=off | 2.7469 -> 4.1821
@@ -356,14 +358,14 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Commander in Enforcer Battlesuit +leader on Crisis Fireknife Battlesuits | Enforcer Commander [leader_effects] | modifyRelative/ap | def ranged Probe Shooter | flags=off | 5.0 -> 3.3333
   Commander in Enforcer Battlesuit +leader on Crisis Fireknife Battlesuits | Enforcer Commander [leader_effects] | modifyRelative/ap | def ranged Probe Lance | flags=off | 6.6667 -> 5.7778
   Commander in Enforcer Battlesuit +leader on Crisis Fireknife Battlesuits | Enforcer Commander [leader_effects] | modifyRelative/ap | def close_quarters Probe Lance | flags=off | 5.0 -> 4.3333
-  Commander in Enforcer Battlesuit +leader on Crisis Fireknife Battlesuits | Enforcer Commander [leader_effects] | modifyRelative/ap | def ranged Probe Psyker | flags=off | 2.3704 -> 1.7778
+  Commander in Enforcer Battlesuit +leader on Crisis Fireknife Battlesuits | Enforcer Commander [leader_effects] | modifyRelative/ap | def ranged Probe Psyker | flags=off | 2.2222 -> 1.7778
   Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def ranged Probe Shooter | flags=off | 6.6667 -> 5.0
   Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def melee Probe Shooter | flags=off | 6.6667 -> 5.0
   Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def ranged Probe Lance | flags=off | 6.6667 -> 5.3333
   Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def melee Probe Lance | flags=off | 5.7778 -> 4.6667
   Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def close_quarters Probe Lance | flags=off | 5.0 -> 4.0
-  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def ranged Probe Psyker | flags=off | 2.963 -> 2.3704
-  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def melee Probe Psyker | flags=off | 2.963 -> 2.3704
+  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def ranged Probe Psyker | flags=off | 2.8148 -> 2.2222
+  Company Heroes led by Captain | Command Squad | modifyRelative/woundRoll | def melee Probe Psyker | flags=off | 2.8148 -> 2.2222
   Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att ranged Probe Infantry | flags=off | 5.7176 -> 8.6752
   Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att close_quarters Probe Infantry | flags=off | 3.713 -> 6.2377
   Crisis Fireknife Battlesuits | Fireknife [target at Starting Strength] | reRoll/hitRoll | att ranged Probe Elite | flags=off | 2.0556 -> 3.1111
@@ -433,8 +435,8 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def ranged Probe Lance | flags=off | 6.6667 -> 4.4444
   Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def melee Probe Lance | flags=off | 6.6667 -> 4.4444
   Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def close_quarters Probe Lance | flags=off | 5.0 -> 3.3333
-  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def ranged Probe Psyker | flags=off | 3.7037 -> 2.4691
-  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def melee Probe Psyker | flags=off | 3.7037 -> 2.4691
+  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def ranged Probe Psyker | flags=off | 3.4074 -> 2.2716
+  Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def melee Probe Psyker | flags=off | 3.4074 -> 2.2716
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Infantry | flags=on | 10.9583 -> 14.4722
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Elite | flags=on | 3.8025 -> 5.0494
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Vehicle | flags=on | 3.2222 -> 4.3426
@@ -521,15 +523,15 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Leviathan Dreadnought | Duty Eternal | damageReduction/add | def ranged Probe Lance | flags=off | 4.0 -> 3.3333
   Leviathan Dreadnought | Duty Eternal | damageReduction/add | def melee Probe Lance | flags=off | 4.0 -> 3.0
   Leviathan Dreadnought | Duty Eternal | damageReduction/add | def close_quarters Probe Lance | flags=off | 3.0 -> 2.5
-  Leviathan Dreadnought | Duty Eternal | damageReduction/add | def ranged Probe Psyker | flags=off | 0.8889 -> 0.4444
-  Leviathan Dreadnought | Duty Eternal | damageReduction/add | def melee Probe Psyker | flags=off | 0.8889 -> 0.4444
-  Librarian +leader on Assault Intercessor Squad | Psychic Hood [leader_effects] | feelNoPain/grant | def ranged Probe Psyker | flags=off | 2.963 -> 1.4815
-  Librarian +leader on Assault Intercessor Squad | Psychic Hood [leader_effects] | feelNoPain/grant | def melee Probe Psyker | flags=off | 2.963 -> 1.4815
+  Leviathan Dreadnought | Duty Eternal | damageReduction/add | def ranged Probe Psyker | flags=off | 0.8889 -> 0.6667
+  Leviathan Dreadnought | Duty Eternal | damageReduction/add | def melee Probe Psyker | flags=off | 0.8889 -> 0.6667
+  Librarian +leader on Assault Intercessor Squad | Psychic Hood [leader_effects] | feelNoPain/grant | def ranged Probe Psyker | flags=off | 2.8148 -> 1.4074
+  Librarian +leader on Assault Intercessor Squad | Psychic Hood [leader_effects] | feelNoPain/grant | def melee Probe Psyker | flags=off | 2.8148 -> 1.4074
   Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def ranged Probe Lance | flags=off | 6.6667 -> 4.0
   Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def melee Probe Lance | flags=off | 5.7778 -> 4.0
   Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def close_quarters Probe Lance | flags=off | 5.0 -> 3.0
-  Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def ranged Probe Psyker | flags=off | 2.963 -> 2.2222
-  Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def melee Probe Psyker | flags=off | 2.963 -> 2.2222
+  Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def ranged Probe Psyker | flags=off | 2.8148 -> 2.2222
+  Librarian +leader on Assault Intercessor Squad | Mental Fortress (Psychic) [leader_effects] | invulnSave | def melee Probe Psyker | flags=off | 2.8148 -> 2.2222
   Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att ranged Probe Infantry | flags=off | 65.4722 -> 78.25
   Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att melee Probe Infantry | flags=off | 16.6667 -> 22.2222
   Librarian In Terminator Armour +leader on Relic Terminator Squad | Veil of Time (Psychic) [leader_effects] | generateExtras/extraHits | att ranged Probe Elite | flags=off | 26.6605 -> 31.9969
@@ -629,4 +631,4 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Ancient +support on Assault Intercessor Squad | Astartes Banner [leader_effects] | modifyRelative/oc
   Commander in Coldstar Battlesuit +leader on Crisis Fireknife Battlesuits | Coldstar Commander [leader_effects] | modifyAbsolute/m
 
-DIGEST 83bdb148d6d39fcf  (630 lines)
+DIGEST cb12cd983d4ba349  (632 lines)

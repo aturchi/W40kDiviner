@@ -17,6 +17,7 @@ import re
 
 from modifier_engine import Context
 import attack_math as am
+import kill_chain as kc
 
 
 def _is_led(unit) -> bool:
@@ -465,7 +466,8 @@ def _mechanics_for(weapon, dview, attack_type, manual, abilities=None,
 
 
 def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
-                 melee_name: str = None, manual: dict = None) -> dict:
+                 melee_name: str = None, manual: dict = None,
+                 kills: bool = True) -> dict:
     """Analyze every selected weapon; returns
     {'weapons': [per-weapon dicts], 'totals': {...}, 'warnings': [...]}.
     manual = {'rolls': {...}} roll modifiers (characteristic modifiers
@@ -478,7 +480,10 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
     would apply it twice. Which profile to fire stays the player's
     choice: both are listed.
     'skipped' lists the weapons excluded by the attack setup (indirect
-    fire), so the caller can show them greyed out with the reason."""
+    fire), so the caller can show them greyed out with the reason.
+    With kills=True (the default) the models-destroyed distribution is
+    computed as well, per weapon and for the unit as a whole; pass
+    False to skip that extra pass when only the damage is wanted."""
     manual = manual or {}
     attack_type = "Melee" if mode == "melee" else "Ranged"
     haz_damage = am.hazardous_damage_per_fail(aview.keywords)
@@ -501,6 +506,7 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
     # they live on the weapons, so the count is a unit-wide check.
     rows, warnings = [], (list(single_reroll_notes(aview))
                           + list(exclusive_group_notes(aview)))
+    allocs = []                     # per-weapon allocation laws, in order
     gross, net = am.delta(0), am.delta(0)
     kept, skipped = select_weapons_split(aview, mode, melee_name,
                                          bool(flags.get("indirect")))
@@ -517,24 +523,78 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
         selfdmg = (am.hazardous_self_damage_mean(w.count, haz_damage)
                    if mech.hazardous else None)
         if optimise:
-            res, note = am.analyze_weapon_best(w, ref, ctx, mech)
+            res, note = am.analyze_weapon_best(w, ref, ctx, mech,
+                                               alloc=kills)
         else:
-            res, note = am.analyze_weapon(w, ref, ctx, mech), None
+            res, note = am.analyze_weapon(w, ref, ctx, mech,
+                                          alloc=kills), None
         if note:
             label = f"{label}  [{note}]"
+        # The per-weapon PMFs are kept, not just their mean/median: the
+        # distribution is what answers "can this weapon alone finish the
+        # target", and recomputing it later would mean re-running the
+        # whole analysis.
+        solo = (kc.resolve([res["alloc"]], ref["W"], ref.get("models"))
+                if kills else None)
         rows.append({"name": label, "count": w.count,
                      "attacks": res["attacks"],
                      "wounds": res["wounds"],
                      "damage": res["damage"],
                      "damage_net": res["damage_net"],
+                     "damage_pmf": res["damage_pmf"],
+                     "damage_net_pmf": res["damage_net_pmf"],
+                     # This weapon ALONE against a fresh target unit -
+                     # the totals below chain the weapons in table
+                     # order instead, so the two do not add up.
+                     # What the chain actually used for this weapon,
+                     # for the audit panel (see src/audit.py).
+                     "audit": res.get("audit"),
+                     "kills_pmf": (solo["kills"] if kills else None),
+                     "removed_pmf": (solo["removed"] if kills else None),
+                     "removed": (am.pmf_stats(solo["removed"])
+                                 if kills else None),
                      "self_damage_mean": selfdmg})
+        if kills:
+            allocs.append((label, res["alloc"]))
         warnings += [f"{label}: {x}" for x in res["warnings"]]
         gross = am.convolve(gross, res["damage_pmf"])
         net = am.convolve(net, res["damage_net_pmf"])
+    totals = {"damage": am.pmf_stats(gross),
+              "damage_net": am.pmf_stats(net),
+              "damage_pmf": gross, "damage_net_pmf": net,
+              # Points of the WHOLE attacking unit (a joined unit sums
+              # its leader in): the efficiency figure divides by this,
+              # which is why it only makes sense on the totals line -
+              # every weapon of the unit was paid for with the same
+              # points.
+              "points": getattr(aview, "points", 0) or 0,
+              # The target as the analysis saw it, so a caller (table,
+              # distribution window, export) does not have to carry the
+              # reference profile around with the result.
+              "models": ref.get("models"), "W": ref.get("W")}
+    if kills:
+        # Models destroyed: the weapons are chained into the SAME target
+        # unit, so a weapon firing second finds the model the first one
+        # left wounded (see kill_chain). The firing ORDER therefore
+        # matters, and a heuristic looks for a better one than the table
+        # order; the totals always report the order actually used.
+        names = [n for n, _a in allocs]
+        order, res_k, base = kc.best_order([a for _n, a in allocs],
+                                           ref["W"], ref.get("models"))
+        totals["kills_pmf"] = res_k["kills"]
+        totals["kills"] = am.pmf_stats(res_k["kills"])
+        totals["p_wipe"] = res_k["p_wipe"]
+        # Wounds actually taken off the unit: the exact figure the
+        # 'net damage' column can only approximate, since it caps each
+        # event at W instead of at the wounds LEFT on its target.
+        totals["removed_pmf"] = res_k["removed"]
+        totals["removed"] = am.pmf_stats(res_k["removed"])
+        totals["order"] = [names[i] for i in order]
+        totals["order_gain"] = (
+            am.pmf_stats(res_k["kills"])["mean"]
+            - am.pmf_stats(base["kills"])["mean"])
     return {"weapons": rows,
             "skipped": [{"name": w.name, "count": w.count, "reason": why}
                         for w, why in skipped],
-            "totals": {"damage": am.pmf_stats(gross),
-                       "damage_net": am.pmf_stats(net),
-                       "damage_pmf": gross, "damage_net_pmf": net},
+            "totals": totals,
             "warnings": sorted(set(warnings))}

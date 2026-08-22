@@ -1,7 +1,8 @@
 # Headless test harness
 
 GUI-free engine tests, runnable without a display. They import the engine
-from `../src` and (most of them) load roster JSON produced by ArmyFetcher.
+from `../src`; the ones that need a roster read the bundled synthetic one
+unless told otherwise.
 
 ## Configuration
 
@@ -160,6 +161,10 @@ below.
   model level.
 - `test_leadercore.py` — `leader_core` native-level 3-segment split/masking.
 - `test_dialog_logic.py` — the two-pass leader->support join logic (no Tk).
+- `test_modifier_signs.py` — sign conventions of the manual modifiers: the
+  `modifier_engine.improving_sign` table, the measured direction of each kind
+  of modifier on the analyzer, and the panel defaults/hints when tkinter is
+  importable (skipped otherwise). No external data.
 - `test_ability_rows.py` — the game assistant's ability rows: the `tree_ids`
   row-id grammar, the row index -> ability mapping (`leader_core`), and the
   end-to-end effect of masking a row (no Tk). No external data.
@@ -200,3 +205,64 @@ below.
   a conditional `invulnSave`. Bonus hits and bonus wounds are never critical
   and never generate extras of their own; a dice-valued X is mixed over rather
   than averaged. Cross-checked against the dice resolver. No external data.
+
+### Rules and engine, closed form
+
+- `test_ap_modifiers.py`, `test_incoming_modifiers.py`,
+  `test_manual_modifiers.py`, `test_setkeyword_scope.py`,
+  `test_single_reroll.py`, `test_hazardous.py`, `test_player_choices.py`,
+  `test_structural_rules.py` — further closed-form rules checks: AP and
+  incoming-damage modifiers, the manual-modifier chain, the scope a
+  `setKeyword` reaches, the "re-roll one die of your choice" per activation,
+  HAZARDOUS self-damage, the player-choice abilities, and the structural
+  invariants of a roster. No external data.
+- `test_kill_chain.py` — the exact models-killed / wounds-inflicted chain:
+  one event at a time capped by the wounds of the model it hits, waste on a
+  destroyed model, spilling mortal wounds spent last, and the firing-order
+  heuristic. Cross-checked against `attack_resolve` (the dice engine), never
+  against the Monte-Carlo simulator, which shares its assumptions with the
+  analytic chain. No external data.
+- `test_result_pmf.py` — the damage PMFs the result popup reads.
+- `test_dist_stats.py` — percentiles, `P(X >= N)` and histogram binning.
+- `test_reference_suggest.py` — which defensive profile is proposed as the
+  reference model.
+- `test_ability_selection.py` — which abilities the attack setup offers.
+
+### The UI features, minus the widgets
+
+Every UI feature added on top of the engine keeps its logic in a tkinter-free
+module, which is what these test — the widget file is then a renderer thin
+enough to read.
+
+- `test_result_rows.py` — the result table and its CSV: the totals row does
+  **not** sum its columns (means are additive, medians are not).
+- `test_comparison.py` — pinned analyses, the comparison matrix, the
+  `DIFFERENT` marker for pins produced under a different context, and the CSV.
+- `test_audit.py` — the per-weapon audit trail: what the engine actually used,
+  never recomputed downstream.
+- `test_mod_presets.py` — named modifier presets, additive application.
+- `test_unit_mask.py` — what a row of the analyzer's unit tree is and what
+  masking it does: a masked weapon is count 0, unmasking restores the count it
+  *had*, a masked ability writes the flag the engine reads, and a joined unit
+  shares those objects with the plain one.
+- `test_attack_log.py` — the game assistant's attack log. The central check is
+  end-to-end: a weapon resolved by the real dice engine, then the log's totals
+  compared with the results popup's own arithmetic by an independent route.
+- `test_undo_stack.py` — undo/redo: ordering, the redo branch, the depth limit,
+  the dropping of no-op changes, and that undoing a masked ability row switches
+  the ability back **on** rather than merely un-greying the row.
+- `test_allocation.py` — assisted wound allocation. The strong check is that
+  the models it removes equal the models `kill_chain` counts from the same
+  events: a program that predicts four dead and then removes five would be
+  worse than one that predicts nothing.
+- `test_cheat_sheet.py` — the printable unit sheet: dice characteristics
+  printed in notation and never rolled, a disabled ability printed as `[OFF]`
+  rather than dropped, HTML escaping, and the analyzer CSV export being row for
+  row the table on screen.
+- `test_session_io.py` — the session file (rosters, flags, modifiers, presets,
+  attack log) round-tripping.
+- `test_hist_canvas.py`, `test_wrap_lines.py` — the two drawing helpers, run
+  against a minimal `tkinter` stub installed in `sys.modules` so the geometry
+  is really executed. `test_wrap_lines.py` needs the real Tkinter and is the
+  one test that fails on a machine without a display — not a regression.
+- `test_multislot_join.py` — joining several helpers onto one unit.

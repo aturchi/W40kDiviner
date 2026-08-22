@@ -116,7 +116,11 @@ dev = mech(["DEVASTATING WOUNDS"])
 close(dmg_d(DREF, dev),
       A * P_HIT * ((Q_W - Q_CRIT) * UNSAVED + Q_CRIT),
       "devastating ignores armour and invuln alike")
-# ...unless an ability grants an invulnerable save against mortal wounds
+# ...unless an ability grants an invulnerable save against mortal
+# wounds. DEVASTATING WOUNDS inflicts mortal wounds, so every ability
+# keyed on them - Broadside Battlesuits' Advanced Armour and the like -
+# applies. Only the ALLOCATION of these mortal wounds differs (they do
+# not spill), and that changes no damage total: see test_kill_chain.
 dev_inv = mech(["DEVASTATING WOUNDS"], ["IF MW_ONLY: SETINVULN 4"])
 assert dev_inv.invuln_mw == 4
 close(dmg_d(DREF, dev_inv),
@@ -129,7 +133,22 @@ close(dmg_d(DREF, dev_both),
       A * P_HIT * ((Q_W - Q_CRIT) * UNSAVED
                    + Q_CRIT * (1 - 3 / 6) * (1 - 2 / 6)),
       "invuln then FNP, both vs mortal wounds only")
-for m, name in ((dev, "dev"), (dev_inv, "dev+inv"), (dev_both, "dev+inv+fnp")):
+
+# The same holds for a crit_mw ability, whose mortal wounds DO spill.
+# Spilling is an allocation property: the damage is identical.
+CRIT_MW = ["IF CRIT_WOUND: MORTAL_WOUNDS 1 END_SEQUENCE"]
+raw_mw = mech([], CRIT_MW)
+assert raw_mw.crit_mw is not None and raw_mw.crit_mw["spill"] is True
+mw_inv = mech([], CRIT_MW + ["IF MW_ONLY: SETINVULN 4"])
+assert dmg_d(DREF, mw_inv) < dmg_d(DREF, raw_mw) - 1e-9, \
+    "a mortal-wound invuln must apply to real mortal wounds"
+no_spill = mech([], ["IF CRIT_WOUND: MORTAL_WOUNDS 1 END_SEQUENCE NO_SPILL"])
+assert no_spill.crit_mw["spill"] is False
+close(dmg_d(DREF, no_spill), dmg_d(DREF, raw_mw),
+      "NO_SPILL changes allocation only, never the damage")
+
+for m, name in ((dev, "dev"), (dev_inv, "dev+inv"), (dev_both, "dev+inv+fnp"),
+                (raw_mw, "critmw"), (mw_inv, "critmw+inv")):
     agree(DREF, m, name, weapon=WD)
 print("mortal wounds: no save, only FNP or a mortal-wound invulnerable")
 

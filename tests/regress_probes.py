@@ -37,11 +37,33 @@ ABILITY_LISTS = ("abilities", "core_abilities", "faction_abilities",
 
 # --- Probe units ---------------------------------------------------------
 
-def _weapon(name, wtype, A, skill, S, AP, D, count=1, rng=None, kws=None):
+def _weapon(name, wtype, A, skill, S, AP, D, count=1, rng=None, kws=None,
+            abilities=None):
     w = {"name": name, "type": wtype, "RNG": rng, "A": A, "S": S, "AP": AP,
-         "D": D, "count": count, "keywords": list(kws or []), "abilities": []}
+         "D": D, "count": count, "keywords": list(kws or []),
+         "abilities": list(abilities or [])}
     w["BS" if wtype == "Ranged" else "WS"] = skill
     return w
+
+
+# A critical wound inflicting a real MORTAL WOUND. Since 11th ed.
+# DEVASTATING WOUNDS only bypasses the saving throw - its damage is
+# ordinary - this is what a mortal-wound-only Feel No Pain or
+# invulnerable save keys off, so a probe must carry it or those
+# abilities go untested.
+CRIT_MORTAL = {
+    "name": "Probe mortal spike",
+    "description": "Each time an attack made with this weapon scores a "
+                   "Critical Wound, the target suffers 1 mortal wound "
+                   "and the attack sequence ends.",
+    "enabled": True,
+    "conditions": [{"text": "Critical hit/wound", "type": "crit",
+                    "data": {"crit": {"title": "Critical wound",
+                                      "key": "woundRoll"}}}],
+    "effect": {"text": "Mortal wounds", "type": "mortalWounds",
+               "data": {"mortalWoundsValue": "1",
+                        "attackSequenceEnds": True}},
+    "id": "probecritmortal0000000000000001"}
 
 
 def _model(name, count, T, Sv, W, weapons, invuln=None, fnp=None, kws=None):
@@ -122,9 +144,9 @@ PROBE_ATTACKERS = [
                    _weapon("Probe combat blade", "Melee", 3, 3, 5, -1, 1,
                            count=10)])],
           keywords=["INFANTRY"]),
-    # DEVASTATING WOUNDS puts mortal wounds on the table, which is the
-    # only way a mortal-wound-only Feel No Pain or invulnerable save
-    # becomes observable.
+    # DEVASTATING WOUNDS: damage that no saving throw can stop. Since
+    # 11th ed. it is NOT a mortal wound, so the mortal-wound-only
+    # abilities are probed on Probe Psyker instead (see CRIT_MORTAL).
     _unit("Probe Lance", 170,
           [_model("Probe Gun Platform", 1, 9, 2, 10,
                   [_weapon("Probe lance", "Ranged", 2, 3, 14, -4, 6,
@@ -137,9 +159,11 @@ PROBE_ATTACKERS = [
     _unit("Probe Psyker", 110,
           [_model("Probe Adept", 1, 4, 3, 4,
                   [_weapon("Probe mindburn", "Ranged", 4, 3, 8, -2, 2,
-                           count=1, rng=18, kws=["PSYCHIC"]),
+                           count=1, rng=18, kws=["PSYCHIC"],
+                           abilities=[CRIT_MORTAL]),
                    _weapon("Probe force stave", "Melee", 4, 3, 8, -2, 2,
-                           count=1, kws=["PSYCHIC"])],
+                           count=1, kws=["PSYCHIC"],
+                           abilities=[CRIT_MORTAL])],
                   invuln=4)],
           keywords=["INFANTRY", "PSYKER", "CHARACTER"]),
 ]

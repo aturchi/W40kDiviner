@@ -280,7 +280,15 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             crit_on = min(crit_on, x)
     reroll_wound = am.combine_reroll("fails" if mech.twin_linked else None,
                                      mech.reroll_wound)
+    # DEVASTATING WOUNDS inflicts MORTAL WOUNDS: every ability keyed on
+    # mortal wounds triggers on them too (an invulnerable save or a Feel
+    # No Pain "against mortal wounds"), so they are thinned like any
+    # other mortal wound. What sets them apart is only how they are
+    # ALLOCATED - they do not spill from a destroyed model to the next -
+    # which changes no damage total and is recorded on the event for the
+    # kill chain to read.
     crit_mw = mech.crit_mw
+    mw_spills = crit_mw is not None and crit_mw.get("spill", True)
     if mech.devastating and crit_mw is None:
         crit_mw = {"value": None, "match": True, "end": True}
     ap = am._effective_ap(weapon.AP.value() or 0, mech)
@@ -329,7 +337,8 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             kept = _fnp_keep(rng, _mw_save_keep(rng, raw, mech), fnp,
                              mech, mw=True)
             if kept > 0:
-                events.append({"kind": "mortal", "amount": kept})
+                events.append({"kind": "mortal", "amount": kept,
+                               "spills": mw_spills})
             go_on = not crit_mw["end"]
         if wound_crit and (mech.crit_ap_delta or mech.crit_ap_set is not None):
             ap_eff = am._crit_ap(weapon.AP.value() or 0, mech)
@@ -376,7 +385,11 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                 kept = _fnp_keep(rng, _mw_save_keep(rng, raw, mech), fnp,
                                  mech, mw=True)
                 if kept > 0:
-                    events.append({"kind": "mortal", "amount": kept})
+                    # A hit-roll mortal wound is a plain mortal wound:
+                    # it spills unless the ability says otherwise.
+                    events.append(
+                        {"kind": "mortal", "amount": kept,
+                         "spills": mech.hitroll_mw.get("spill", True)})
                 return
             if not ok(r):
                 fails["hit"] = True

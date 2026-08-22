@@ -36,9 +36,15 @@ import leader_core as lc                      # noqa: E402
 import tree_ids                               # noqa: E402
 import inspect_dialog                         # noqa: E402
 import session_io                             # noqa: E402
+import attack_log                             # noqa: E402
+import log_view                               # noqa: E402
+import undo_stack                             # noqa: E402
+import allocation                             # noqa: E402
+import alloc_dialog                           # noqa: E402
 from search_widget import attach_search       # noqa: E402
 from ui_utils import scrollable_listbox, multi_select_hint  # noqa: E402
-from setup_panel import SetupPanel, show_options_dialog, show_font_dialog   # noqa: E402
+from setup_panel import (SetupPanel, show_options_dialog,   # noqa: E402
+                         show_font_dialog, FLAGS)
 
 MASK_TAG = "masked"
 MASK_COLOR = "#999999"
@@ -166,6 +172,13 @@ class GameAssistantApp(tk.Tk):
         self.rosters = {"A": [], "B": []}   # native unit dicts
         self.trees = {}
         self._pre_click = {}                # click-toggle bookkeeping
+        # History of the attacks resolved this game (see attack_log):
+        # written by cmd_attack, saved with the session.
+        self.log = attack_log.AttackLog()
+        self.log_win = None
+        # Undo history of the table edits (masking, wounds/count cells).
+        # Not saved with the session: see undo_stack.
+        self.undo = undo_stack.UndoStack()
         self._build_widgets()
 
     # ---------- UI ----------
@@ -189,6 +202,9 @@ class GameAssistantApp(tk.Tk):
                    command=self.cmd_mask).pack(side=tk.LEFT, padx=3)
         ttk.Button(bar, text="Inspect",
                    command=self.cmd_inspect).pack(side=tk.LEFT, padx=3)
+        self.log_btn = ttk.Button(bar, text="Attack log (0)",
+                                  command=self.cmd_log)
+        self.log_btn.pack(side=tk.LEFT, padx=3)
         ttk.Label(bar, text="Attacking army:").pack(side=tk.LEFT, padx=6)
         self.att_side = tk.StringVar(value="A")
         for s in ("A", "B"):
@@ -196,6 +212,22 @@ class GameAssistantApp(tk.Tk):
                             command=self._refresh_melee).pack(side=tk.LEFT)
         self.status = ttk.Label(bar, text="No armies loaded")
         self.status.pack(side=tk.LEFT, padx=10)
+        # Undo/redo on the right, so the label growing with the name of
+        # the pending action cannot push the status text around.
+        self.redo_btn = ttk.Button(bar, text="Redo", state=tk.DISABLED,
+                                   command=self.cmd_redo)
+        self.redo_btn.pack(side=tk.RIGHT, padx=3, pady=3)
+        self.undo_btn = ttk.Button(bar, text="Undo", state=tk.DISABLED,
+                                   command=self.cmd_undo)
+        self.undo_btn.pack(side=tk.RIGHT, padx=3)
+        self.undo_lbl = ttk.Label(bar, foreground="#888888", text="")
+        self.undo_lbl.pack(side=tk.RIGHT, padx=3)
+        # Bound on the window, not with bind_all: a Ctrl-Z pressed in the
+        # log window or in a results popup must not silently rewrite the
+        # table behind it.
+        self.bind("<Control-z>", self.cmd_undo)
+        self.bind("<Control-Z>", self.cmd_redo)      # Ctrl-Shift-Z
+        self.bind("<Control-y>", self.cmd_redo)
 
         main = ttk.Frame(self)
         main.pack(fill=tk.BOTH, expand=True)
@@ -272,6 +304,10 @@ class GameAssistantApp(tk.Tk):
             self.rosters[side].sort(key=lambda e: lc.entry_label(e).lower())
         for side in ("A", "B"):
             self._fill_tree(side)
+        # The rows were just rebuilt: the recorded ids no longer point at
+        # the same things, so the history goes with them.
+        self.undo.clear()
+        self._refresh_undo()
         pts = {s: sum(lc.entry_points(e) for e in self.rosters[s])
                for s in ("A", "B")}
         self.status.config(text=f"Army A: {len(self.rosters['A'])} units, "
@@ -349,22 +385,88 @@ class GameAssistantApp(tk.Tk):
     def cmd_mask(self):
         """Toggle the removed/masked state of the selected rows: a model
         group or copy no longer contributes to the unit, a weapon is not
-        fired, an ability is switched off (its 'enabled' flag)."""
+        fired, an ability is switched off (its 'enabled' flag).
+
+        The whole selection is ONE undo step: masking five models is one
+        gesture, and unwinding it row by row would be five Ctrl-Z for
+        something the player did once."""
+        changes, masked = [], 0
         for side in ("A", "B"):
-            tree = self.trees[side]
-            for iid in tree.selection():
+            for iid in self.trees[side].selection():
                 if tree_ids.is_separator(iid):
                     continue                # separators are decoration
-                tags = set(tree.item(iid, "tags"))
-                tags ^= {MASK_TAG}
-                tree.item(iid, tags=tuple(tags))
-                # An ability row masks nothing by itself: it carries the
-                # 'enabled' flag of the roster dict, so the flag is
-                # written here rather than read back at resolution time.
-                ui, key = tree_ids.parse_ability(iid)
-                if ui is not None:
-                    lc.set_entry_ability_enabled(
-                        self.rosters[side][ui], key, MASK_TAG not in tags)
+                new = not self._is_masked(side, iid)
+                changes.append(undo_stack.change(side, iid, "masked",
+                                                 not new, new))
+                self._set_cell(side, iid, "masked", new)
+                masked += 1 if new else 0
+        if not changes:
+            return
+        verb = "mask" if masked * 2 >= len(changes) else "unmask"
+        self.undo.push_changes(undo_stack.rows_label(verb, len(changes)),
+                               changes)
+        self._refresh_undo()
+
+    def _set_cell(self, side, iid, field, value):
+        """Write one table cell, returning False when the row is gone.
+
+        The single path used both by the direct edits and by undo/redo,
+        so the two cannot diverge - in particular an ability row must
+        always write its 'enabled' flag onto the roster dict, whichever
+        of the two moved it."""
+        tree = self.trees.get(side)
+        if tree is None or not tree.exists(iid):
+            return False
+        if field == "masked":
+            tags = set(tree.item(iid, "tags"))
+            tags = (tags | {MASK_TAG}) if value else (tags - {MASK_TAG})
+            tree.item(iid, tags=tuple(tags))
+            # An ability row masks nothing by itself: it carries the
+            # 'enabled' flag of the roster dict, so the flag is written
+            # here rather than read back at resolution time.
+            ui, key = tree_ids.parse_ability(iid)
+            if ui is not None and ui < len(self.rosters[side]):
+                lc.set_entry_ability_enabled(self.rosters[side][ui], key,
+                                             not value)
+        elif field == "wounds":
+            tree.set(iid, "wounds", value)
+        else:
+            return False
+        return True
+
+    # ---------- undo / redo ----------
+
+    def cmd_undo(self, _event=None):
+        self._move_history(undo=True)
+
+    def cmd_redo(self, _event=None):
+        self._move_history(undo=False)
+
+    def _move_history(self, undo):
+        """Apply one step of the history and show what it moved."""
+        # A cell editor is open: Ctrl-Z belongs to the text being typed
+        # (or to the search box), not to the table underneath it.
+        if isinstance(self.focus_get(), tk.Entry):
+            return
+        act = self.undo.undo() if undo else self.undo.redo()
+        if act is None:
+            return
+        touched = undo_stack.apply_action(act, self._set_cell, undo=undo)
+        self._refresh_undo()
+        for side in ("A", "B"):
+            iids = [iid for s, iid in touched if s == side]
+            if iids:
+                self.trees[side].selection_set(iids)
+                self.trees[side].see(iids[0])
+
+    def _refresh_undo(self):
+        """Button states and the name of the next action to be undone."""
+        self.undo_btn.configure(
+            state=(tk.NORMAL if self.undo.can_undo() else tk.DISABLED))
+        self.redo_btn.configure(
+            state=(tk.NORMAL if self.undo.can_redo() else tk.DISABLED))
+        label = self.undo.undo_label()
+        self.undo_lbl.configure(text=f"undo: {label}" if label else "")
 
     def _is_masked(self, side, iid):
         return MASK_TAG in self.trees[side].item(iid, "tags")
@@ -395,21 +497,35 @@ class GameAssistantApp(tk.Tk):
         if ci is None and not is_weapon:
             return                          # unit / model-entry rows
         x, y, w, h = tree.bbox(iid, "#1")
+        old = str(tree.set(iid, "wounds"))
         entry = tk.Entry(tree, width=8)
-        entry.insert(0, str(tree.set(iid, "wounds")))
+        entry.insert(0, old)
         entry.place(x=x, y=y, width=w, height=h)
         entry.focus_set()
+        # Return commits and destroys the box, which then fires FocusOut:
+        # without this guard the commit would run twice, the second time
+        # on a widget that no longer exists.
+        done = {"yet": False}
 
         def commit(_e=None):
+            if done["yet"]:
+                return
+            done["yet"] = True
             val = entry.get().strip()
             if is_weapon:
                 try:
-                    val = max(0, int(val))
+                    val = str(max(0, int(val)))
                 except ValueError:
                     entry.destroy()
                     return                  # invalid count: keep old value
-            tree.set(iid, "wounds", val)
             entry.destroy()
+            if val == old:
+                return
+            self._set_cell(side, iid, "wounds", val)
+            self.undo.push_changes(
+                f"edit {tree.item(iid, 'text')}",
+                [undo_stack.change(side, iid, "wounds", old, val)])
+            self._refresh_undo()
         entry.bind("<Return>", commit)
         entry.bind("<FocusOut>", commit)
 
@@ -489,16 +605,31 @@ class GameAssistantApp(tk.Tk):
         return {"fmt": self.fmt,
                 "attacking_side": self.att_side.get(),
                 "rosters": self.rosters,
+                # Named modifier bundles, same store the analyzer keeps
+                # (see mod_presets): typed in once, reused every game.
+                "mod_presets": self.setup.presets.to_json(),
+                # The attack history belongs to the game, not to the
+                # window: reopening a session mid-game must not lose it.
+                "attack_log": self.log.to_json(),
                 "table": {s: self._table_state(s) for s in ("A", "B")}}
 
     def _apply_session(self, state):
         """Restore both rosters and the table state."""
         self.fmt = state.get("fmt", self.fmt)
+        # Absent in sessions written before presets existed: an empty
+        # store is the right answer, not an error.
+        self.setup.set_presets(state.get("mod_presets") or {})
+        # Absent in sessions written before the log existed: an empty
+        # log, same as for the presets above.
+        self.log = attack_log.AttackLog(state.get("attack_log"))
+        self._sync_log_window()
         rosters = state.get("rosters") or {}
         for side in ("A", "B"):
             self.rosters[side] = list(rosters.get(side) or [])
             self._fill_tree(side)
             self._restore_table(side, (state.get("table") or {}).get(side))
+        self.undo.clear()                   # rebuilt table, see cmd_load
+        self._refresh_undo()
         side = state.get("attacking_side")
         if side in ("A", "B"):
             self.att_side.set(side)
@@ -666,11 +797,48 @@ class GameAssistantApp(tk.Tk):
             res = attack_resolve.resolve_weapon(w, ref, ctx, mech,
                                                 self.rng, haz_damage)
             results.append((w, mech.hazardous, res))
-        self._show_results(attacker, defender, ref, results, skipped)
+        self._record_attack(attacker, defender, ref, results, skipped,
+                            mode, melee_name, flags)
+        self._show_results(attacker, defender, ref, results, skipped,
+                           d_side, d_ui)
+
+    # ---------- attack log ----------
+
+    def _record_attack(self, attacker, defender, ref, results, skipped,
+                       mode, melee_name, flags):
+        """Append the attack just resolved to the game log. The context
+        is recorded as words (the ticked flags and the modifier list, in
+        the panel's own wording) because a log that only kept the
+        numbers could not be argued with two turns later."""
+        self.log.record(attacker.name, defender.name, ref, results,
+                        skipped=skipped, mode=mode,
+                        melee=melee_name if mode == "melee" else None,
+                        context=attack_log.context_lines(
+                            flags, self.setup.mods, dict(FLAGS)))
+        self._sync_log_window()
+
+    def _refresh_log_btn(self):
+        self.log_btn.configure(text=f"Attack log ({len(self.log)})")
+
+    def _sync_log_window(self):
+        """Refresh the button caption and the log window if it is open:
+        both mirror the same log, and an open window must not go stale
+        while attacks are resolved behind it."""
+        self._refresh_log_btn()
+        if self.log_win is not None and self.log_win.winfo_exists():
+            self.log_win.log = self.log
+            self.log_win.refresh()
+
+    def cmd_log(self):
+        """Open (or raise) the attack log window."""
+        self.log_win = log_view.open_log(self, self.log,
+                                         self._refresh_log_btn,
+                                         self.log_win)
 
     # ---------- results popup ----------
 
-    def _show_results(self, attacker, defender, ref, results, skipped=()):
+    def _show_results(self, attacker, defender, ref, results, skipped=(),
+                      d_side=None, d_ui=None):
         win = tk.Toplevel(self)
         win.title(f"{attacker.name}  vs  {defender.name}")
         win.geometry("560x440")
@@ -716,6 +884,103 @@ class GameAssistantApp(tk.Tk):
             txt.insert(tk.END, "\nNot modelled: " + "; ".join(
                 sorted(warnings)), "mw")
         txt.configure(state=tk.DISABLED)
+        bar = ttk.Frame(win)
+        bar.pack(fill=tk.X, padx=6, pady=(0, 6))
+        ttk.Button(bar, text="Close",
+                   command=win.destroy).pack(side=tk.RIGHT)
+        if d_side is not None and n_ev:
+            # Writing the damage off by hand is the slow part of a turn.
+            # The button proposes the arithmetic; the dialog leaves the
+            # choices (which model, and anything the table decided) open.
+            btn = ttk.Button(bar, text="Apply to defender...")
+            btn.configure(command=lambda: self._open_allocation(
+                win, d_side, d_ui, results, btn))
+            btn.pack(side=tk.LEFT)
+
+    # ---------- assisted allocation ----------
+
+    def _defender_copies(self, side, ui):
+        """The defending models still on the table, in table order:
+        ([{'iid', 'label', 'wounds', 'max'}], skipped). Masked rows are
+        models already removed, so they are left out; a wounds cell
+        holding free text cannot be allocated to and is COUNTED, not
+        silently dropped - otherwise the proposal would quietly spread
+        the damage over fewer models than the unit has."""
+        tree = self.trees[side]
+        models = dict(lc.entry_models(self.rosters[side][ui]))
+        out, skipped = [], 0
+        for mid in tree.get_children(tree_ids.unit_iid(ui)):
+            _u, mi, _w, _c = self._parse_iid(mid)
+            if mi is None or self._is_masked(side, mid):
+                continue
+            try:
+                wmax = max(1, int(models[mi].get("W") or 1))
+            except (TypeError, ValueError, KeyError):
+                continue
+            for child in tree.get_children(mid):
+                _u2, _m2, _wi, ci = self._parse_iid(child)
+                if ci is None or self._is_masked(side, child):
+                    continue
+                try:
+                    wounds = max(0, int(tree.set(child, "wounds")))
+                except ValueError:
+                    skipped += 1
+                    continue
+                out.append({"iid": child, "wounds": wounds, "max": wmax,
+                            "label": f"{models[mi]['name']} - "
+                                     f"{tree.item(child, 'text')}"})
+        return out, skipped
+
+    def _open_allocation(self, parent, side, ui, results, button=None):
+        copies, skipped = self._defender_copies(side, ui)
+        events = allocation.events_from_results(results)
+        if not copies:
+            messagebox.showinfo("Apply damage",
+                                "No defending model left to allocate to "
+                                "(every model row is masked, or their "
+                                "wounds cells hold free text).",
+                                parent=parent)
+            return
+        if skipped:
+            messagebox.showinfo(
+                "Apply damage",
+                f"{skipped} model rows hold free text instead of a "
+                "number and are left out of the proposal - allocate "
+                "those by hand.", parent=parent)
+        name = lc.entry_label(self.rosters[side][ui])
+
+        def on_apply(rows):
+            self._apply_allocation(side, ui, rows, name)
+            if button is not None:
+                # The dialog reads the table each time it opens, so a
+                # second Apply would take the same damage off twice.
+                button.configure(text="Applied", state=tk.DISABLED)
+
+        alloc_dialog.AllocationDialog(parent, name, copies, events,
+                                      on_apply)
+
+    def _apply_allocation(self, side, ui, rows, name):
+        """Write the accepted allocation into the table: the new wounds,
+        and the mask that removes a destroyed model. One undo step for
+        the lot - a misapplied attack is exactly what Ctrl-Z is for."""
+        tree, changes = self.trees[side], []
+        for r in rows:
+            iid = r.get("iid")
+            if not iid or not tree.exists(iid):
+                continue
+            old = str(tree.set(iid, "wounds"))
+            new = str(r["after"])
+            if new != old:
+                changes.append(undo_stack.change(side, iid, "wounds",
+                                                 old, new))
+                self._set_cell(side, iid, "wounds", new)
+            if r.get("dead") and not self._is_masked(side, iid):
+                changes.append(undo_stack.change(side, iid, "masked",
+                                                 False, True))
+                self._set_cell(side, iid, "masked", True)
+        if changes:
+            self.undo.push_changes(f"apply damage to {name}", changes)
+            self._refresh_undo()
 
 
 if __name__ == "__main__":

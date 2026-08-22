@@ -5,12 +5,14 @@ by both the attack analyzer (program 2) and the game assistant
 
 import tkinter as tk
 import tkinter.font as tkfont
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 import ui_utils as ui
 from ui_utils import scrollable_listbox
 
 import attack_math
+import modifier_engine
 import rules_config
+import mod_presets
 
 def _multi_select(parent, title, prompt, items, selected=(),
                   extra_check=None, note=None):
@@ -64,9 +66,15 @@ FLAGS = [("half_range", "Within half range"),
          # not subject to the +/-1 roll cap and stack with a hit-roll
          # modifier. Several sources of cover never stack with each
          # other: cover is a state, not a counter.
-         ("cover", "Defender has the Benefit of Cover (-1 BS)"),
-         ("plunging", "Plunging fire (+1 BS)"),
-         ("damaged", "Attacker damaged (-1 to hit)"),
+         # The signs below are written in the CHARACTERISTIC convention
+         # used by the manual modifiers (a raw delta on the BS target
+         # number, so +1 is worse), NOT in the rulebook's wording, which
+         # calls the same penalty "-1 BS". The direction is spelled out
+         # in words so the two readings cannot be confused. 'Damaged' is
+         # a HIT ROLL modifier instead, where -1 is the penalty.
+         ("cover", "Defender has the Benefit of Cover (BS +1, worse)"),
+         ("plunging", "Plunging fire (BS -1, better)"),
+         ("damaged", "Attacker damaged (-1 to hit roll)"),
          # Indirect shooting mode: only INDIRECT FIRE weapons are fired,
          # the target always counts as being in Cover, hit re-rolls are
          # lost and an unmodified 1-5 always fails ("spotter" relaxes
@@ -103,6 +111,45 @@ MOD_TARGETS = [("Hit roll", "rolls", "hit"),
     [(f"{lab} reroll failed", "rerolls", (key, "fails"))
      for lab, key in (("Hit", "hit"), ("Wound", "wound"), ("Save", "save"),
                       ("Invuln", "invuln"), ("FNP", "fnp"))]
+
+
+# The manual-modifier value means two different things depending on the
+# target, and the two read in OPPOSITE directions:
+#   * a ROLL modifier is die-side, so +1 always makes the roll easier;
+#   * a CHARACTERISTIC modifier is a raw delta on the stored value, so
+#     it improves a target number (BS/WS/Sv/LD) or an AP - both stored
+#     "lower is better" - only when it is NEGATIVE.
+# The field therefore starts from whichever sign improves the selected
+# target, and a hint spells the direction out. The direction itself is
+# not repeated here: modifier_engine.improving_sign owns it.
+_DEFENDER_ROLLS = ("save", "invuln", "fnp")
+
+
+def mod_improving_sign(kind, key) -> int:
+    """+1 or -1: the value that IMPROVES the selected target."""
+    if kind == "rolls":
+        return +1
+    return modifier_engine.improving_sign(key)
+
+
+def mod_default_value(kind, key) -> str:
+    """What the value field starts from for that target."""
+    return f"{mod_improving_sign(kind, key):+d}"
+
+
+def mod_hint(kind, key) -> str:
+    """One line under the field saying which way the value reads."""
+    if kind == "rerolls":
+        return "a re-roll takes no value"
+    if kind == "rolls":
+        who = "the defender rolls it" if key in _DEFENDER_ROLLS \
+            else "the attacker rolls it"
+        return f"+1 = easier to pass ({who})"
+    if key == "AP":
+        return "-1 = better AP (stored negative, 0 is the worst)"
+    if mod_improving_sign(kind, key) < 0:
+        return f"-1 = better {key} (target number, lower is better)"
+    return f"+1 = better {key}"
 
 
 class SetupPanel(ttk.LabelFrame):
@@ -179,21 +226,40 @@ class SetupPanel(ttk.LabelFrame):
         self.mod_target.set(MOD_TARGETS[0][0])
         self.mod_target.grid(row=0, column=0)
         self.mod_value = ttk.Entry(mrow, width=3)
-        self.mod_value.insert(0, "+1")
         self.mod_value.grid(row=0, column=1, padx=3)
-        # A re-roll entry carries no value: grey the field out (and
-        # blank it) while one is selected, so it cannot be typed into.
-        self.mod_target.bind("<<ComboboxSelected>>",
-                             lambda e: self._sync_mod_value())
-        self._sync_mod_value()
         ttk.Button(mrow, text="Add", width=5,
                    command=self.cmd_add_mod).grid(row=0, column=2)
+        self.mod_hint_label = ttk.Label(self, text="",
+                                        foreground=ui.HINT_COLOR)
+        self.mod_hint_label.pack(anchor=tk.W, padx=4)
+        self.mod_target.bind("<<ComboboxSelected>>",
+                             lambda e: self._sync_mod_value())
+        self._sync_mod_value()      # fills the value field and the hint
         self.mods = []               # [(label, kind, key, value)]
         mod_frame, self.mod_list = scrollable_listbox(
             self, height=5, exportselection=False)
         mod_frame.pack(fill=tk.X, padx=4, pady=2)
         ttk.Button(self, text="Remove",
                    command=self.cmd_remove_mod).pack(anchor=tk.W, padx=4)
+
+        # Named bundles of the modifiers above, saved with the session.
+        self.presets = mod_presets.PresetStore()
+        prow = ttk.Frame(self)
+        prow.pack(fill=tk.X, padx=4, pady=(4, 0))
+        ttk.Label(prow, text="Preset:").pack(side=tk.LEFT)
+        self.preset_box = ttk.Combobox(prow, state="readonly", width=18,
+                                       values=[])
+        self.preset_box.pack(side=tk.LEFT, padx=3)
+        ttk.Button(prow, text="Apply", width=6,
+                   command=self.cmd_apply_preset).pack(side=tk.LEFT)
+        ttk.Button(prow, text="Save as...", width=10,
+                   command=self.cmd_save_preset).pack(side=tk.LEFT, padx=3)
+        ttk.Button(prow, text="Delete", width=7,
+                   command=self.cmd_delete_preset).pack(side=tk.LEFT)
+        self.preset_hint = ttk.Label(self, text="", foreground=ui.HINT_COLOR)
+        self.preset_hint.pack(anchor=tk.W, padx=4)
+        self.preset_box.bind("<<ComboboxSelected>>",
+                             lambda _e: self._sync_preset_hint())
 
         ttk.Separator(self).pack(fill=tk.X, pady=4)
         # Ability selection: which of the attacker's optional abilities
@@ -210,25 +276,40 @@ class SetupPanel(ttk.LabelFrame):
         self.ability_label = ttk.Label(self, text="all abilities used",
                                        foreground=ui.HINT_COLOR)
         self.ability_label.pack(anchor=tk.W, padx=4)
+        # Fills the preset combo and its hint ("no preset saved" until
+        # the first one is stored).
+        self._refresh_presets()
 
     # ---------- manual modifiers ----------
+
+    def _mod_target(self, label=None):
+        """(kind, key) of a modifier target label, (None, None) when the
+        label is not one of them."""
+        label = self.mod_target.get() if label is None else label
+        return next(((k, ky) for lab, k, ky in MOD_TARGETS if lab == label),
+                    (None, None))
 
     def _mod_kind(self, label=None):
         """The kind ('rolls'|'rerolls'|'weapon'|...) of a modifier target
         label, or None when the label is not one of them."""
-        label = self.mod_target.get() if label is None else label
-        return next((k for lab, k, _ky in MOD_TARGETS if lab == label),
-                    None)
+        return self._mod_target(label)[0]
 
     def _sync_mod_value(self):
-        """Enable the value field only for the targets that take one."""
-        if self._mod_kind() == "rerolls":
-            self.mod_value.delete(0, tk.END)
+        """Follow the selected target: re-rolls take no value, every
+        other target starts from the sign that IMPROVES it. The field is
+        reset on every change of target on purpose - the same number
+        means the opposite thing on a roll and on a target number, so
+        carrying it over would be worse than losing it."""
+        kind, key = self._mod_target()
+        self.mod_hint_label.config(text=mod_hint(kind, key))
+        # The field must be enabled to be rewritten, so it is blanked
+        # first and only then greyed out again.
+        self.mod_value.config(state=tk.NORMAL)
+        self.mod_value.delete(0, tk.END)
+        if kind == "rerolls":
             self.mod_value.config(state=tk.DISABLED)
-        elif str(self.mod_value.cget("state")) == tk.DISABLED:
-            self.mod_value.config(state=tk.NORMAL)
-            self.mod_value.delete(0, tk.END)
-            self.mod_value.insert(0, "+1")
+        else:
+            self.mod_value.insert(0, mod_default_value(kind, key))
 
     def cmd_add_mod(self):
         label = self.mod_target.get()
@@ -236,8 +317,9 @@ class SetupPanel(ttk.LabelFrame):
                          if lab == label)
         if kind == "rerolls":
             # the value field is not used: key is (roll, '1'|'fails')
-            self.mods.append((label, kind, key, None))
-            self.mod_list.insert(tk.END, label)
+            mod = (label, kind, key, None)
+            self.mods.append(mod)
+            self.mod_list.insert(tk.END, mod_presets.describe(mod))
             return
         try:
             value = int(self.mod_value.get().replace("+", "").strip())
@@ -247,8 +329,80 @@ class SetupPanel(ttk.LabelFrame):
             return
         if value == 0:
             return
-        self.mods.append((label, kind, key, value))
-        self.mod_list.insert(tk.END, f"{label}: {value:+d}")
+        mod = (label, kind, key, value)
+        self.mods.append(mod)
+        self.mod_list.insert(tk.END, mod_presets.describe(mod))
+
+    # ---------- modifier presets ----------
+
+    def _refresh_mod_list(self):
+        """Redraw the modifier listbox from self.mods."""
+        self.mod_list.delete(0, tk.END)
+        for mod in self.mods:
+            self.mod_list.insert(tk.END, mod_presets.describe(mod))
+
+    def _refresh_presets(self, select=None):
+        names = self.presets.names()
+        self.preset_box.configure(values=names)
+        if select and select in names:
+            self.preset_box.set(select)
+        elif self.preset_box.get() not in names:
+            self.preset_box.set(names[0] if names else "")
+        self._sync_preset_hint()
+
+    def _sync_preset_hint(self):
+        name = self.preset_box.get()
+        self.preset_hint.config(
+            text=(mod_presets.summary(self.presets.get(name))
+                  if name in self.presets else
+                  "no preset saved" if not len(self.presets) else ""))
+
+    def set_presets(self, data):
+        """Replace the whole store (used when a session is loaded)."""
+        self.presets = mod_presets.PresetStore(data)
+        self._refresh_presets()
+
+    def cmd_apply_preset(self):
+        """Add the selected preset to the modifiers already listed."""
+        name = self.preset_box.get()
+        if name not in self.presets:
+            return
+        self.mods, added, skipped = mod_presets.apply_to(
+            self.mods, self.presets.get(name))
+        self._refresh_mod_list()
+        if skipped and not added:
+            messagebox.showinfo("Preset", f"'{name}' is already applied.")
+        elif skipped:
+            messagebox.showinfo(
+                "Preset",
+                f"Added {added} modifier(s); {skipped} were already "
+                "in the list and were not added twice.")
+
+    def cmd_save_preset(self):
+        """Store the current modifier list under a name."""
+        if not self.mods:
+            messagebox.showinfo("Preset",
+                                "Add some modifiers first, then save "
+                                "them under a name.")
+            return
+        name = simpledialog.askstring("Save preset", "Preset name:",
+                                      parent=self)
+        if not name or not name.strip():
+            return
+        name = name.strip()
+        if name in self.presets and not messagebox.askyesno(
+                "Save preset", f"Overwrite '{name}'?"):
+            return
+        self.presets.save(name, self.mods)
+        self._refresh_presets(select=name)
+
+    def cmd_delete_preset(self):
+        name = self.preset_box.get()
+        if name not in self.presets:
+            return
+        if messagebox.askyesno("Delete preset", f"Delete '{name}'?"):
+            self.presets.delete(name)
+            self._refresh_presets()
 
     def cmd_remove_mod(self):
         sel = self.mod_list.curselection()

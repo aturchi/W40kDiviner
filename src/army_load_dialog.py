@@ -12,7 +12,6 @@ thin GUI over it.
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 
-import native_format as nf
 from ui_utils import scrollable_listbox, multi_select_hint
 from army_load_core import ArmyLoadState
 

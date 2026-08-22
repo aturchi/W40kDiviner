@@ -249,11 +249,32 @@ _IMPROVE_SIGN = {"_skill": -1, "AP": -1, "D": +1, "A": +1, "S": +1}
 # Model characteristics reachable by modify effects. Improving LD
 # lowers the target (6+ is better than 7+), like skills; M and OC
 # improve upwards.
+# (see improving_sign() below for the public lookup)
 _MODEL_ATTRS = {"m": "M", "ld": "LD", "oc": "OC",
                 "t": "T", "sv": "Sv", "w": "W"}
 # Toughness and Wounds improve upwards, saves downwards (4+ -> 3+).
 _MODEL_IMPROVE_SIGN = {"M": +1, "LD": -1, "OC": +1,
                        "T": +1, "Sv": -1, "W": +1}
+
+
+# Characteristics outside the two tables above that a caller may still
+# ask about: an invulnerable save is a target number like Sv, a range
+# improves upwards.
+_OTHER_IMPROVE_SIGN = {"invuln": -1, "RNG": +1}
+
+
+def improving_sign(attr) -> int:
+    """+1 or -1: the sign of the delta that IMPROVES characteristic
+    'attr'. Skills, saves and LD are target numbers (4+ -> 3+ is
+    better) and AP is stored negative, so those improve with a NEGATIVE
+    delta; everything else improves upwards. Unknown attributes default
+    to +1. This is the one place that knows the direction: the manual
+    modifier panel asks here rather than repeating the table."""
+    attr = "_skill" if attr in ("BS", "WS") else attr
+    for table in (_IMPROVE_SIGN, _MODEL_IMPROVE_SIGN, _OTHER_IMPROVE_SIGN):
+        if attr in table:
+            return table[attr]
+    return +1
 
 
 def _e_modify_relative(d, env):

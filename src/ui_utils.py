@@ -12,6 +12,8 @@
   content expands when the window is enlarged.
 - multi_select_hint(): the shared "Ctrl+click" reminder label used by every
   dialog holding a multi-selection list.
+- save_text(): the shared "ask for a file name and write this text"
+  dialog behind every export (CSV tables, attack log, cheat sheets).
 
 Kept dependency-free (tkinter only) so every GUI module can reuse it
 instead of wiring scrollbars by hand.
@@ -19,6 +21,7 @@ instead of wiring scrollbars by hand.
 
 import sys
 import tkinter as tk
+from tkinter import filedialog, messagebox
 from tkinter import font as tkfont
 from tkinter import ttk
 
@@ -105,6 +108,34 @@ def multi_select_hint(parent, extra=""):
     appends a dialog-specific note."""
     text = MULTI_SELECT_HINT + (f" - {extra}" if extra else "")
     return ttk.Label(parent, text=text, foreground=HINT_COLOR)
+
+
+def save_text(parent, body, title="Export", defaultextension=".csv",
+              filetypes=None, initialfile=None):
+    """Ask for a file name and write 'body' to it. Returns the path, or
+    None when the dialog was cancelled or the write failed (the error is
+    reported to the user, never swallowed).
+
+    'body' may be a callable taking the chosen path, for exports whose
+    FORMAT follows the extension the user typed (a cheat sheet saved as
+    .txt is not the same bytes as one saved as .html).
+
+    One place for every export in the three programs: the file dialog,
+    the encoding and the error box were being written out again at each
+    call site, and only some of them caught OSError."""
+    path = filedialog.asksaveasfilename(
+        parent=parent, title=title, defaultextension=defaultextension,
+        initialfile=initialfile,
+        filetypes=filetypes or [("All files", "*.*")])
+    if not path:
+        return None
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(body(path) if callable(body) else body)
+    except OSError as exc:
+        messagebox.showerror(title, str(exc), parent=parent)
+        return None
+    return path
 
 
 def wrap_lines(text, font, pixels, indent="      "):

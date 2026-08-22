@@ -150,22 +150,6 @@ class JoinDialog(tk.Toplevel):
         self.destroy()
 
 
-# Backwards-compatible name used by the game assistant for the leader pass.
-class LeaderJoinDialog(JoinDialog):
-    """Leader-only wrapper over JoinDialog, kept for backwards
-    compatibility with older call sites."""
-    def __init__(self, parent, army_name, leaders, others, fmt):
-        # leaders/others arrive as native dicts (legacy call) OR entries.
-        helpers = [h if _is_entry(h) else lc.make_entry(h) for h in leaders]
-        targets = [t if _is_entry(t) else lc.make_entry(t) for t in others]
-        super().__init__(parent, army_name, helpers, targets, fmt,
-                         mode="leader")
-
-
-def _is_entry(x):
-    return isinstance(x, dict) and "unit" in x and "leader" in x
-
-
 class TwoArmyJoinDialog(tk.Toplevel):
     """Unified join dialog for the game assistant, covering BOTH armies at
     once. One row per army (attacker A, defender B); each row shows three

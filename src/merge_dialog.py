@@ -21,7 +21,6 @@ wrap inside the window instead of running past its edge.
 All diff/apply logic lives in :mod:`profile_diff`; this module is pure UI.
 """
 
-import copy
 import tkinter as tk
 from tkinter import ttk
 

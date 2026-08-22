@@ -108,6 +108,90 @@ def binomial_thin(pmf: list, p_keep: float) -> list:
     return out
 
 
+# ---------------- joint allocation PMFs ----------------
+# Working out how many MODELS an attack kills needs more than the total
+# damage, because damage is allocated one EVENT at a time and capped by
+# the wounds left on the model it lands on: three hits of 2 damage are
+# not one hit of 6. So an attack is described by three numbers.
+#
+#   AX_NORM  how many ordinary damage events it produced;
+#   AX_DEV   how many events came from DEVASTATING WOUNDS. These ARE
+#            mortal wounds - every ability keyed on mortal wounds bites
+#            on them - but they are allocated like ordinary damage and
+#            do NOT spill, so they are counted apart only because the
+#            mortal-wound abilities can give them a different damage
+#            law from the ordinary events;
+#   AX_POOL  mortal wounds that DO spill, in damage points. They are
+#            pooled and spent at the end of the whole activation.
+#
+# The three are correlated inside a single attack (one critical wound
+# can yield mortal wounds AND ordinary extra hits), so they travel
+# together as a joint distribution {(norm, dev, pool): p}. Most weapons
+# need none of this: when the devastating events follow the same law as
+# the ordinary ones and nothing spills, the plain event count is
+# enough, and the 'wounds' chain already computes it.
+AX_NORM, AX_DEV, AX_POOL = 0, 1, 2
+_AXES = 3
+
+
+def jdelta(norm: int = 0, dev: int = 0, pool: int = 0) -> dict:
+    """Joint PMF with all its mass on one (norm, dev, pool) triple."""
+    return {(norm, dev, pool): 1.0}
+
+
+def jleaf(pmf: list, axis: int) -> dict:
+    """A one-dimensional PMF seen as a joint one, all of it on one
+    axis (AX_NORM, AX_DEV or AX_POOL)."""
+    out = {}
+    for v, p in enumerate(pmf):
+        if p:
+            key = [0] * _AXES
+            key[axis] = v
+            out[tuple(key)] = out.get(tuple(key), 0.0) + p
+    return out
+
+
+def jmix(pairs) -> dict:
+    """Weighted mixture of joint PMFs: pairs = [(weight, jpmf), ...]."""
+    out = {}
+    for w, j in pairs:
+        if not w:
+            continue
+        for k, p in j.items():
+            out[k] = out.get(k, 0.0) + w * p
+    return out
+
+
+def jconvolve(a: dict, b: dict, eps: float = 1e-15) -> dict:
+    """Joint PMF of the componentwise sum of two independent joint
+    variables. Masses below eps are dropped: the support of a joint PMF
+    grows as the product of the two supports, and the tails that matter
+    to a kill count are never that thin."""
+    out = {}
+    for ka, pa in a.items():
+        if pa < eps:
+            continue
+        for kb, pb in b.items():
+            v = pa * pb
+            if v >= eps:
+                k = tuple(x + y for x, y in zip(ka, kb))
+                out[k] = out.get(k, 0.0) + v
+    return out
+
+
+_JZERO = (0,) * _AXES
+
+
+def jno_fail(j: dict, pf: float) -> dict:
+    """'j' conditioned on this attack's die NOT failing: the failed
+    branch contributes nothing, so it is the mass pf sitting on the
+    all-zero key. Remove it, renormalise."""
+    out = dict(j)
+    out[_JZERO] = max(0.0, out.get(_JZERO, 0.0) - pf)
+    scale = 1.0 - pf
+    return {k: v / scale for k, v in out.items() if v}
+
+
 # ---------------- d6 roll probabilities ----------------
 
 
@@ -729,7 +813,11 @@ def _parse_mw_payload(tokens):
     """MORTAL_WOUNDS <n|None> [MATCH_DAMAGE] [END_SEQUENCE] [NO_SPILL]
     [CAP x] -> dict or None on CAP (not modelled)."""
     out = {"value": None, "match": "MATCH_DAMAGE" in tokens,
-           "end": "END_SEQUENCE" in tokens}
+           "end": "END_SEQUENCE" in tokens,
+           # Mortal wounds normally spill from a destroyed model to the
+           # next; a few abilities say they do not. Only the kill chain
+           # cares - the damage totals are the same either way.
+           "spill": "NO_SPILL" not in tokens}
     if "CAP" in tokens:
         return None
     try:
@@ -1060,13 +1148,112 @@ def apply_damage_modifiers(d: int, mech) -> int:
 # ---------------- per-weapon analysis ----------------
 
 
+def _pmf_equal(a: list, b: list, eps: float = 1e-12) -> bool:
+    """Two PMFs that are the same law to within rounding."""
+    n = max(len(a), len(b))
+    return all(abs((a[i] if i < len(a) else 0.0)
+                   - (b[i] if i < len(b) else 0.0)) < eps for i in range(n))
+
+
+def _event_damage(thinned: list, w_ref: int) -> list:
+    """Damage of ONE allocation event, i.e. the post-FNP damage law
+    conditioned on being greater than zero: an attack whose damage is
+    fully absorbed allocates nothing and is not an event at all.
+
+    Pre-capped at W because the allocation caps it at the wounds LEFT
+    on the model, which can only be smaller - nothing is lost and the
+    support stays short.
+    """
+    p0 = thinned[0] if thinned else 1.0
+    if p0 >= 1.0 - 1e-15:
+        return [1.0]                      # nothing ever gets through
+    out = [0.0] * (min(len(thinned) - 1, w_ref) + 1)
+    for v, p in enumerate(thinned):
+        if v:
+            out[min(v, w_ref)] += p / (1.0 - p0)
+    return out
+
+
+# Mechanics worth naming in an audit, as (attribute, label). A value of
+# 0/False/None means the ability is not in play and is left out.
+_MECH_LABELS = (
+    ("sustained", "SUSTAINED HITS %s"), ("extra_hits", "+%s hit per hit"),
+    ("extra_wounds", "+%s wound per wound"),
+    ("extra_wounds_crit", "+%s wound per critical wound"),
+    ("extra_attacks", "+%s attack"),
+    ("lethal", "LETHAL HITS"), ("lethal_crit", "critical hit -> critical "
+                                "wound"),
+    ("devastating", "DEVASTATING WOUNDS"), ("torrent", "TORRENT"),
+    ("auto_hit", "auto-hit"), ("auto_wound", "auto-wound"),
+    ("twin_linked", "TWIN-LINKED"), ("heavy", "HEAVY"),
+    ("lance", "LANCE"), ("conversion", "CONVERSION"),
+    ("indirect", "INDIRECT FIRE"), ("ignores_cover", "ignores cover"),
+    ("hazardous", "HAZARDOUS"), ("close_quarters", "CLOSE-QUARTERS"),
+    ("blast", "BLAST %s"), ("cleave", "CLEAVE %s"),
+    ("rapid_fire", "RAPID FIRE %s"), ("melta", "MELTA %s"),
+    ("hit_unmod_only", "hits only on unmodified %s+"),
+)
+
+
+def active_mechanics(mech, ctx: dict = None) -> list:
+    """The abilities that actually took part in this attack, named.
+
+    An audit is only worth reading if it says what fired, not what could
+    have fired: the flags left on from three analyses ago are exactly
+    what the reader is looking for.
+    """
+    ctx = ctx or {}
+    out = []
+    for attr, label in _MECH_LABELS:
+        val = getattr(mech, attr, None)
+        if not val:
+            continue
+        out.append(label % val if "%s" in label else label)
+    for kw, x in mech.anti:
+        out.append(f"ANTI-{kw} {x}+")
+    if mech.crit_hit_on != 6:
+        out.append(f"critical hit on {mech.crit_hit_on}+")
+    if mech.crit_wound_on != 6:
+        out.append(f"critical wound on {mech.crit_wound_on}+")
+    if mech.crit_mw:
+        out.append("critical wound -> mortal wounds")
+    if mech.hitroll_mw:
+        out.append(f"hit roll {mech.hitroll_mw['thr']}+ -> mortal wounds")
+    for roll in ("hit", "wound", "save", "invuln", "fnp"):
+        rr = getattr(mech, "reroll_" + roll, None)
+        if rr:
+            out.append(f"re-roll {roll}: {rr}")
+    if mech.single_reroll:
+        out.append(f"one {mech.single_reroll} re-roll per activation")
+    if mech.ignore_malus:
+        out.append("ignores penalties to: "
+                   + ", ".join(sorted(mech.ignore_malus)))
+    for attr, label in (("dmg_set", "damage set to %s"),
+                        ("dmg_add", "damage %+d"),
+                        ("invuln_grant", "invulnerable %s+ granted"),
+                        ("fnp_grant", "FNP %s+ granted"),
+                        ("fnp_set", "FNP set to %s+")):
+        val = getattr(mech, attr, None)
+        if val:
+            out.append(label % val)
+    if mech.dmg_mult != 1.0:
+        out.append(f"damage x{mech.dmg_mult:g}")
+    if mech.dmg_set_zero:
+        out.append("damage set to 0")
+    return out
+
+
 def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
-                   mech: WeaponMechanics) -> dict:
+                   mech: WeaponMechanics, alloc: bool = False) -> dict:
     """Exact analysis of one weapon (view object) against a reference
     defender {'T','Sv','W','invuln','fnp','models','keywords'} with
     context flags {'half_range','stationary','charged','cover'}.
 
-    Returns attacks/wounds/damage PMFs and their stats."""
+    Returns attacks/wounds/damage PMFs and their stats. With alloc=True
+    it also returns ['alloc'], the ingredients the kill-count chain
+    needs: the per-attack JOINT (mortal, normal) PMF and the number of
+    attacks. It costs one extra pass over the branch structure, so it is
+    off unless a caller asks."""
     half = bool(ctx.get("half_range"))
     warn = mech.warnings.append
 
@@ -1276,7 +1463,16 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     # stream (mortals = Damage) built below.
     if has_damage_modifiers(mech):
         dmg_raw = transform(dmg_raw, lambda v: apply_damage_modifiers(v, mech))
+    # DEVASTATING WOUNDS inflicts MORTAL WOUNDS, so every ability keyed
+    # on mortal wounds bites on it: an invulnerable save or a Feel No
+    # Pain "against mortal wounds" thins this stream exactly like any
+    # other mortal wound, and that is what mw_save_thin / fnp_thin(mw=
+    # True) below do. The ONE thing that sets these mortal wounds apart
+    # is how they are allocated - they do not spill from a destroyed
+    # model to the next - which changes no damage total and is picked up
+    # only by the kill chain, through mw_spills.
     crit_mw = mech.crit_mw
+    mw_spills = crit_mw is not None and crit_mw.get("spill", True)
     if mech.devastating and crit_mw is None:
         crit_mw = {"value": None, "match": True, "end": True}
     mw_raw = (dmg_raw if (crit_mw or {}).get("match", True)
@@ -1316,8 +1512,10 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
 
     w_ref = defender_ref.get("W") or 1
     streams = {}
-    for name, raw, is_mw in (("n", dmg_raw, False), ("mw", mw_raw, True),
-                             ("hmw", hitmw_raw, True)):
+    hmw_spills = bool(mech.hitroll_mw) and mech.hitroll_mw.get("spill", True)
+    for name, raw, is_mw, spills in (("n", dmg_raw, False, False),
+                                     ("mw", mw_raw, True, mw_spills),
+                                     ("hmw", hitmw_raw, True, hmw_spills)):
         if raw is None:
             continue
         thinned = fnp_thin(mw_save_thin(raw) if is_mw else raw, is_mw)
@@ -1325,6 +1523,15 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
             "damage": thinned,
             "damage_net": transform(thinned, lambda v: min(v, w_ref)),
             "wounds": transform(thinned, lambda v: 1 if v > 0 else 0)}
+        # Allocation view. A stream that SPILLS contributes its damage
+        # to a pool spent at the end of the activation, one point at a
+        # time; a stream that does not contributes one allocation EVENT,
+        # whose size is drawn later from that stream's event law and
+        # capped by the wounds left on the model it lands on.
+        axis = (AX_POOL if spills else
+                AX_DEV if is_mw else AX_NORM)
+        streams[name]["alloc"] = jleaf(
+            thinned if spills else streams[name]["wounds"], axis)
 
     def _no_fail(pmf, pf):
         """'pmf' conditioned on this attack's die NOT failing. The failed
@@ -1366,10 +1573,13 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     # that may have failed: they are hits, not hit rolls.)
     single_extra = {}
 
-    def _with_extras(base, count, unit):
+    def _with_extras(base, count, unit, ops=(mix, convolve)):
         """*base* plus *count* further copies of *unit*, where count may
         itself be a die: mix over its PMF, the same way the total mixes
-        over the number of attacks."""
+        over the number of attacks. 'ops' is the (mix, convolve) pair of
+        the value algebra in use - the scalar one by default, the joint
+        (mortal, normal) one for the allocation chain."""
+        _mix, _conv = ops
         if not x_active(count):
             return base
         n_pmf, cur, parts = x_pmf(count), base, []
@@ -1377,21 +1587,28 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
             if pk:
                 parts.append((pk, cur))
             if k < len(n_pmf) - 1:
-                cur = convolve(cur, unit)
-        return mix(parts)
+                cur = _conv(cur, unit)
+        return _mix(parts)
+
+    per_attack_cache = {}
 
     def build_chain(key):
         """Per-attack outcome PMF for one metric ('damage',
-        'damage_net' or 'wounds')."""
-        zero = delta(0)
+        'damage_net', 'wounds' or 'alloc'). The first three are scalar
+        PMFs; 'alloc' runs the very same branch structure over joint
+        (mortal, normal) pairs, which is what the kill count needs."""
+        joint = key == "alloc"
+        _mix, _conv = (jmix, jconvolve) if joint else (mix, convolve)
+        ops = (_mix, _conv)
+        zero = jdelta() if joint else delta(0)
         leaf_n = streams["n"][key]
         leaf_mw = streams["mw"][key]
-        after_save = mix([(p_unsaved, leaf_n), (1 - p_unsaved, zero)])
-        after_save_crit = mix([(p_unsaved_crit, leaf_n),
-                               (1 - p_unsaved_crit, zero)])
+        after_save = _mix([(p_unsaved, leaf_n), (1 - p_unsaved, zero)])
+        after_save_crit = _mix([(p_unsaved_crit, leaf_n),
+                                (1 - p_unsaved_crit, zero)])
         if crit_mw:
             cw_leaf = (leaf_mw if crit_mw["end"]
-                       else convolve(leaf_mw, after_save_crit))
+                       else _conv(leaf_mw, after_save_crit))
         else:
             cw_leaf = after_save_crit
         # EXTRA WOUNDS: a scored wound yields X more (extra_wounds on
@@ -1399,16 +1616,17 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         # rolled, so they are always NORMAL wounds - even the ones a
         # critical wound generated, and even when the critical branch
         # ends the sequence for itself.
-        nw_branch = _with_extras(after_save, mech.extra_wounds, after_save)
+        nw_branch = _with_extras(after_save, mech.extra_wounds, after_save,
+                                 ops)
         # A critical wound collects both kinds of bonus. Stacking them as
         # two successive draws, rather than summing the two X values, is
         # what the rules describe when they come from two abilities: each
         # rolls its own die.
         cw_branch = _with_extras(
-            _with_extras(cw_leaf, mech.extra_wounds, after_save),
-            mech.extra_wounds_crit, after_save)
-        per_hit = mix([(q_nw, nw_branch), (q_cw, cw_branch),
-                       (1 - q_w, zero)])
+            _with_extras(cw_leaf, mech.extra_wounds, after_save, ops),
+            mech.extra_wounds_crit, after_save, ops)
+        per_hit = _mix([(q_nw, nw_branch), (q_cw, cw_branch),
+                        (1 - q_w, zero)])
         if mech.lethal_crit:
             crit_hit_base = cw_branch
         elif mech.lethal:
@@ -1416,18 +1634,20 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         else:
             crit_hit_base = per_hit
         # SUSTAINED HITS: bonus hits on a CRITICAL hit only.
-        crit_branch = _with_extras(crit_hit_base, mech.sustained, per_hit)
+        crit_branch = _with_extras(crit_hit_base, mech.sustained, per_hit,
+                                   ops)
         # EXTRA HITS: bonus hits on ANY successful hit. Both kinds of
         # bonus hit are hits, not hit rolls, so they are never critical
         # and never generate extras of their own - which is why the unit
         # convolved in is per_hit and not the branch itself.
-        norm_branch = _with_extras(per_hit, mech.extra_hits, per_hit)
-        crit_branch = _with_extras(crit_branch, mech.extra_hits, per_hit)
+        norm_branch = _with_extras(per_hit, mech.extra_hits, per_hit, ops)
+        crit_branch = _with_extras(crit_branch, mech.extra_hits, per_hit,
+                                   ops)
         pairs = [(p_norm_hit, norm_branch), (p_crit_hit, crit_branch),
                  (1 - p_hit - p_mw_hit, zero)]
         if p_mw_hit:
             pairs.append((p_mw_hit, streams["hmw"][key]))
-        per_attack = mix(pairs)
+        per_attack = _mix(pairs)
         if mech.single_reroll == "hit":
             # a failed hit roll, re-rolled into a whole fresh attack
             single_extra[key] = (per_attack,
@@ -1439,11 +1659,49 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
             rolled = p_norm_hit if (mech.lethal or mech.lethal_crit) \
                 else p_hit
             single_extra[key] = (per_hit, rolled * max(0.0, 1 - q_w))
+        per_attack_cache[key] = per_attack
         return per_attack
 
     # ---- totals: mixture over the number of attacks ----
     out = {"attacks_pmf": attacks_pmf,
            "attacks": pmf_stats(attacks_pmf)}
+    # Audit trail: the numbers the chain ACTUALLY used, recorded here
+    # rather than recomputed by a reader, so what the interface shows
+    # cannot drift from what was calculated. Formatting lives in the
+    # audit module; this is raw material.
+    _fnp_v, _fnp_m = effective_fnp(defender_ref, mech, False)
+    out["audit"] = {
+        "weapon": weapon.name, "count": weapon.count,
+        "type": weapon.type,
+        "attacks": {"expr": str(weapon.A), "mean": pmf_stats(attacks_pmf)["mean"],
+                    "mod": mech.attacks_mod,
+                    "rapid_fire": mech.rapid_fire if half else 0,
+                    "blast": mech.blast or mech.cleave},
+        "hit": {"auto": bool(mech.torrent or mech.auto_hit
+                             or skill.is_none()),
+                "skill": skill.value(), "target": skill_target,
+                "mod": hit_mod, "unmod_min": unmod_min,
+                "crit_on": crit_hit_on, "reroll": reroll_hit,
+                "overwatch": ow, "cover": bool(
+                    (ctx.get("cover") or mech.cover or indirect)
+                    and not mech.ignores_cover and weapon.type != "Melee"),
+                "p": p_hit, "p_crit": p_crit_hit, "p_mw": p_mw_hit},
+        "wound": {"S": s, "T": t, "target": wt, "mod": wound_mod,
+                  "crit_on": crit_wound_on, "reroll": reroll_wound,
+                  "auto": bool(mech.auto_wound),
+                  "p": q_w, "p_crit": q_cw},
+        "save": {"Sv": defender_ref["Sv"], "ap": ap, "ap_crit": ap_crit,
+                 "invuln": effective_invuln(defender_ref, mech),
+                 "mod": save_mod, "invuln_mod": invuln_mod,
+                 "reroll": mech.reroll_save,
+                 "p_unsaved": p_unsaved, "p_unsaved_crit": p_unsaved_crit},
+        "fnp": {"value": _fnp_v, "mod": _fnp_m,
+                "mw_only": mech.fnp_mw or mech.fnp_set_mw,
+                "invuln_mw": mech.invuln_mw},
+        "damage": {"expr": str(weapon.D), "mean": pmf_stats(dmg_raw)["mean"],
+                   "melta": mech.melta if half else 0},
+        "mechanics": active_mechanics(mech, ctx),
+        "warnings": list(mech.warnings)}
     for key in ("damage", "damage_net", "wounds"):
         pa = build_chain(key)
         extra_pmf, p_fail = single_extra.get(key, (None, 0.0))
@@ -1465,11 +1723,44 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         total = mix(acc)
         out[key + "_pmf"] = total
         out[key] = pmf_stats(total)
+    if alloc:
+        # Not folded into a total here: how the attacks land on MODELS
+        # depends on the state of the target unit, which only the caller
+        # knows (it may already have been shot at by another weapon), so
+        # the per-attack law is handed over as it is.
+        #
+        # Two paths. The cheap one: when nothing spills AND the
+        # devastating events follow the same damage law as the ordinary
+        # ones, every event of this weapon is interchangeable, so the
+        # attack is fully described by HOW MANY events it produced -
+        # which is the 'wounds' chain, already built above. No joint
+        # PMF, no extra cost, and that covers almost every weapon in a
+        # real roster. Otherwise the three axes must stay correlated
+        # and the joint chain is built instead.
+        ev_norm = _event_damage(streams["n"]["damage"], w_ref)
+        ev_dev = (_event_damage(streams["mw"]["damage"], w_ref)
+                  if crit_mw and not mw_spills else None)
+        spills = bool(mw_spills or hmw_spills)
+        joint = spills or (ev_dev is not None
+                           and not _pmf_equal(ev_dev, ev_norm))
+        key = "alloc" if joint else "wounds"
+        pa = per_attack_cache.get(key) or build_chain(key)
+        extra, p_fail = single_extra.get(key, (None, 0.0))
+        single = None
+        if extra is not None and 0.0 < p_fail < 1.0:
+            single = {"extra": extra, "p_fail": p_fail,
+                      "per_attack_ok": (jno_fail(pa, p_fail) if joint
+                                        else _no_fail(pa, p_fail))}
+        out["alloc"] = {"per_attack": pa, "joint": joint,
+                        "event_damage": ev_norm,
+                        "event_damage_dev": ev_dev or ev_norm,
+                        "attacks_pmf": attacks_pmf, "single": single}
     out["warnings"] = list(mech.warnings)
     return out
 
 
-def analyze_weapon_best(weapon, defender_ref: dict, ctx: dict, mech):
+def analyze_weapon_best(weapon, defender_ref: dict, ctx: dict, mech,
+                        alloc: bool = False):
     """analyze_weapon(), but taking the better side of the ONE choice the
     11th-ed. rules leave the attacker mid-sequence: LETHAL HITS is
     optional ("you can"), and using it turns a critical hit into an
@@ -1481,12 +1772,12 @@ def analyze_weapon_best(weapon, defender_ref: dict, ctx: dict, mech):
     otherwise a short string naming the ability that was passed up and
     what it was worth. Callers that must follow the user's selection
     literally should keep calling analyze_weapon()."""
-    res = analyze_weapon(weapon, defender_ref, ctx, mech)
+    res = analyze_weapon(weapon, defender_ref, ctx, mech, alloc)
     if not mech.lethal:
         return res, None
     alt_mech = mech.copy()
     alt_mech.lethal = False
-    alt = analyze_weapon(weapon, defender_ref, ctx, alt_mech)
+    alt = analyze_weapon(weapon, defender_ref, ctx, alt_mech, alloc)
     gain = alt["damage"]["mean"] - res["damage"]["mean"]
     if gain > 1e-9:
         return alt, f"LETHAL HITS declined (+{gain:.2f} damage without it)"

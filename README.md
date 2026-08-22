@@ -61,8 +61,8 @@ are welcome!
 | Program | File | Type | Purpose |
 |---|---|---|---|
 | **Profile Editor** | `profile_editor.py` | GUI | Create/edit army rosters, units, models, weapons and abilities; import & save native JSON; **compare & selectively merge** a second roster (*Merge JSON*). |
-| **Attack Analyzer** | `attack_analyzer.py` | GUI | Exact mean/median damage of one attacker vs one or more defenders, with full modifier context. |
-| **Game Assistant** | `game_assistant.py` | GUI | In-game attack resolution with real dice rolls; per-model wound tracking and masking. |
+| **Attack Analyzer** | `attack_analyzer.py` | GUI | Exact damage **distribution** (mean, median, percentiles, models killed) of one attacker vs one or more defenders, with full modifier context, audit trail, comparison between pinned analyses and CSV export. |
+| **Game Assistant** | `game_assistant.py` | GUI | In-game attack resolution with real dice rolls; per-model wound tracking and masking, undo, assisted wound allocation and a log of the attacks of the game. |
 | **Join Armies** | `join_armies.py` | CLI | Combine several JSON files into one — as separate armies (`multi`) or merged into a single army (`single`). |
 
 All three GUIs share the same object model (`src/unit_model.py`), the same
@@ -336,19 +336,25 @@ side by side).
 ![Attack Analyzer - Results](img/results.png)
 
 **Panels.** Each army panel is split into a small **“Leaders & Supports”** list
-and the **units** list:
+and the **unit tree**:
 
 - Selecting a **leader** greys out the units it cannot lead.
 - With a leader and a compatible unit selected, **Join** creates the
-  **combined unit** (shown as `[JOINED]` in the unit list, with the
+  **combined unit** (shown as `[JOINED]` in the tree, with the
   shared abilities active). A separate **support** relationship is handled the
   same way — a unit can carry one leader **and** one support.
-- Re-clicking a selected row **deselects** it.
-- **Inspect** shows the full profile of the last selected unit, plus two
-  editable sections: an on/off checkbox per **ability** and an editable
-  **count per weapon** (`0` = weapon disabled, reported as skipped in the
-  results). Both changes apply to the session and travel with a saved
-  session; neither is written back to the roster file.
+- Re-clicking a selected row **deselects** it. Selecting any child row
+  selects its unit, so you never have to collapse the tree to pick a target.
+- **Expanding a unit** shows its models, their weapons and its abilities.
+  **Mask / unmask selected** switches a row off for the next analysis:
+  a masked weapon is not fired (its count goes to `0`, and it is reported as
+  skipped in the results), a masked ability has its `enabled` flag cleared.
+  Unmasking restores the count the weapon *had*.
+  Double-click the **Count** cell to type a weapon count by hand.
+- Both changes apply to the session and travel with a saved session; neither
+  is written back to the roster file.
+- **Inspect** shows the full profile of the last selected unit, read-only,
+  with **Save cheat sheet…** (see *Common UI concepts*).
 
 **Running an analysis.** Pick the attacker and the defender(s), set the attack
 context (see below), and press **Analyze**. The popup gives a **per-weapon**
@@ -357,6 +363,25 @@ percentiles are all exact.
 
 The **Effective** column is the number of attacks that ended up dealing damage,
 i.e. that got past the save / invulnerable save **and** Feel No Pain.
+**Inflicted** is the wounds actually taken off the unit (waste on a destroyed
+model deducted) and **Kills** the models destroyed — both computed by the exact
+allocation chain (`src/kill_chain.py`). The **totals row does not sum its columns**:
+only means are additive (`src/result_rows.py` owns that distinction).
+
+**In a result popup**
+
+- **Distribution…** — the full damage distribution as a histogram with the
+  cumulative curve `P(X ≥ v)` on top, p10 / median / p90, and an editable
+  threshold `N` (default: the target's total wounds). Double-click a weapon row
+  for that weapon alone.
+- **Audit…** — what the engine *actually* used, in words: the hit and save
+  numbers with every modifier that moved them, and an **Abilities in play**
+  list. This is where you find the flag left on three analyses ago.
+- **Pin for comparison** / **Compare (n)** — pin several analyses and compare
+  them column by column, with deltas against the first pin, overlaid survival
+  curves and a CSV export. A pin produced under different flags or modifiers is
+  flagged `DIFFERENT`. Pins live for the session only.
+- **Export CSV…** — the table exactly as shown.
 
 **Attack context / modifiers** (via the setup panel, `src/setup_panel.py`):
 
@@ -364,6 +389,10 @@ i.e. that got past the save / invulnerable save **and** Feel No Pain.
   cover, and below-half / below-full-strength states for either side;
 - manual modifiers — per-roll modifiers (hit/wound/save/invuln/fnp), and
   characteristic modifiers on the weapon or on the attacker/defender model;
+- **modifier presets** — a named set of manual modifiers, saved in the session
+  file of either program. **Apply** *adds* a preset to what is already there
+  (two presets are often active together) and skips entries already present;
+  presets hold modifiers only, not the context flags;
 - **Options** — session-wide caps (roll-modifier cap, re-roll cap) enforced by
   `src/rules_config.py`;
 - **Font size** — global accessibility scaling.
@@ -385,8 +414,8 @@ Resolves attacks with **real dice rolls** during a game.
    **points totals** are shown as you build each side.
 3. During play, select an **attacker** unit and a **defender** unit in the two
    panels and press **Execute attack**. A popup lists every damaging attack and
-   the mortal wounds, so you **allocate wounds to models manually** (as the game
-   requires).
+   the mortal wounds, so you can allocate the wounds to models — by hand, or
+   with **Apply to defender…** (below).
 
 **Tracking aids**
 
@@ -399,9 +428,37 @@ Resolves attacks with **real dice rolls** during a game.
 - **Wounds boxes** — each model row has an editable wounds box (double-click),
   initialised to `W × model count`, so you can track remaining wounds as the
   game goes on.
+- **Undo / redo** — `Ctrl-Z`, `Ctrl-Shift-Z` (or `Ctrl-Y`), plus two buttons
+  and the name of the action that will be undone. It covers the table edits:
+  masking (a whole selection is **one** step) and the wounds/count cells. The
+  history is cleared when a roster or a session is loaded, since the rows are
+  rebuilt; it is not saved with the session.
 - **Leaders/supports** attached to a unit are shown as one combined entry;
   masking uses a global model index and is split back to the correct part
   internally, so a joined unit tracks correctly.
+
+**Assisted allocation** — `Apply to defender…` in the results popup proposes,
+model by model, how the damage lands, and writes it into the table as a single
+undo step. The arithmetic follows the same rules the analyzer's estimate is
+built on: one event at a time capped by the wounds of the model it hits (three
+attacks of 2 damage are not one of 6), excess on a destroyed model wasted, the
+already-wounded model first, `DEVASTATING WOUNDS` allocated like normal damage,
+and spilling mortal wounds pooled and applied last, one point at a time.
+
+Everything that is a *choice* stays with the player: **Move up / Move down**
+sets the order models take damage in — there is no “champion” flag in the
+profiles, so the Shas'ui is kept alive by moving it down the list — and
+double-clicking the **Left** column types a result by hand. `PRECISION` damage
+is reported as freely allocatable rather than assigned for you.
+
+**Attack log** — every resolved attack is recorded: who fired at whom, under
+which flags and modifiers, with what each weapon rolled event by event. The
+window shows one row per attack over the detail of the selected one, or the
+running totals per defending unit when nothing is selected. `New turn` groups
+the entries, mis-clicked attacks can be deleted, and the whole log exports as
+text or CSV. It is saved with the session, so reopening a session mid-game does
+not lose it. The totals are damage **rolled**, not wounds removed: overkill on a
+destroyed model is not subtracted.
 
 ---
 
@@ -446,10 +503,17 @@ Both modes:
 
 - **Search** — list widgets across the GUIs support incremental search
   (`src/search_widget.py`).
-- **Inspect** — full-profile view of a unit (`src/inspect_dialog.py`). In the
-  Analyzer it also edits the ability flags and the weapon counts; in the Game
-  Assistant it is read-only, because the table already owns both (one maskable
-  row per ability, an editable count cell per weapon).
+- **Inspect** — full-profile view of a unit (`src/inspect_dialog.py`),
+  read-only in both programs: abilities and weapon counts are switched off by
+  masking a row of the program's own table (the unit tree in the Analyzer, the
+  model table in the Game Assistant), which is one gesture instead of two.
+- **Cheat sheet** — `Save cheat sheet…` in the Inspect window writes a
+  printable one-page version of the unit *as the program will play it*: stat
+  lines, weapon tables, abilities, leader included. HTML by default (opens in
+  any browser, `Ctrl-P` gives a clean page) or plain text when the file name
+  ends in `.txt`. Dice characteristics are printed as the datasheet writes them
+  (`A D6`), never rolled, and a **disabled ability is printed as `[OFF]`**
+  rather than dropped — an ability missing from the sheet would be invisible.
 - **Font size** — a global font-scaling dialog is available in the Analyzer and
   Game Assistant for accessibility.
 - **Options / caps** — modifier and re-roll caps are set once per session and
@@ -505,10 +569,18 @@ untested and I just made the .spec file with Claude AI just for your convenience
 
 A GUI-free (headless) test harness lives in `tests/`. See
 [`tests/README.md`](tests/README.md). The tests exercise the engine without a
-display: leader/support attachment, masking, the damage pipeline and the
-dialog logic. Note that some test scripts contain **absolute paths to sample
-JSON** created during development — update them to your local ArmyFetcher output
-before running.
+display: leader/support attachment, masking, the damage pipeline, the allocation
+rules, the pure half of every new UI feature, and the dialog logic.
+
+```bash
+cd tests && python3 run_all.py          # the whole suite (~75 s)
+python3 test_regress.py                 # digest against the saved baseline
+```
+
+They run on a **synthetic roster** shipped with the tests, so no ArmyFetcher
+output is needed; `--real_data` switches the data-dependent ones to your own
+rosters. `test_wrap_lines.py` needs Tkinter and is the one test that fails on a
+machine without a display.
 
 ---
 
@@ -529,6 +601,21 @@ W40kDiviner/
 │   ├── analyzer_core.py     #   glue: object model → attack maths
 │   ├── modifier_engine.py   #   context flags & modifier application
 │   ├── leader_core.py       #   leader/support attachment + masking
+│   ├── kill_chain.py        #   exact models-killed / wounds-inflicted chain
+│   ├── dist_stats.py        #   percentiles, P(X >= N), histogram binning
+│   ├── result_rows.py       #   result table rows + CSV (pure)
+│   ├── comparison.py        #   pinned analyses, comparison matrix, CSV
+│   ├── audit.py             #   per-weapon audit trail formatting
+│   ├── mod_presets.py       #   named sets of manual modifiers
+│   ├── unit_mask.py         #   what a unit-tree row is, and what masking does
+│   ├── unit_tree.py         #   the analyzer's unit tree widget
+│   ├── attack_log.py        #   game log of the attacks resolved (pure)
+│   ├── log_view.py          #   attack-log window
+│   ├── undo_stack.py        #   undo/redo history of the table edits (pure)
+│   ├── allocation.py        #   assisted wound allocation (pure)
+│   ├── alloc_dialog.py      #   the "Apply to defender" dialog
+│   ├── cheat_sheet.py       #   printable one-page unit sheet (text + HTML)
+│   ├── dist_view.py         #   histogram / survival-curve canvases
 │   ├── tree_ids.py          #   game assistant table row-id grammar (pure)
 │   ├── rules_config.py      #   session-wide caps
 │   ├── keywords_config.py   #   keyword vocabulary loader

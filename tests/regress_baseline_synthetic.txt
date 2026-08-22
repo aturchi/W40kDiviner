@@ -150,6 +150,8 @@ SUPPORT Bladeguard Ancient -> Assault Intercessor Squad | models=6 | pts=140
   Ancient | Sacred Standard | feelNoPain/override | def ranged Probe Lance | flags=off | 6.6667 -> 6.0
   Ancient | Sacred Standard | feelNoPain/override | def melee Probe Lance | flags=off | 5.7778 -> 5.1111
   Ancient | Sacred Standard | feelNoPain/override | def close_quarters Probe Lance | flags=off | 5.0 -> 4.5
+  Ancient | Sacred Standard | feelNoPain/override | def ranged Probe Psyker | flags=off | 2.8148 -> 2.5926
+  Ancient | Sacred Standard | feelNoPain/override | def melee Probe Psyker | flags=off | 2.8148 -> 2.5926
   Assault Intercessor Squad | Charge Fury | reRoll/woundRoll | att melee Probe Infantry | flags=on | 1.875 -> 2.8125
   Assault Intercessor Squad | Charge Fury | reRoll/woundRoll | att melee Probe Elite | flags=on | 0.5556 -> 0.9259
   Assault Intercessor Squad | Charge Fury | reRoll/woundRoll | att melee Probe Vehicle | flags=on | 0.4167 -> 0.7639
@@ -276,16 +278,16 @@ SUPPORT Bladeguard Ancient -> Assault Intercessor Squad | models=6 | pts=140
   Redemptor Dreadnought | Duty Eternal | damageReduction/add | def ranged Probe Lance | flags=off | 4.0 -> 3.3333
   Redemptor Dreadnought | Duty Eternal | damageReduction/add | def melee Probe Lance | flags=off | 4.0 -> 3.0
   Redemptor Dreadnought | Duty Eternal | damageReduction/add | def close_quarters Probe Lance | flags=off | 3.0 -> 2.5
-  Redemptor Dreadnought | Duty Eternal | damageReduction/add | def ranged Probe Psyker | flags=off | 0.8889 -> 0.4444
-  Redemptor Dreadnought | Duty Eternal | damageReduction/add | def melee Probe Psyker | flags=off | 0.8889 -> 0.4444
+  Redemptor Dreadnought | Duty Eternal | damageReduction/add | def ranged Probe Psyker | flags=off | 0.8889 -> 0.6667
+  Redemptor Dreadnought | Duty Eternal | damageReduction/add | def melee Probe Psyker | flags=off | 0.8889 -> 0.6667
   Redemptor Dreadnought | Focused Fire | criticalThreshold/hit | att ranged Probe Infantry | flags=off | 16.0833 -> 16.5
   Redemptor Dreadnought | Focused Fire | criticalThreshold/hit | att ranged Probe Elite | flags=off | 5.6667 -> 6.0
   Redemptor Dreadnought | Focused Fire | criticalThreshold/hit | att ranged Probe Vehicle | flags=off | 6.4444 -> 7.7778
   Redemptor Dreadnought | Focused Fire | criticalThreshold/hit | att ranged Probe Monster | flags=off | 5.6667 -> 6.6667
   Redemptor Dreadnought | Focused Fire | criticalThreshold/hit | att ranged Probe Colossus | flags=off | 6.4444 -> 7.7778
   Redemptor Dreadnought | Focused Fire | criticalThreshold/hit | att ranged Probe Flyer | flags=off | 7.5556 -> 8.8889
-  Redemptor Dreadnought | Warding Rune | invulnSave | def ranged Probe Psyker | flags=off | 0.8889 -> 0.5926
-  Redemptor Dreadnought | Warding Rune | invulnSave | def melee Probe Psyker | flags=off | 0.8889 -> 0.5926
+  Redemptor Dreadnought | Warding Rune | invulnSave | def ranged Probe Psyker | flags=off | 0.8889 -> 0.7407
+  Redemptor Dreadnought | Warding Rune | invulnSave | def melee Probe Psyker | flags=off | 0.8889 -> 0.7407
   Riptide Battlesuit | Nova Reactor | generateExtras/extraAttacks | att ranged Probe Infantry | flags=on | 2.2222 -> 2.5
   Riptide Battlesuit | Nova Reactor | generateExtras/extraAttacks | att ranged Probe Elite | flags=on | 0.7778 -> 0.8889
   Riptide Battlesuit | Nova Reactor | generateExtras/extraAttacks | att ranged Probe Vehicle | flags=on | 0.5 -> 0.5833
@@ -314,8 +316,8 @@ SUPPORT Bladeguard Ancient -> Assault Intercessor Squad | models=6 | pts=140
   Terminator Squad | Warded Plate | invulnSave | def ranged Probe Lance | flags=off | 2.6667 -> 2.0741
   Terminator Squad | Warded Plate | invulnSave | def melee Probe Lance | flags=off | 2.6667 -> 2.0741
   Terminator Squad | Warded Plate | invulnSave | def close_quarters Probe Lance | flags=off | 2.0 -> 1.5556
-  Terminator Squad | Warded Plate | invulnSave | def ranged Probe Psyker | flags=off | 1.1852 -> 0.7901
-  Terminator Squad | Warded Plate | invulnSave | def melee Probe Psyker | flags=off | 1.1852 -> 0.7901
+  Terminator Squad | Warded Plate | invulnSave | def ranged Probe Psyker | flags=off | 1.1852 -> 0.8889
+  Terminator Squad | Warded Plate | invulnSave | def melee Probe Psyker | flags=off | 1.1852 -> 0.8889
 ## abilities inert (0 of 22)
 
-DIGEST 4fc41b375dd4f66f  (319 lines)
+DIGEST af11e515fe56abf2  (321 lines)
