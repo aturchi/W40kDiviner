@@ -797,10 +797,10 @@ class GameAssistantApp(tk.Tk):
             res = attack_resolve.resolve_weapon(w, ref, ctx, mech,
                                                 self.rng, haz_damage)
             results.append((w, mech.hazardous, res))
-        self._record_attack(attacker, defender, ref, results, skipped,
-                            mode, melee_name, flags)
+        entry = self._record_attack(attacker, defender, ref, results,
+                                    skipped, mode, melee_name, flags)
         self._show_results(attacker, defender, ref, results, skipped,
-                           d_side, d_ui)
+                           d_side, d_ui, entry.get("seq"))
 
     # ---------- attack log ----------
 
@@ -809,13 +809,18 @@ class GameAssistantApp(tk.Tk):
         """Append the attack just resolved to the game log. The context
         is recorded as words (the ticked flags and the modifier list, in
         the panel's own wording) because a log that only kept the
-        numbers could not be argued with two turns later."""
-        self.log.record(attacker.name, defender.name, ref, results,
-                        skipped=skipped, mode=mode,
-                        melee=melee_name if mode == "melee" else None,
-                        context=attack_log.context_lines(
-                            flags, self.setup.mods, dict(FLAGS)))
+        numbers could not be argued with two turns later.
+
+        Returns the entry: its 'seq' is what the results window carries
+        so that an allocation applied later lands on the right attack."""
+        entry = self.log.record(
+            attacker.name, defender.name, ref, results,
+            skipped=skipped, mode=mode,
+            melee=melee_name if mode == "melee" else None,
+            context=attack_log.context_lines(
+                flags, self.setup.mods, dict(FLAGS)))
         self._sync_log_window()
+        return entry
 
     def _refresh_log_btn(self):
         self.log_btn.configure(text=f"Attack log ({len(self.log)})")
@@ -838,7 +843,7 @@ class GameAssistantApp(tk.Tk):
     # ---------- results popup ----------
 
     def _show_results(self, attacker, defender, ref, results, skipped=(),
-                      d_side=None, d_ui=None):
+                      d_side=None, d_ui=None, log_seq=None):
         win = tk.Toplevel(self)
         win.title(f"{attacker.name}  vs  {defender.name}")
         win.geometry("560x440")
@@ -894,20 +899,27 @@ class GameAssistantApp(tk.Tk):
             # choices (which model, and anything the table decided) open.
             btn = ttk.Button(bar, text="Apply to defender...")
             btn.configure(command=lambda: self._open_allocation(
-                win, d_side, d_ui, results, btn))
+                win, d_side, d_ui, results, btn, log_seq))
             btn.pack(side=tk.LEFT)
 
     # ---------- assisted allocation ----------
 
     def _defender_copies(self, side, ui):
         """The defending models still on the table, in table order:
-        ([{'iid', 'label', 'wounds', 'max'}], skipped). Masked rows are
-        models already removed, so they are left out; a wounds cell
-        holding free text cannot be allocated to and is COUNTED, not
-        silently dropped - otherwise the proposal would quietly spread
-        the damage over fewer models than the unit has."""
+        ([{'iid', 'label', 'wounds', 'max', 'protected'}], skipped).
+        Masked rows are models already removed, so they are left out; a
+        wounds cell holding free text cannot be allocated to and is
+        COUNTED, not silently dropped - otherwise the proposal would
+        quietly spread the damage over fewer models than the unit has.
+
+        'protected' marks the models of an attached leader or support:
+        the rules keep attacks off a CHARACTER while a bodyguard model
+        is standing, and without the flag the proposal would happily
+        kill the Captain with bolt rifles - worse, a WOUNDED character
+        would be picked FIRST by the wounded-first rule."""
         tree = self.trees[side]
         models = dict(lc.entry_models(self.rosters[side][ui]))
+        attached = lc.attached_model_indices(self.rosters[side][ui])
         out, skipped = [], 0
         for mid in tree.get_children(tree_ids.unit_iid(ui)):
             _u, mi, _w, _c = self._parse_iid(mid)
@@ -927,11 +939,13 @@ class GameAssistantApp(tk.Tk):
                     skipped += 1
                     continue
                 out.append({"iid": child, "wounds": wounds, "max": wmax,
+                            "protected": mi in attached,
                             "label": f"{models[mi]['name']} - "
                                      f"{tree.item(child, 'text')}"})
         return out, skipped
 
-    def _open_allocation(self, parent, side, ui, results, button=None):
+    def _open_allocation(self, parent, side, ui, results, button=None,
+                         log_seq=None):
         copies, skipped = self._defender_copies(side, ui)
         events = allocation.events_from_results(results)
         if not copies:
@@ -950,7 +964,7 @@ class GameAssistantApp(tk.Tk):
         name = lc.entry_label(self.rosters[side][ui])
 
         def on_apply(rows):
-            self._apply_allocation(side, ui, rows, name)
+            self._apply_allocation(side, ui, rows, name, log_seq)
             if button is not None:
                 # The dialog reads the table each time it opens, so a
                 # second Apply would take the same damage off twice.
@@ -959,10 +973,16 @@ class GameAssistantApp(tk.Tk):
         alloc_dialog.AllocationDialog(parent, name, copies, events,
                                       on_apply)
 
-    def _apply_allocation(self, side, ui, rows, name):
+    def _apply_allocation(self, side, ui, rows, name, log_seq=None):
         """Write the accepted allocation into the table: the new wounds,
         and the mask that removes a destroyed model. One undo step for
-        the lot - a misapplied attack is exactly what Ctrl-Z is for."""
+        the lot - a misapplied attack is exactly what Ctrl-Z is for.
+
+        The same rows go into the attack log, which is how the running
+        summary can say what was REMOVED and not only what was rolled.
+        Ctrl-Z puts the table back but does NOT rewrite the log: the
+        history says what was applied at the table, and correcting it
+        is a deliberate act (delete the attack in the log window)."""
         tree, changes = self.trees[side], []
         for r in rows:
             iid = r.get("iid")
@@ -981,6 +1001,9 @@ class GameAssistantApp(tk.Tk):
         if changes:
             self.undo.push_changes(f"apply damage to {name}", changes)
             self._refresh_undo()
+        if log_seq is not None and self.log.set_allocation(
+                log_seq, attack_log.allocation_record(rows)):
+            self._sync_log_window()
 
 
 if __name__ == "__main__":

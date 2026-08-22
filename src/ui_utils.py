@@ -8,8 +8,6 @@
 - wrap_lines(): word-wrap a string to a pixel width using a font's metrics.
 - WrappedList(): a Listbox whose long rows wrap onto indented continuation
   lines while callers keep addressing whole records.
-- make_resizable(): give a Toplevel a single weighted grid cell so its
-  content expands when the window is enlarged.
 - multi_select_hint(): the shared "Ctrl+click" reminder label used by every
   dialog holding a multi-selection list.
 - save_text(): the shared "ask for a file name and write this text"
@@ -88,17 +86,6 @@ def scrollable_listbox(parent, *, xscroll=True, **listbox_kwargs):
     if xscroll:
         attach_xscroll(lb, frame)
     return frame, lb
-
-
-def make_resizable(toplevel, child, minsize=None):
-    """Let a Toplevel's content grow with the window: 'child' is grid-placed
-    to fill the single weighted cell (row 0, col 0). Call after creating the
-    main content frame of a dialog. Optional minsize=(w, h)."""
-    toplevel.rowconfigure(0, weight=1)
-    toplevel.columnconfigure(0, weight=1)
-    child.grid(row=0, column=0, sticky="nsew")
-    if minsize:
-        toplevel.minsize(*minsize)
 
 
 def multi_select_hint(parent, extra=""):

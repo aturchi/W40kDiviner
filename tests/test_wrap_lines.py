@@ -5,7 +5,14 @@ one (same approach as test_dialog_logic.py, which drives dialog logic on a
 stub).
 """
 import testpaths                      # noqa: F401  (sets sys.path to src/)
-import ui_utils as ui
+import tkstub
+
+# ui_utils imports tkinter at module level. The wrap logic itself needs
+# none of it, so on a Python built without tkinter the stub stands in
+# rather than the whole test being lost to a missing optional package.
+tkstub.install_if_missing()
+
+import ui_utils as ui                 # noqa: E402  (must follow the stub)
 
 
 class StubFont:

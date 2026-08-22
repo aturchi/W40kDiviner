@@ -14,7 +14,12 @@ A unit row expands into its models, their weapons and its abilities:
 "Mask / unmask selected" switches a weapon (count 0, not fired) or an
 ability off for the next analysis, and a weapon count is edited by
 double-clicking it - the same gesture as the game assistant's table.
-A collapsed unit row shows how many of its rows are switched off.
+A MODEL row or a UNIT row switches every weapon below it at once (the
+sergeant who does not shoot, the unit that stays silent this phase);
+they leave the abilities alone. Note that this SILENCES models, it does
+not remove them: the unit still fields them, and as a defender it is
+still that many models. Any row shows how many of its rows are
+switched off.
 "Inspect" shows the full profile of the last selected unit, read-only.
 
 Run:  python3 attack_analyzer.py
@@ -424,16 +429,18 @@ class AnalyzerApp(tk.Tk):
     # ---------- masking ----------
 
     def cmd_mask(self):
-        """Mask/unmask the selected weapon and ability rows in either
-        panel. A weapon masked is a weapon not fired (count 0); an
-        ability masked is switched off for the next analysis."""
+        """Mask/unmask the selected rows in either panel. A weapon
+        masked is a weapon not fired (count 0); an ability masked is
+        switched off for the next analysis; a model or unit row does
+        every weapon below it in one go, abilities excluded."""
         moved = sum(p["unit_tree"].toggle_selected()
                     for p in self.panels.values())
         if not moved:
             messagebox.showinfo(
-                "Mask", "Select a weapon or an ability row first (expand a "
-                        "unit with the arrow on its left).\n\nUnit and "
-                        "model rows carry nothing to switch off.")
+                "Mask", "Nothing to switch off in the selected rows.\n\n"
+                        "Select a weapon or an ability row (expand a unit "
+                        "with the arrow on its left), or a model or unit "
+                        "row to switch all its weapons at once.")
 
     def _refresh_tree_states(self):
         """After any masking, refresh BOTH panels: a joined unit is built

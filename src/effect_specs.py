@@ -233,16 +233,25 @@ EFFECT_SPECS = {
                        "goes on every candidate weapon, all switched "
                        "off, and the player ticks one in the inspect "
                        "window. 'Allowance' says how the datasheet "
-                       "spends it: 'One roll of any kind' (hit OR wound) "
-                       "warns when more than one is on; 'One roll of "
-                       "each kind' (hit AND wound) warns when one kind "
-                       "is left unused.",
+                       "spends it: 'One roll of any kind' warns when "
+                       "more than one is on at all; 'One roll of each "
+                       "kind' warns when a kind is left unused. "
+                       "The Damage re-roll needs a Damage ROLL to work "
+                       "on: on a flat Damage characteristic, or on a "
+                       "weapon that already re-rolls low Damage dice, "
+                       "it is reported as doing nothing.",
         "fields": [
             ("roll", CHOICE, "Roll",
-             [("Hit roll", "hit"), ("Wound roll", "wound")]),
+             [("Hit roll", "hit"), ("Wound roll", "wound"),
+              ("Damage roll", "damage")]),
+            # Worded without naming the kinds: there are three of them
+            # now, and which ones a given datasheet offers is its own
+            # business. Rosters saved with the older wording still read
+            # correctly - a CHOICE is resolved by KEY first, see
+            # spec_forms.choice_title.
             ("allowance", CHOICE, "Allowance",
-             [("One roll of any kind (hit OR wound)", "exclusive"),
-              ("One roll of each kind (hit AND wound)", "eachKind")]),
+             [("One roll of any kind (one in total)", "exclusive"),
+              ("One roll of each kind (one per kind)", "eachKind")]),
         ],
     },
     "attachmentSlots": {

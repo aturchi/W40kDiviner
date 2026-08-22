@@ -25,7 +25,11 @@ COLUMNS = (("turn", "Turn", 46, tk.CENTER),
            ("attacks", "Attacks", 62, tk.E),
            ("events", "Events", 58, tk.E),
            ("damage", "Damage", 62, tk.E),
-           ("mortal", "of which MW", 84, tk.E))
+           ("mortal", "of which MW", 84, tk.E),
+           # Blank, not 0, when the allocation was never applied: the
+           # two are different answers and the column must not merge
+           # them.
+           ("removed", "Removed", 70, tk.E))
 
 
 class AttackLogWindow(tk.Toplevel):
@@ -98,6 +102,14 @@ class AttackLogWindow(tk.Toplevel):
 
     # ---------- display ----------
 
+    @staticmethod
+    def _removed_cell(entry) -> str:
+        got = attack_log.allocation_totals(entry)
+        if not got:
+            return ""                     # never applied: not zero
+        return (f"{got['removed']} ({got['killed']}\u2020)"
+                if got["killed"] else str(got["removed"]))
+
     def refresh(self):
         """Rebuild the table from the log, keeping the selection where
         the rows it pointed at still exist."""
@@ -113,7 +125,8 @@ class AttackLogWindow(tk.Toplevel):
                              values=(e.get("turn"), e.get("time"),
                                      e.get("attacker"), e.get("defender"),
                                      mode, t["attacks"], t["events"],
-                                     t["damage"], t["mortal"] or ""))
+                                     t["damage"], t["mortal"] or "",
+                                     self._removed_cell(e)))
         keep = [iid for iid in keep if self.tree.exists(iid)]
         if keep:
             self.tree.selection_set(keep)

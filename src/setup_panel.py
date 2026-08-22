@@ -210,6 +210,22 @@ class SetupPanel(ttk.LabelFrame):
             "write", lambda *a: self._sync_overwatch())
         self._sync_overwatch()
 
+        # Battle round: a number, not a tick, so it has no entry in
+        # FLAGS. It is always meaningful - every attack happens in some
+        # round - which is why it has no checkbox to gate it and why it
+        # starts at 1 rather than at "unset". It exists for the
+        # battleRound ability condition and for nothing else: none of
+        # the maths reads it.
+        row = ttk.Frame(self)
+        row.pack(anchor=tk.W, padx=4)
+        ttk.Label(row, text="Battle round:").pack(side=tk.LEFT)
+        lo, hi = rules_config.BATTLE_ROUND_RANGE
+        self.battle_round = tk.StringVar(
+            value=str(rules_config.BATTLE_ROUND_DEFAULT))
+        ttk.Spinbox(row, from_=lo, to=hi, width=3,
+                    textvariable=self.battle_round).pack(side=tk.LEFT,
+                                                         padx=3)
+
         ttk.Separator(self).pack(fill=tk.X, pady=4)
         # Manual modifiers: only the HIT and WOUND roll modifiers are
         # capped (CAP_ROLL_MOD) in the attack maths - save, invuln and
@@ -411,6 +427,18 @@ class SetupPanel(ttk.LabelFrame):
         del self.mods[sel[0]]
         self.mod_list.delete(sel[0])
 
+    def get_battle_round(self) -> int:
+        """The battle round as a number, clamped to the legal range.
+
+        The Spinbox is editable by hand, so it can hold "", "abc" or 99;
+        a condition asking "round >= 3" must not be decided by whatever
+        the user was halfway through typing."""
+        lo, hi = rules_config.BATTLE_ROUND_RANGE
+        try:
+            return max(lo, min(hi, int(self.battle_round.get())))
+        except (TypeError, ValueError):
+            return rules_config.BATTLE_ROUND_DEFAULT
+
     def _sync_overwatch(self):
         """The roll field is editable only while Overwatch is ticked."""
         self.overwatch_spin.configure(
@@ -494,6 +522,7 @@ class SetupPanel(ttk.LabelFrame):
         plus the ability selection (see analyzer_core.ability_selection)."""
         out = {k: v.get() for k, v in self.flag_vars.items()}
         out["overwatch_value"] = self.overwatch_value.get()
+        out["battle_round"] = self.get_battle_round()
         out["disabled_abilities"] = list(self.disabled_abilities)
         out["extra_abilities"] = list(self.extra_abilities)
         out["optimise_abilities"] = bool(self.optimise_abilities.get())

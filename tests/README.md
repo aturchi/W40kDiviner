@@ -191,6 +191,22 @@ below.
   that same SIGMA corrected for the number of points compared). Tune
   `mc_support.SIGMA`, `TRIALS` and `SEED` in one place — every MC check in the
   suite uses them. No external data.
+- `test_spec_forms.py` — the spec-driven ability forms. A CHOICE is stored as
+  `{"title", "key"}` and is resolved **key-first in both directions**, so the
+  wording of a spec label can be corrected without migrating every roster
+  already saved with the old wording — which used to be a `KeyError` on the
+  next save. The regression case is the real one: a `singleReRoll` allowance
+  saved before the labels were reworded. Also asserts that every CHOICE in
+  every spec has distinct titles, distinct keys and a usable default, since the
+  fallbacks lean on `options[0]`. Drives the real widgets through `tkstub`.
+- `tkstub.py` — not a test: an in-memory stand-in for `tkinter` /
+  `tkinter.ttk`, installed by `install_if_missing()` **only** when the real
+  toolkit cannot be imported, and announcing itself on stdout when it does.
+  It exists because Tkinter is an optional build: without it every GUI test
+  would fail for a reason unrelated to the code under test. Call it before
+  importing any GUI module. `install()` forces it even where Tkinter exists,
+  which is how the widget-level harnesses drive a Treeview deterministically
+  with no window and no display.
 - `mc_support.py` — not a test: the shared Monte-Carlo helpers described above.
   Parity proves the two engines AGREE; it cannot prove either matches the rules,
   which is what the closed-form tests below are for.
@@ -213,9 +229,22 @@ below.
   `test_single_reroll.py`, `test_hazardous.py`, `test_player_choices.py`,
   `test_structural_rules.py` — further closed-form rules checks: AP and
   incoming-damage modifiers, the manual-modifier chain, the scope a
-  `setKeyword` reaches, the "re-roll one die of your choice" per activation,
-  HAZARDOUS self-damage, the player-choice abilities, and the structural
-  invariants of a roster. No external data.
+  `setKeyword` reaches, the "re-roll one die of your choice" per activation
+  (hit and wound), HAZARDOUS self-damage, the player-choice abilities, and
+  the structural invariants of a roster — the last of which now also covers
+  `battleRound`, the one condition that needs a number rather than a tick.
+  No external data.
+- `test_single_damage_reroll.py` — the DAMAGE version of that same
+  once-per-activation re-roll, which is a different problem: it replaces a
+  result instead of adding a die, so it is resolved by splitting on which
+  attack spends it. Checks the gain against a closed form, that the totals
+  stay proper distributions (the chain subtracts one sub-probability law
+  from another, which is exactly where a sign error would hide), that a
+  multi-dice Damage roll spends ONE re-roll between its dice, that a flat
+  Damage or an already-re-rolled one warns and changes nothing, and — the
+  interesting one — it MEASURES the size of the single declared
+  approximation against the dice engine, so a change that makes it worse
+  fails here instead of passing quietly. No external data.
 - `test_kill_chain.py` — the exact models-killed / wounds-inflicted chain:
   one event at a time capped by the wounds of the model it hits, waste on a
   destroyed model, spilling mortal wounds spent last, and the firing-order

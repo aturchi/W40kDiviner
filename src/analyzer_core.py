@@ -51,6 +51,12 @@ def build_views(attacker, defender, flags: dict, mods: dict = None):
                   defender_on_objective=flags.get("defender_on_objective"),
                   attacker_in_engagement=flags.get("attacker_in_engagement"),
                   defender_in_engagement=flags.get("defender_in_engagement"),
+                  # Not a tick but a number, and the only context the
+                  # combat maths never sees: it exists purely so a
+                  # battleRound ability condition can be true. Absent
+                  # (None) it stays false, which is what a caller that
+                  # does not track rounds - a test, a script - wants.
+                  battle_round=flags.get("battle_round"),
                   # Not a user flag: whether a unit is being led is known
                   # from the unit itself (a combined unit carries its
                   # leader), so the leaderAttached condition is decided

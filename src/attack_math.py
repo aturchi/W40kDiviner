@@ -59,6 +59,30 @@ def mix(pairs) -> list:
     return out
 
 
+def _pmf_add(a: list, b: list) -> list:
+    """Term-by-term sum of two SUB-probability laws.
+
+    Not a mixture: the weights are already inside. Used where a law has
+    been split into two disjoint parts ("no re-rollable die appeared" /
+    "one did"), which must add back up to the whole rather than be
+    averaged."""
+    out = [0.0] * max(len(a), len(b))
+    for src in (a, b):
+        for i, v in enumerate(src):
+            out[i] += v
+    return out
+
+
+def _pmf_sub(a: list, b: list) -> list:
+    """a minus b, clamped at zero: b is a PART of a, so the difference
+    is the rest of it. Clamping absorbs the float dust that would
+    otherwise show up as a tiny negative probability."""
+    out = list(a) + [0.0] * max(0, len(b) - len(a))
+    for i, v in enumerate(b):
+        out[i] = max(0.0, out[i] - v)
+    return out
+
+
 def pmf_stats(pmf: list) -> dict:
     """Summary stats (mean, median) of a probability mass function given as a list indexed by value."""
     mean = sum(i * p for i, p in enumerate(pmf))
@@ -498,12 +522,16 @@ class WeaponMechanics:
         self.hunter = []            # HUNTER X: may only be fired at units
         #                             with keyword X (targeting rule, not
         #                             maths - see analyzer_core)
-        self.single_reroll = None   # "hit"|"wound": ONE die of that roll
-        #                             may be re-rolled per activation
-        #                             (Targeting Array and the like). Not
-        #                             a per-attack re-roll: it adds one
+        self.single_reroll = None   # "hit"|"wound"|"damage": ONE die of
+        #                             that roll may be re-rolled per
+        #                             activation (Targeting Array,
+        #                             Aquilon Optics). Not a per-attack
+        #                             re-roll. "hit"/"wound" ADD one
         #                             fresh die when at least one such
-        #                             roll failed - see analyze_weapon.
+        #                             roll failed; "damage" REPLACES a
+        #                             low result instead, which needs a
+        #                             different resolution entirely -
+        #                             see _damage_single_total.
         self.ignore_cq_penalty = False  # the model ignores the -1 for
         #                             shooting into Engagement Range
         #                             (Siege Shield and the like)
@@ -873,8 +901,11 @@ def _dispatch(dyn, s, tok, mech) -> bool:
         elif tok[0] == "SAVE_ROLL":
             mech.save_mod += int(tok[1])
         elif tok[0] == "REROLL" and tok[1] == "ONE" \
-                and tok[2] in ("HIT_ROLL", "WOUND_ROLL"):
+                and tok[2] in ("HIT_ROLL", "WOUND_ROLL", "DAMAGE_ROLL"):
             # ONE re-roll for the whole activation, not one per attack.
+            # The DAMAGE one is resolved differently from the other two
+            # (it replaces a result instead of adding a die): see
+            # _damage_single_total.
             mech.single_reroll = tok[2].split("_")[0].lower()
         elif tok[0] == "REROLL" and tok[1] in ("HIT_ROLL", "WOUND_ROLL"):
             kind = "reroll_hit" if tok[1] == "HIT_ROLL" else "reroll_wound"
@@ -1243,6 +1274,58 @@ def active_mechanics(mech, ctx: dict = None) -> list:
     return out
 
 
+def _damage_single_total(pa, pa_no_s, pa_one, attacks_pmf):
+    """Totals when ONE Damage re-roll is available for the activation.
+
+    Unlike a hit or wound re-roll, this one does not ADD a die - it
+    REPLACES a result - so it cannot be convolved in. It is resolved by
+    splitting on WHERE the re-roll gets spent: the first attack that
+    produced a die worth re-rolling takes it, every attack before it had
+    none, and every attack after it rolls with nothing left.
+
+    The three per-attack laws come from the same branch chain over three
+    leaves, so they line up term by term:
+
+      pa       an attack, no re-roll available
+      pa_no_s  SUB-probability: an attack that produced no die worth
+               re-rolling (its mass is how often that happens)
+      pa_one   an attack with the re-roll available, spent if there was
+               anything to spend it on
+
+    so pa_one - pa_no_s is exactly "the attack that spent it". Writing X
+    for the first case and Y for the second, over n attacks:
+
+      X_n = X_(n-1) * pa_no_s                     nothing spent yet
+      Y_n = Y_(n-1) * pa  +  X_(n-1) * (pa_one - pa_no_s)
+
+    which keeps the total mass at 1 by construction. Returns the
+    [(weight, pmf)] pairs the caller mixes.
+
+    APPROXIMATION, and the only one here: within a SINGLE attack that
+    produced two or more separate damaging events - which needs
+    SUSTAINED HITS, EXTRA HITS or EXTRA WOUNDS, and needs the bonus
+    events to get through the save and Feel No Pain too - a low die in
+    each of them is treated as re-rolled, where the rules allow one.
+    Several dice of one multi-dice Damage roll (2D6 and the like) are
+    NOT affected: those are handled exactly, one re-roll between them.
+    The bias is upward, and how big it gets is measured rather than
+    guessed (see test_single_damage_reroll): +0.1% on a plain weapon,
+    +0.9% with SUSTAINED HITS 1, +2.8% with SUSTAINED HITS 3, and +6%
+    on a weapon stacking SUSTAINED HITS 3 with EXTRA WOUNDS 2 - a
+    profile that does not exist on any datasheet. Every ability that
+    actually carries this re-roll (Aquilon Optics) sits at the low end.
+    """
+    spend = _pmf_sub(pa_one, pa_no_s)
+    x_pow, y_pow, acc = delta(0), [0.0], []
+    for n, pn in enumerate(attacks_pmf):
+        if pn:
+            acc.append((pn, _pmf_add(x_pow, y_pow)))
+        if n < len(attacks_pmf) - 1:
+            y_pow = _pmf_add(convolve(y_pow, pa), convolve(x_pow, spend))
+            x_pow = convolve(x_pow, pa_no_s)
+    return acc
+
+
 def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                    mech: WeaponMechanics, alloc: bool = False) -> dict:
     """Exact analysis of one weapon (view object) against a reference
@@ -1454,15 +1537,73 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         dmg_raw = char_pmf(weapon.D)
         if dmg_rr:
             dmg_raw = reroll_low_damage(dmg_raw, *dmg_rr)
-    if half and x_active(mech.melta):
-        dmg_raw = convolve(dmg_raw, x_pmf(mech.melta))
+
+    # ONE Damage re-roll for the whole activation. Unlike the hit and
+    # wound versions it cannot be modelled as an extra die convolved in,
+    # because it REPLACES a result instead of adding one; it is carried
+    # instead as two further damage laws, which the totals below use to
+    # split on "has this attack got a re-rollable die at all".
+    #   dmg_no_s  the event law restricted to no die worth re-rolling
+    #             (SUB-probability: its mass is P(no such die)).
+    #   dmg_one   the event law with ONE such die re-rolled - exact for
+    #             a multi-die Damage, since the dice are taken in order.
+    dmg_no_s = dmg_one = None
+    single_rr_range = damage_reroll_range(weapon.D)
+    if mech.single_reroll == "damage":
+        if single_rr_range is None:
+            mech.warnings.append(
+                "one Damage re-roll per activation: this weapon has a "
+                "flat Damage characteristic, so there is no Damage roll "
+                "to re-roll - the ability does nothing here")
+            mech.single_reroll = None
+        elif dmg_rr:
+            # A die may be re-rolled once (CAP_REROLLS): the weapon
+            # already re-rolls every low Damage die, so the one free
+            # re-roll has nothing left to buy.
+            mech.warnings.append(
+                "one Damage re-roll per activation: this weapon already "
+                "re-rolls low Damage dice, and a die may be re-rolled "
+                "only once - the ability adds nothing here")
+            mech.single_reroll = None
+        else:
+            lo, hi = single_rr_range
+            plain = [0.0] + [1.0 / weapon.D.sides] * weapon.D.sides
+            no_s = [(0.0 if lo <= v <= hi else p)
+                    for v, p in enumerate(plain)]
+            p_s = max(0.0, 1.0 - sum(no_s))
+            # "this die was worth re-rolling, and was": the fresh draw
+            # is unconditioned, weighted by how often that happens.
+            rr_once = [p_s * p for p in plain]
+            # Walk the dice in order, keeping (no die re-rolled yet,
+            # exactly one re-rolled). At most ONE re-roll is ever spent,
+            # which is what makes 2D6 exact rather than approximate.
+            base = delta(max(weapon.D.flat, 0))
+            x_law, y_law = base, [0.0]
+            for _ in range(weapon.D.count):
+                y_law = _pmf_add(convolve(y_law, plain),
+                                 convolve(x_law, rr_once))
+                x_law = convolve(x_law, no_s)
+            dmg_no_s, dmg_one = x_law, _pmf_add(x_law, y_law)
+
+    def _finish_damage(pmf):
+        """MELTA and the defender's Damage modifiers, applied the same
+        way to every variant so the three stay comparable."""
+        if pmf is None:
+            return None
+        if half and x_active(mech.melta):
+            pmf = convolve(pmf, x_pmf(mech.melta))
+        if has_damage_modifiers(mech):
+            pmf = transform(pmf, lambda v: apply_damage_modifiers(v, mech))
+        return pmf
+
     # Defender Damage modifiers (set / multiply / add / floor, in that
     # fixed order - see apply_damage_modifiers): applied to the final
     # Damage of each attack. This acts on the per-attack Damage
     # characteristic, so it also feeds the DEVASTATING mortal-wound
     # stream (mortals = Damage) built below.
-    if has_damage_modifiers(mech):
-        dmg_raw = transform(dmg_raw, lambda v: apply_damage_modifiers(v, mech))
+    dmg_raw, dmg_no_s, dmg_one = (_finish_damage(dmg_raw),
+                                  _finish_damage(dmg_no_s),
+                                  _finish_damage(dmg_one))
     # DEVASTATING WOUNDS inflicts MORTAL WOUNDS, so every ability keyed
     # on mortal wounds bites on it: an invulnerable save or a Feel No
     # Pain "against mortal wounds" thins this stream exactly like any
@@ -1475,12 +1616,21 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     mw_spills = crit_mw is not None and crit_mw.get("spill", True)
     if mech.devastating and crit_mw is None:
         crit_mw = {"value": None, "match": True, "end": True}
-    mw_raw = (dmg_raw if (crit_mw or {}).get("match", True)
+    def _mortal_laws(raw):
+        """The two mortal-wound damage laws that go with one normal
+        damage law. A mortal stream that MATCHES the Damage
+        characteristic follows the variant it was built from - the
+        Damage re-roll improves a DEVASTATING wound exactly as it
+        improves ordinary damage - while a fixed-value one does not."""
+        mw = (raw if (crit_mw or {}).get("match", True)
               else delta((crit_mw or {}).get("value") or 1))
-    hitmw_raw = None
-    if mech.hitroll_mw:
-        hitmw_raw = (dmg_raw if mech.hitroll_mw["match"]
-                     else delta(mech.hitroll_mw["value"] or 1))
+        hit = None
+        if mech.hitroll_mw:
+            hit = (raw if mech.hitroll_mw["match"]
+                   else delta(mech.hitroll_mw["value"] or 1))
+        return mw, hit
+
+    mw_raw, hitmw_raw = _mortal_laws(dmg_raw)
 
     def fnp_thin(pmf, mw: bool):
         fnp, fnp_mod = effective_fnp(defender_ref, mech, mw)
@@ -1511,27 +1661,46 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         return binomial_thin(pmf, 1.0 - p_ok)
 
     w_ref = defender_ref.get("W") or 1
-    streams = {}
     hmw_spills = bool(mech.hitroll_mw) and mech.hitroll_mw.get("spill", True)
-    for name, raw, is_mw, spills in (("n", dmg_raw, False, False),
-                                     ("mw", mw_raw, True, mw_spills),
-                                     ("hmw", hitmw_raw, True, hmw_spills)):
-        if raw is None:
-            continue
-        thinned = fnp_thin(mw_save_thin(raw) if is_mw else raw, is_mw)
-        streams[name] = {
-            "damage": thinned,
-            "damage_net": transform(thinned, lambda v: min(v, w_ref)),
-            "wounds": transform(thinned, lambda v: 1 if v > 0 else 0)}
-        # Allocation view. A stream that SPILLS contributes its damage
-        # to a pool spent at the end of the activation, one point at a
-        # time; a stream that does not contributes one allocation EVENT,
-        # whose size is drawn later from that stream's event law and
-        # capped by the wounds left on the model it lands on.
-        axis = (AX_POOL if spills else
-                AX_DEV if is_mw else AX_NORM)
-        streams[name]["alloc"] = jleaf(
-            thinned if spills else streams[name]["wounds"], axis)
+
+    def make_streams(raw_n):
+        """The per-event leaf laws for one damage variant.
+
+        A SUB-probability raw law (the "no re-rollable die" variant)
+        stays sub-probability all the way through: every step here is
+        linear, so the missing mass is carried rather than invented
+        back, and that is exactly what the totals need in order to split
+        on "did a re-rollable die appear at all".
+        """
+        mw_r, hitmw_r = _mortal_laws(raw_n)
+        out = {}
+        for name, raw, is_mw, spills in (("n", raw_n, False, False),
+                                         ("mw", mw_r, True, mw_spills),
+                                         ("hmw", hitmw_r, True, hmw_spills)):
+            if raw is None:
+                continue
+            thinned = fnp_thin(mw_save_thin(raw) if is_mw else raw, is_mw)
+            out[name] = {
+                "damage": thinned,
+                "damage_net": transform(thinned, lambda v: min(v, w_ref)),
+                "wounds": transform(thinned, lambda v: 1 if v > 0 else 0)}
+            # Allocation view. A stream that SPILLS contributes its
+            # damage to a pool spent at the end of the activation, one
+            # point at a time; a stream that does not contributes one
+            # allocation EVENT, whose size is drawn later from that
+            # stream's event law and capped by the wounds left on the
+            # model it lands on.
+            axis = (AX_POOL if spills else
+                    AX_DEV if is_mw else AX_NORM)
+            out[name]["alloc"] = jleaf(
+                thinned if spills else out[name]["wounds"], axis)
+        return out
+
+    streams = make_streams(dmg_raw)
+    # The two extra variants exist only for a once-per-activation Damage
+    # re-roll; nothing else builds them, so nothing else pays for them.
+    streams_no_s = make_streams(dmg_no_s) if dmg_no_s is not None else None
+    streams_one = make_streams(dmg_one) if dmg_one is not None else None
 
     def _no_fail(pmf, pf):
         """'pmf' conditioned on this attack's die NOT failing. The failed
@@ -1592,17 +1761,23 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
 
     per_attack_cache = {}
 
-    def build_chain(key):
+    def build_chain(key, st=None):
         """Per-attack outcome PMF for one metric ('damage',
         'damage_net', 'wounds' or 'alloc'). The first three are scalar
         PMFs; 'alloc' runs the very same branch structure over joint
-        (mortal, normal) pairs, which is what the kill count needs."""
+        (mortal, normal) pairs, which is what the kill count needs.
+
+        'st' picks the damage variant (default: the ordinary one). The
+        branch structure is identical for all three - only the leaf
+        differs - which is what makes the three laws comparable term by
+        term."""
+        st = streams if st is None else st
         joint = key == "alloc"
         _mix, _conv = (jmix, jconvolve) if joint else (mix, convolve)
         ops = (_mix, _conv)
         zero = jdelta() if joint else delta(0)
-        leaf_n = streams["n"][key]
-        leaf_mw = streams["mw"][key]
+        leaf_n = st["n"][key]
+        leaf_mw = st["mw"][key]
         after_save = _mix([(p_unsaved, leaf_n), (1 - p_unsaved, zero)])
         after_save_crit = _mix([(p_unsaved_crit, leaf_n),
                                 (1 - p_unsaved_crit, zero)])
@@ -1646,8 +1821,13 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         pairs = [(p_norm_hit, norm_branch), (p_crit_hit, crit_branch),
                  (1 - p_hit - p_mw_hit, zero)]
         if p_mw_hit:
-            pairs.append((p_mw_hit, streams["hmw"][key]))
+            pairs.append((p_mw_hit, st["hmw"][key]))
         per_attack = _mix(pairs)
+        if st is not streams:
+            # A variant run: it exists to be compared with the ordinary
+            # one, so it must not overwrite the cache or re-register the
+            # hit/wound extra die.
+            return per_attack
         if mech.single_reroll == "hit":
             # a failed hit roll, re-rolled into a whole fresh attack
             single_extra[key] = (per_attack,
@@ -1702,28 +1882,47 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                    "melta": mech.melta if half else 0},
         "mechanics": active_mechanics(mech, ctx),
         "warnings": list(mech.warnings)}
+    dmg_single = streams_one is not None
     for key in ("damage", "damage_net", "wounds"):
         pa = build_chain(key)
-        extra_pmf, p_fail = single_extra.get(key, (None, 0.0))
-        single = extra_pmf is not None and 0.0 < p_fail < 1.0
-        pa_ok = _no_fail(pa, p_fail) if single else None
-        power, power_ok, acc = delta(0), delta(0), []
-        for n, pn in enumerate(attacks_pmf):
-            if pn:
-                if single and n:
-                    acc.append((pn, _combine(power, power_ok,
-                                             (1.0 - p_fail) ** n,
-                                             extra_pmf)))
-                else:
-                    acc.append((pn, power))
-            if n < len(attacks_pmf) - 1:
-                power = convolve(power, pa)
-                if single:
-                    power_ok = convolve(power_ok, pa_ok)
+        if dmg_single:
+            acc = _damage_single_total(
+                pa, build_chain(key, streams_no_s),
+                build_chain(key, streams_one), attacks_pmf)
+        else:
+            extra_pmf, p_fail = single_extra.get(key, (None, 0.0))
+            single = extra_pmf is not None and 0.0 < p_fail < 1.0
+            pa_ok = _no_fail(pa, p_fail) if single else None
+            power, power_ok, acc = delta(0), delta(0), []
+            for n, pn in enumerate(attacks_pmf):
+                if pn:
+                    if single and n:
+                        acc.append((pn, _combine(power, power_ok,
+                                                 (1.0 - p_fail) ** n,
+                                                 extra_pmf)))
+                    else:
+                        acc.append((pn, power))
+                if n < len(attacks_pmf) - 1:
+                    power = convolve(power, pa)
+                    if single:
+                        power_ok = convolve(power_ok, pa_ok)
         total = mix(acc)
         out[key + "_pmf"] = total
         out[key] = pmf_stats(total)
     if alloc:
+        # DECLARED APPROXIMATION: a once-per-activation DAMAGE re-roll is
+        # not carried into the allocation chain. The kill count works on
+        # a joint (mortal, normal) law that kill_chain mixes over the
+        # attacks itself, and the "where was the re-roll spent" split
+        # would have to be threaded through that too. The estimate here
+        # is therefore the one WITHOUT the re-roll: models removed and
+        # kills come out slightly low, never high, and the damage totals
+        # above do account for it.
+        if dmg_single:
+            mech.warnings.append(
+                "one Damage re-roll per activation: counted in the "
+                "damage figures, but not in Inflicted / Kills - those "
+                "are the estimate without it, so they read slightly low")
         # Not folded into a total here: how the attacks land on MODELS
         # depends on the state of the target unit, which only the caller
         # knows (it may already have been shot at by another weapon), so

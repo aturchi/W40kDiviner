@@ -11,6 +11,9 @@ behaviour that is not tkinter:
     "not fired" - and unmasking restores the count it HAD, not 1;
   * masking an ability writes the same 'enabled' flag the Inspect
     checkbox used to write, so the engine sees it;
+  * a MODEL row and a UNIT row are bulk gestures over the weapons below
+    them: they carry no state, they read as masked when every weapon
+    under them is, and they never touch the abilities;
   * a joined unit shares its weapon and ability objects with the plain
     unit, so masking one row shows in both. That is why the analyzer
     refreshes both panels after any change, and it is checked here.
@@ -99,6 +102,20 @@ um.set_weapon_count(bolter, 4)
 um.set_weapon_masked(bolter, True)
 um.set_weapon_masked(bolter, False)
 assert bolter.count == 4
+# ...INCLUDING a hand-typed 0, which is the same gesture as masking the
+# row: the count being overwritten must be remembered there too, or ten
+# bolters switched off by typing 0 come back as one.
+um.set_weapon_count(bolter, 10)
+um.set_weapon_count(bolter, 0)                 # double-click, type "0"
+assert um.is_weapon_masked(bolter)
+assert um.set_weapon_masked(bolter, False) is True
+assert bolter.count == 10, "typing 0 must remember the count it replaced"
+# and a second 0 in a row must not overwrite the saved count with 0
+um.set_weapon_count(bolter, 0)
+um.set_weapon_count(bolter, 0)
+um.set_weapon_masked(bolter, False)
+assert bolter.count == 10
+um.set_weapon_count(bolter, 10)
 # a weapon already at 0 when first seen comes back at DEFAULT_COUNT
 fist = um.weapon_at(squad, 0, 1)
 fist.count = 0
@@ -137,9 +154,57 @@ assert plan["models"][0]["weapons"][1]["masked"] is True
 assert plan["abilities"][1]["masked"] is True
 print("a collapsed unit row can report what is switched off")
 
+# --- 4b. model and unit rows in bulk ----------------------------------
+# Restore the squad to a clean state first: sections 2-4 left rows off.
+um.set_unit_masked(squad, False)
+um.set_ability_masked(um.ability_at(squad, "1"), False)
+assert um.unit_plan(squad)["off"] == 0
+
+bolter, fist = um.weapon_at(squad, 0, 0), um.weapon_at(squad, 0, 1)
+assert not um.is_model_masked(squad, 0) and not um.is_unit_masked(squad)
+
+# one weapon off is NOT a masked model: the row shows the count instead
+um.set_weapon_masked(bolter, True)
+plan = um.unit_plan(squad)
+assert plan["models"][0]["off"] == 1
+assert plan["models"][0]["masked"] is False, "half off is not off"
+assert plan["masked"] is False
+assert um.off_count_label(1) == "1 off" and um.off_count_label(0) == ""
+
+# the model row switches the rest off, and reads as masked
+assert um.set_model_masked(squad, 0, True) == 1, "only the fist moved"
+assert um.is_model_masked(squad, 0) and um.is_unit_masked(squad)
+assert bolter.count == 0 and fist.count == 0
+assert um.unit_plan(squad)["masked"] is True
+
+# ...and unmasking brings every weapon back at the COUNT it had, the
+# one the player had switched off by hand included (declared: the bulk
+# gesture does not remember which those were)
+assert um.set_model_masked(squad, 0, False) == 2
+assert (bolter.count, fist.count) == (10, 1)
+assert not um.is_model_masked(squad, 0)
+
+# the unit row does the same over every model...
+assert um.set_unit_masked(squad, True) == 2
+assert um.is_unit_masked(squad) and um.unit_plan(squad)["masked"]
+# ...but it never touches the abilities: they are listed one by one
+assert all(not a["masked"] for a in um.unit_plan(squad)["abilities"]), \
+    "a unit row must not switch the datasheet's abilities off"
+assert um.set_unit_masked(squad, False) == 2
+assert (bolter.count, fist.count) == (10, 1)
+
+# a model with no weapons is never maskable: there would be nothing
+# to undo, and a row that cannot come back is a trap
+empty = um.model_weapons(squad, 9)
+assert empty == [] and um.set_model_masked(squad, 9, True) == 0
+assert not um.is_model_masked(squad, 9)
+print("model and unit rows are bulk gestures over the weapons below")
+
 # --- 5. a joined unit shares the objects ------------------------------
 # This is why the analyzer refreshes BOTH panels after a change.
 
+um.set_weapon_masked(um.weapon_at(squad, 0, 1), True)
+um.set_ability_masked(um.ability_at(squad, "1"), True)
 joined = squad.attach_leader(chief)
 jplan = um.unit_plan(joined)
 assert [m["label"] for m in jplan["models"]] == \

@@ -10,6 +10,10 @@
     indirect-fire or close-quarters exclusion, instead of resolving it.
   * attachmentSlots: how many Leader / Support units may be attached.
     Both default to 1; a datasheet ability can raise or set them.
+  * battleRound: the one condition that is a NUMBER and not a tick. It
+    was parsed and evaluated but nothing ever supplied the round, so an
+    ability using it was silently dead; the setup panel now carries a
+    Spinbox and the flag reaches the Context.
 
 No tkinter needed.
 """
@@ -183,5 +187,61 @@ w = next(w for m in av.models() for w in m.weapons if w.type == "Ranged")
 mech = _ac.mechanics_for_attack(w, dv, "Ranged", {}, {}, av)
 assert mech.fnp_grant is None, "an attacker's FNP must not reach the defender"
 print("the attacker's own unit effects are read, and only its own")
+
+
+# --- 4. battleRound: a condition that needed a number, not a tick -----
+# No downloaded roster uses it (the rules that key on the battle round
+# live in Detachments and Stratagems, which are not on the datasheet),
+# so this is entirely for abilities written by hand in the editor - and
+# for years it could not fire at all.
+
+ROUND_GE_3 = {"comparison": {"title": "Greater than or equal",
+                             "key": "greaterThanOrEqual"},
+              "roundValue": "3"}
+LATE_GUN = ability({"type": "disableWeapon", "data": {}},
+                   [cond("battleRound", ROUND_GE_3, negate=True)],
+                   name="only from round 3")
+late = build(unit_dict("late", ["Infantry"], weapon_abilities=[LATE_GUN]))[0]
+
+# nothing supplied: the condition is false, so the negated gate holds
+# and the weapon is out - the old behaviour, kept for callers that do
+# not track rounds at all
+kept, skipped = selection(late, {})
+assert "turret" not in kept and "turret" in skipped, (kept, skipped)
+
+kept, _ = selection(late, {"battle_round": 3})
+assert "turret" in kept, "round 3 must open the gate"
+kept, _ = selection(late, {"battle_round": 5})
+assert "turret" in kept
+kept, skipped = selection(late, {"battle_round": 2})
+assert "turret" not in kept, "round 2 must keep it shut"
+
+# every comparison the editor offers, on the same round
+CASES = (("greaterThan", "3", {2: False, 3: False, 4: True}),
+         ("lessThan", "3", {2: True, 3: False, 4: False}),
+         ("equalTo", "3", {2: False, 3: True, 4: False}),
+         ("greaterThanOrEqual", "3", {2: False, 3: True, 4: True}),
+         ("lessThanOrEqual", "3", {2: True, 3: True, 4: False}))
+for key, value, expected in CASES:
+    gate = ability({"type": "disableWeapon", "data": {}},
+                   [cond("battleRound",
+                         {"comparison": {"title": key, "key": key},
+                          "roundValue": value})],
+                   name=key)
+    u = build(unit_dict(key, ["Infantry"], weapon_abilities=[gate]))[0]
+    for rnd, holds in expected.items():
+        kept, _sk = selection(u, {"battle_round": rnd})
+        # the gate DISABLES the weapon when the condition holds
+        assert ("turret" in kept) is (not holds), (key, rnd, kept)
+
+# a roundValue that is not a number must not raise, only read as false
+broken = ability({"type": "disableWeapon", "data": {}},
+                 [cond("battleRound",
+                       {"comparison": {"title": "Equal to",
+                                       "key": "equalTo"},
+                        "roundValue": "later"})], name="broken")
+u = build(unit_dict("broken", ["Infantry"], weapon_abilities=[broken]))[0]
+assert "turret" in selection(u, {"battle_round": 3})[0]
+print("battleRound is a real condition now, in all five comparisons")
 
 print("ALL STRUCTURAL TESTS PASS")

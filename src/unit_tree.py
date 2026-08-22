@@ -6,11 +6,17 @@ row means and what masking it does lives in :mod:`unit_mask`, which has
 no widgets and is tested headless; this file renders the plan and turns
 clicks into calls.
 
-Two rows carry state: a WEAPON row (masked = count 0, and its count is
-editable in place) and an ABILITY row (masked = 'enabled' False). Unit
-and model rows are structure only. A collapsed unit row still says how
-many of its rows are switched off, because an ability disabled three
-analyses ago must not be invisible.
+Two rows carry state of their own: a WEAPON row (masked = count 0, and
+its count is editable in place) and an ABILITY row (masked = 'enabled'
+False). A MODEL row and a UNIT row are bulk gestures over the weapons
+below them - "this sergeant does not shoot" is one click, not six - and
+carry no state: they READ as masked when every weapon under them is.
+Selecting a parent and one of its children together is not a
+contradiction to resolve, it is a redundancy: the parent acts and the
+child is skipped, so the gesture cannot half-undo itself.
+
+Every row still says how many of its rows are switched off, because an
+ability disabled three analyses ago must not be invisible.
 
 The units of two panels can share their weapon and ability objects (a
 joined unit is built on the same objects as the plain one), so after any
@@ -79,11 +85,13 @@ class UnitTree(ttk.Frame):
             uid = self.tree.insert(
                 "", tk.END, iid=tree_ids.unit_iid(i), text=label, open=False,
                 values=(unit_mask.off_label(plan),),
-                tags=((OFF_TAG,) if plan["off"] else ()))
+                tags=self._unit_tags(i, plan))
             for m in plan["models"]:
                 mid = self.tree.insert(
                     uid, tk.END, iid=tree_ids.model_iid(i, m["mi"]),
-                    text=m["label"])
+                    text=m["label"],
+                    values=(unit_mask.off_count_label(m["off"]),),
+                    tags=self._model_tags(m))
                 for w in m["weapons"]:
                     self.tree.insert(
                         mid, tk.END,
@@ -113,6 +121,11 @@ class UnitTree(ttk.Frame):
             self.tree.item(uid, values=(unit_mask.off_label(plan),),
                            tags=self._unit_tags(i, plan))
             for m in plan["models"]:
+                mid = tree_ids.model_iid(i, m["mi"])
+                if self.tree.exists(mid):
+                    self.tree.item(
+                        mid, values=(unit_mask.off_count_label(m["off"]),),
+                        tags=self._model_tags(m))
                 for w in m["weapons"]:
                     iid = tree_ids.weapon_iid(i, m["mi"], w["wi"])
                     if self.tree.exists(iid):
@@ -128,10 +141,19 @@ class UnitTree(ttk.Frame):
     def _unit_tags(self, i, plan):
         """ONE tag per unit row: with two, which colour wins would be up
         to the theme. Incompatibility is about the join being attempted
-        right now, so it comes first."""
+        right now, so it comes first; then "everything below is off",
+        which is a stronger statement than "something is"."""
         if i < len(self._incompat) and self._incompat[i]:
             return (INCOMPAT_TAG,)
+        if plan.get("masked"):
+            return (MASK_TAG,)
         return (OFF_TAG,) if plan["off"] else ()
+
+    @staticmethod
+    def _model_tags(m):
+        if m.get("masked"):
+            return (MASK_TAG,)
+        return (OFF_TAG,) if m.get("off") else ()
 
     def set_incompatible(self, flags):
         """Grey the top-level rows the selected helper cannot join."""
@@ -182,13 +204,43 @@ class UnitTree(ttk.Frame):
     # ---------- masking ----------
 
     def toggle_selected(self) -> int:
-        """Mask/unmask every maskable selected row (weapons and
-        abilities). Returns how many rows moved, so the caller can say
-        something when a selection contained none."""
-        moved = 0
-        for iid in self.tree.selection():
+        """Mask/unmask every maskable selected row. Returns how many
+        WEAPON and ABILITY rows moved, so the caller can say something
+        when a selection contained none.
+
+        A unit row acts on every weapon below it, a model row on its
+        own; a child of a row already acted upon is skipped, or the
+        parent's gesture would be half undone by the child's. Abilities
+        are never touched by a parent row (see the module docstring), so
+        an ability row is always its own gesture.
+        """
+        sel = list(self.tree.selection())
+        moved, done_units, done_models = 0, set(), set()
+        for iid in sel:                      # units first
+            i, mi, wi, _ci = tree_ids.parse(iid)
+            if i is None or mi is not None or wi is not None:
+                continue
+            unit = self.unit_at(i)
+            if unit is None:
+                continue
+            moved += unit_mask.set_unit_masked(
+                unit, not unit_mask.is_unit_masked(unit))
+            done_units.add(i)
+        for iid in sel:                      # then models
+            i, mi, wi, _ci = tree_ids.parse(iid)
+            if mi is None or wi is not None or i in done_units:
+                continue
+            unit = self.unit_at(i)
+            if unit is None:
+                continue
+            moved += unit_mask.set_model_masked(
+                unit, mi, not unit_mask.is_model_masked(unit, mi))
+            done_models.add((i, mi))
+        for iid in sel:                      # then the leaves
             i, mi, wi, _ci = tree_ids.parse(iid)
             if wi is not None:
+                if i in done_units or (i, mi) in done_models:
+                    continue
                 w = unit_mask.weapon_at(self.unit_at(i), mi, wi)
                 if w is not None:
                     moved += bool(unit_mask.set_weapon_masked(

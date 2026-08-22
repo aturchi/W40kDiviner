@@ -214,6 +214,9 @@ Standard conditions:
 - **Below half strength** *(Who)* — the unit is Below Half-strength.
 - **Below full strength** *(Who)* — the unit has lost at least one model.
 - **Battle round** — compare the current battle-round number against a value.
+  Set the round in the setup panel of either program (default `1`); with no
+  panel involved — a script, a test — the round is unset and the condition
+  reads as false.
 - **Within objective range** *(Who)* — the unit is within range of an objective.
 - **Leader attached** *(Who)* — the unit is being led (a CHARACTER is attached).
 - **Within engagement range** *(Who)* — the unit is within Engagement Range of an
@@ -254,6 +257,21 @@ Standard effects:
   attacks; *Save / Invuln / FNP* act when this unit defends.
 - **Critical hit/wound on N+** — score a critical *hit* or *wound* on an
   unmodified N+ instead of 6 (best/lowest threshold wins).
+- **Re-roll ONE die per activation** — if (*Hit / Wound / Damage*) are valid
+  rerolls, a copy of the weapon for each option (all switched off) is placed on
+  the unit: tick the one you want; *Allowance* says how the datasheet spends it
+  (*one of any kind* vs *one of each kind*). The **Hit** and **Wound** versions
+  are exact: every failed die of a roll is interchangeable, so re-rolling one is
+  one more attack folded into the chain. The **Damage** version replaces a result
+  instead of adding a die and is resolved by splitting on which attack spends the
+  re-roll; it is exact for a weapon whose attacks deal damage once, and slightly
+  **optimistic** when a single attack produces several damaging events via
+  SUSTAINED HITS, EXTRA HITS or EXTRA WOUNDS — measured at +0.9% with SUSTAINED
+  HITS 1 and +2.8% with SUSTAINED HITS 3. It is counted in the damage figures but
+  **not** in *Inflicted* / *Kills*, which read slightly low; the analysis warns
+  when that applies. On a flat Damage characteristic, or on a weapon that already
+  re-rolls low Damage dice (a die may be re-rolled once), it does nothing and
+  says so.
 - **Special (core weapon ability)** — a core mechanic handled natively by the
   engine: Blast, Cleave, Extra attacks, Ignore cover, Lethal hits, Devastating
   wounds, Torrent, Twin-linked, Hazardous, Precision, Lance, Indirect fire, One
@@ -387,6 +405,14 @@ only means are additive (`src/result_rows.py` owns that distinction).
 
 - combat flags — half range, attacker stationary, attacker charged, defender in
   cover, and below-half / below-full-strength states for either side;
+- **Battle round** (a number, not a tick, default `1`) — the only context the
+  combat maths never reads. It exists solely so an ability carrying the
+  **Battle round** condition can be true; nothing else in the engine looks at
+  it. No downloaded datasheet uses that condition — the rules keyed on the
+  battle round live in Detachments and Stratagems, which are not on the
+  datasheet — so the control is there for abilities you write yourself in the
+  Profile Editor. It is recorded in the game assistant's attack log, so a
+  post-mortem two turns later still knows which round it was;
 - manual modifiers — per-roll modifiers (hit/wound/save/invuln/fnp), and
   characteristic modifiers on the weapon or on the attacker/defender model;
 - **modifier presets** — a named set of manual modifiers, saved in the session
@@ -573,14 +599,23 @@ display: leader/support attachment, masking, the damage pipeline, the allocation
 rules, the pure half of every new UI feature, and the dialog logic.
 
 ```bash
-cd tests && python3 run_all.py          # the whole suite (~75 s)
+cd tests && python3 run_all.py          # the whole suite (~85 s)
 python3 test_regress.py                 # digest against the saved baseline
 ```
 
 They run on a **synthetic roster** shipped with the tests, so no ArmyFetcher
 output is needed; `--real_data` switches the data-dependent ones to your own
-rosters. `test_wrap_lines.py` needs Tkinter and is the one test that fails on a
-machine without a display.
+rosters.
+
+**Tkinter is optional.** It ships with most Pythons but is a build option, and a
+slim container or a distribution without `python3-tk` has none. `tests/tkstub.py`
+is an in-memory stand-in — a Treeview that keeps a real item tree, an Entry with
+a real buffer, bindings that can be fired by hand — installed by
+`tkstub.install_if_missing()` **only when the real toolkit is absent**, and it
+says so on stdout when it steps in, so a green run can never quietly mean *green
+against a fake*. What it does not cover: a machine that has Tkinter but no
+display, where `import tkinter` succeeds and `Tk()` then raises `TclError`. That
+failure is left visible on purpose.
 
 ---
 
@@ -617,7 +652,7 @@ W40kDiviner/
 │   ├── cheat_sheet.py       #   printable one-page unit sheet (text + HTML)
 │   ├── dist_view.py         #   histogram / survival-curve canvases
 │   ├── tree_ids.py          #   game assistant table row-id grammar (pure)
-│   ├── rules_config.py      #   session-wide caps
+│   ├── rules_config.py      #   session-wide caps, battle-round range
 │   ├── keywords_config.py   #   keyword vocabulary loader
 │   ├── ability_editor.py    #   structured ability editor
 │   ├── profile_diff.py      #   diff / selective-merge logic (pure; Merge JSON)

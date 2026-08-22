@@ -13,9 +13,16 @@ so the estimate and the application cannot disagree):
   is destroyed. Three attacks of 2 damage are not one of 6: each is
   capped separately by the wounds left on the model it lands on, and
   the excess on a model that dies is WASTED;
-* a model that has already lost wounds must be allocated to first. When
-  several have, which one is the player's choice - here, the first in
-  the chosen order;
+* an attached CHARACTER (a Leader or a Support) cannot be allocated to
+  while the unit still has a Bodyguard model standing. A copy carrying
+  'protected': True is therefore skipped until nothing else is left,
+  at which point the protection falls away on its own;
+* a model that has already lost wounds must be allocated to first. That
+  rule applies AMONG THE MODELS THE ATTACK MAY BE ALLOCATED TO, so a
+  wounded Character does not pull the damage onto itself while its
+  bodyguards are alive. When several allocatable models are wounded,
+  which one is the player's choice - here, the first in the chosen
+  order;
 * DEVASTATING WOUNDS are mortal wounds for every rule that keys on
   them, but they are allocated like ordinary damage: no spill;
 * mortal wounds that DO spill are pooled and applied LAST, after all
@@ -27,7 +34,11 @@ What is left to the player, and only hinted at:
 * which model to put in front (there is no 'champion' flag in the
   profiles, so the Shas'ui cannot be recognised - the player moves it
   down the order instead);
-* PRECISION damage, which may be sent to an attached character;
+* PRECISION damage, which MAY be sent to an attached character. It is
+  never sent there by the proposal: sending it is a choice, and often
+  the wrong one (a wound spent on a full-health Character kills no
+  model at all). The dialog reports that the option exists and lets the
+  player lift the protection on one model when they want it;
 * anything else the table decided. Every number the dialog proposes is
   editable before it is applied.
 
@@ -96,8 +107,10 @@ def totals(events) -> dict:
 def allocate(copies, events, order=None) -> dict:
     """Apply 'events' to 'copies' and return the proposal.
 
-    copies: [{'iid', 'label', 'wounds', 'max'}] - one entry per model
-    still on the table, 'wounds' its remaining wounds.
+    copies: [{'iid', 'label', 'wounds', 'max', 'protected'}] - one entry
+    per model still on the table, 'wounds' its remaining wounds.
+    'protected' marks an attached CHARACTER: nothing is allocated to it
+    while a Bodyguard model is still standing (see the module docstring).
     order:  indices into 'copies', the order in which they take damage
             (default: as given). A model that has already lost wounds
             still goes first, as the rules require.
@@ -109,18 +122,26 @@ def allocate(copies, events, order=None) -> dict:
     order = list(order if order is not None else range(len(copies)))
     left = [max(0, int(c.get("wounds") or 0)) for c in copies]
     caps = [max(1, int(c.get("max") or 1)) for c in copies]
+    prot = [bool(c.get("protected")) for c in copies]
     wasted = leftover = 0
     steps = []
 
     def front():
-        """The model the next event lands on: one that has already lost
-        wounds if there is one (the rules require it), otherwise the
-        first alive model of the chosen order."""
+        """The model the next event lands on.
+
+        Two rules, IN THIS ORDER. First, what may be allocated to at
+        all: an attached Character is out while a Bodyguard model is
+        standing, and only comes back in when nothing else is left.
+        Then, among those, the one that has already lost wounds - which
+        is why the two cannot be collapsed into one pass: a wounded
+        Character must not pull the damage onto itself.
+        """
         alive = [i for i in order if 0 <= i < len(left) and left[i] > 0]
         if not alive:
             return None
-        hurt = [i for i in alive if left[i] < caps[i]]
-        return hurt[0] if hurt else alive[0]
+        pool = [i for i in alive if not prot[i]] or alive
+        hurt = [i for i in pool if left[i] < caps[i]]
+        return hurt[0] if hurt else pool[0]
 
     normal, pool = split_events(events)
     for e in normal:
@@ -152,9 +173,31 @@ def allocate(copies, events, order=None) -> dict:
         state.append({"iid": c.get("iid"), "label": c.get("label", "?"),
                       "before": before, "after": left[i],
                       "max": caps[i], "damage": before - left[i],
+                      "protected": prot[i],
                       "dead": left[i] <= 0 and before > 0})
     return {"state": state, "wasted": wasted, "leftover": leftover,
             "killed": sum(1 for s in state if s["dead"]), "steps": steps}
+
+
+def landing_order(plan, order=None) -> list:
+    """Copy indices in the order the damage ACTUALLY landed on them.
+
+    The order the player CHOOSES is not the order the damage follows:
+    the wounded-first rule and the character protection both reorder it,
+    so a table that showed the chosen order under the heading "damage
+    lands top down" would be telling the player something false. The
+    steps recorded by :func:`allocate` are the real thing; the models
+    nothing reached are appended in the chosen order, since for them
+    the two coincide.
+    """
+    state = plan.get("state") or ()
+    order = list(order if order is not None else range(len(state)))
+    out = []
+    for i, _applied, _wasted in plan.get("steps") or ():
+        if i is not None and i not in out:
+            out.append(i)
+    out += [i for i in order if i not in out]
+    return out
 
 
 def hints(events, copies, plan) -> list:
@@ -163,12 +206,26 @@ def hints(events, copies, plan) -> list:
     Deliberately short: a wall of text at the table is not read."""
     out = []
     t = totals(events)
-    hurt = [c for c in copies
-            if 0 < int(c.get("wounds") or 0) < int(c.get("max") or 1)]
+
+    def wounded(cs):
+        return [c for c in cs
+                if 0 < int(c.get("wounds") or 0) < int(c.get("max") or 1)]
+
+    guarded = [c for c in copies if c.get("protected")]
+    body = [c for c in copies if not c.get("protected")]
+    standing = [c for c in body if int(c.get("wounds") or 0) > 0]
+    hurt = wounded(body if standing else copies)
     if hurt:
         out.append("Already wounded: " + ", ".join(
             c.get("label", "?") for c in hurt[:3])
             + " - the rules make you allocate there first.")
+    if guarded:
+        names = ", ".join(c.get("label", "?") for c in guarded[:3])
+        out.append(
+            f"{names}: attached CHARACTER, left out of the allocation "
+            "while a bodyguard model is standing"
+            + (" - none is, so it takes the damage."
+               if not standing else "."))
     if t["dev_events"]:
         out.append(f"{t['devastating']} damage from DEVASTATING WOUNDS "
                    f"({t['dev_events']} events): mortal for every rule "
@@ -179,8 +236,11 @@ def hints(events, copies, plan) -> list:
                    "last, one at a time, passing to the next model.")
     if t["precision"]:
         out.append(f"{t['precision']} damage comes from PRECISION "
-                   "weapons and may be sent to an attached character "
-                   "instead - the proposal does not do it for you.")
+                   "weapons and MAY be sent to an attached character. "
+                   "The proposal never does it for you - it is a "
+                   "choice, and a wound spent on a healthy character "
+                   "kills no model. Use 'Allow character' on that row "
+                   "if you want it.")
     out.append("No 'champion' flag exists in the profiles: move the "
                "model you want to keep alive to the bottom of the "
                "order.")

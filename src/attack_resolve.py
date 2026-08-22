@@ -80,11 +80,17 @@ def _roll_success(rng, success_fn, reroll):
     return r
 
 
-def _roll_damage(rng, d_char, mech, half: bool) -> int:
+def _roll_damage(rng, d_char, mech, half: bool, budget=None) -> int:
     """Damage roll: per-die re-roll range, flat bonus, MELTA, then the
     defender's Damage modifiers (set / multiply / add / floor, in that
     fixed order - see attack_math.apply_damage_modifiers), keeping this
-    dice resolver in step with the exact maths."""
+    dice resolver in step with the exact maths.
+
+    'budget' is the ONE Damage re-roll some abilities grant for the
+    whole activation (Aquilon Optics): a one-element list holding the
+    range still to be spent, emptied by the first die it is spent on.
+    The player re-rolls the first die worth re-rolling, which is the
+    policy the exact chain resolves - see _damage_single_total."""
     total = max(d_char.flat, 0)
     lo, hi = (mech.dmg_reroll
               or (mech.dmg_reroll_any
@@ -92,7 +98,15 @@ def _roll_damage(rng, d_char, mech, half: bool) -> int:
               or (0, -1))
     for _ in range(d_char.count):
         v = _d6(rng) if d_char.sides == 6 else rng.randint(1, d_char.sides)
-        if lo <= v <= hi and rules_config.CAP_REROLLS > 0:
+        again = lo <= v <= hi
+        if not again and budget and budget[0] and budget[0][0] <= v \
+                <= budget[0][1]:
+            # A die may be re-rolled once, so the once-per-activation
+            # re-roll is only ever spent on a die the weapon's own
+            # re-roll did not already take.
+            again = True
+            budget[0] = None
+        if again and rules_config.CAP_REROLLS > 0:
             v = (_d6(rng) if d_char.sides == 6
                  else rng.randint(1, d_char.sides))
         total += v
@@ -297,6 +311,10 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
     events = []
 
     fails = {"hit": False, "wound": False}
+    # ONE Damage re-roll for the whole activation, if an ability grants
+    # one and there is a Damage ROLL for it to work on.
+    dmg_budget = [am.damage_reroll_range(weapon.D)
+                  if mech.single_reroll == "damage" else None]
 
     def resolve_hit_chain(hit_is_crit: bool):
         # wound stage
@@ -332,7 +350,7 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         mortal-wound branch, the save, the damage."""
         ap_eff, go_on = ap, True
         if wound_crit and crit_mw:
-            raw = (_roll_damage(rng, weapon.D, mech, half)
+            raw = (_roll_damage(rng, weapon.D, mech, half, dmg_budget)
                    if crit_mw["match"] else (crit_mw["value"] or 1))
             kept = _fnp_keep(rng, _mw_save_keep(rng, raw, mech), fnp,
                              mech, mw=True)
@@ -346,7 +364,7 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
             return
         if _save_made(rng, defender_ref, ap_eff, mech):
             return
-        raw = _roll_damage(rng, weapon.D, mech, half)
+        raw = _roll_damage(rng, weapon.D, mech, half, dmg_budget)
         kept = _fnp_keep(rng, raw, fnp, mech, mw=False)
         if kept > 0:
             events.append({"kind": "damage", "amount": kept})
@@ -379,7 +397,8 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                             or (r > 1 and r < thr and r + hit_mod >= tgt))
             r = _roll_success(rng, ok, reroll_hit)
             if r >= thr:
-                raw = (_roll_damage(rng, weapon.D, mech, half)
+                raw = (_roll_damage(rng, weapon.D, mech, half,
+                                    dmg_budget)
                        if mech.hitroll_mw["match"]
                        else (mech.hitroll_mw["value"] or 1))
                 kept = _fnp_keep(rng, _mw_save_keep(rng, raw, mech), fnp,

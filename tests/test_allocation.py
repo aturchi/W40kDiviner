@@ -7,7 +7,10 @@ then removes five is worse than one that predicts nothing:
 
   * one event at a time, capped by the wounds of the model it lands on,
     with the excess wasted - three attacks of 2 are not one of 6;
-  * a model that has already lost wounds takes damage first;
+  * a model that has already lost wounds takes damage first - among
+    the models the attack MAY be allocated to;
+  * an attached CHARACTER is not one of them while a bodyguard model
+    is standing, however wounded it is;
   * devastating wounds do not spill, real mortal wounds do and are
     applied last, one point at a time.
 
@@ -142,6 +145,81 @@ assert "Already wounded" in joined and "Model 1" in joined
 assert "DEVASTATING" in joined and "spill" in joined
 assert "PRECISION" in joined and "champion" in joined
 print("hints cover the wounded model, devastating, spill and precision")
+
+# --- 7b. the attached character is not a target -----------------------
+# The bug this guards: a WOUNDED character used to be picked FIRST, by
+# the wounded-first rule, and died to ordinary bolt rifle fire with
+# three bodyguard models standing.
+
+squad = [{"iid": "b0", "label": "Intercessor 1", "wounds": 2, "max": 2},
+         {"iid": "b1", "label": "Intercessor 2", "wounds": 2, "max": 2},
+         {"iid": "b2", "label": "Intercessor 3", "wounds": 2, "max": 2},
+         {"iid": "cap", "label": "Captain", "wounds": 3, "max": 5,
+          "protected": True}]
+three_hits = al.events_from_results([(W("bolt rifle"), False,
+                                      res(dmg(2, 2, 2)))])
+plan = al.allocate(squad, three_hits)
+assert [s["after"] for s in plan["state"]] == [0, 0, 0, 3], plan["state"]
+assert plan["killed"] == 3 and not plan["state"][3]["dead"]
+assert plan["state"][3]["protected"] is True
+
+# ...and the order cannot override it either
+plan = al.allocate(squad, al.events_from_results(
+    [(W("gun"), False, res(dmg(2)))]), order=[3, 0, 1, 2])
+assert [s["after"] for s in plan["state"]] == [0, 2, 2, 3], plan["state"]
+
+# once no bodyguard is standing the protection falls away on its own
+gone = [dict(c, wounds=0) for c in squad[:3]] + [dict(squad[3])]
+plan = al.allocate(gone, al.events_from_results(
+    [(W("gun"), False, res(dmg(2)))]))
+assert plan["state"][3]["after"] == 1, plan["state"]
+
+# spilling mortal wounds respect the protection too, and reach the
+# character only when they have run out of bodyguards
+plan = al.allocate(squad, al.events_from_results(
+    [(W("gun"), False, res([{"kind": "mortal", "amount": 8,
+                             "spills": True}]))]))
+assert [s["after"] for s in plan["state"]] == [0, 0, 0, 1], plan["state"]
+
+# lifting the protection (the dialog's 'Allow character') is what a
+# PRECISION attack uses - the module never does it by itself
+allowed = squad[:3] + [dict(squad[3], protected=False)]
+plan = al.allocate(allowed, al.events_from_results(
+    [(W("sniper", ["PRECISION"]), False, res(dmg(2)))]))
+assert plan["state"][3]["after"] == 1, plan["state"]
+
+hints = al.hints(three_hits, squad, al.allocate(squad, three_hits))
+joined = " ".join(hints)
+assert "CHARACTER" in joined and "bodyguard" in joined, hints
+# the wounded-first hint must not fire for the protected character:
+# it is wounded, but the rules do not let the damage go there
+assert "Already wounded" not in joined, hints
+print("an attached character is left out while a bodyguard is standing")
+
+# --- 7c. the order the damage really lands in -------------------------
+# The dialog sorts its rows by this, not by the order the player chose:
+# the wounded-first rule and the character protection both reorder it,
+# and a table headed "damage lands top down" must not lie.
+
+wounded_last = [{"iid": "c0", "label": "A", "wounds": 2, "max": 2},
+                {"iid": "c1", "label": "B", "wounds": 2, "max": 2},
+                {"iid": "c2", "label": "C", "wounds": 1, "max": 2}]
+one_hit = al.events_from_results([(W("gun"), False, res(dmg(1)))])
+plan = al.allocate(wounded_last, one_hit)
+assert al.landing_order(plan) == [2, 0, 1], al.landing_order(plan)
+
+# the models nothing reached keep the chosen order among themselves
+plan = al.allocate(wounded_last, one_hit, order=[1, 0, 2])
+assert al.landing_order(plan, [1, 0, 2]) == [2, 1, 0]
+
+# with nothing to allocate at all it degenerates to the chosen order
+empty = al.allocate(wounded_last, [], order=[2, 1, 0])
+assert al.landing_order(empty, [2, 1, 0]) == [2, 1, 0]
+
+# a protected character comes last however the player sorted it
+plan = al.allocate(squad, three_hits, order=[3, 0, 1, 2])
+assert al.landing_order(plan, [3, 0, 1, 2]) == [0, 1, 2, 3]
+print("the landing order is the real one, not the chosen one")
 
 # --- 8. same rules as the estimate ------------------------------------
 # Five events of 2 damage into six one-wound models: whatever the two

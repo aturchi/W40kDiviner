@@ -252,6 +252,21 @@ def entry_models(entry):
     return list(enumerate(models))
 
 
+def attached_model_indices(entry) -> set:
+    """Global model indices belonging to an attached CHARACTER.
+
+    Every model of a leader or a support part: the rules forbid
+    allocating an attack to them while the unit still has a Bodyguard
+    model standing, so the assisted allocation has to be able to tell
+    them apart from the unit's own models (see :mod:`allocation`).
+    """
+    out = set()
+    for slot, _d, start, n in _segment_offsets(entry):
+        if slot != "unit":
+            out.update(range(start, start + n))
+    return out
+
+
 def _split_indexed(entry, mapping):
     """Split a {global_model_index: value} or {(gmi, wi): value} /
     set-of-(gmi, wi) into one re-based mapping per present part, keyed by

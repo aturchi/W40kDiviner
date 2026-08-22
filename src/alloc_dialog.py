@@ -2,10 +2,12 @@
 
 Shows what the attack has to take off the defending unit, the model by
 model proposal that follows from the rules (see :mod:`allocation`), and
-lets the player change the two things the program cannot know: the
+lets the player change the three things the program cannot know: the
 ORDER models take damage in - there is no 'champion' flag in the
-profiles, so the Shas'ui is kept alive by moving it down - and, when
-the table decided something odd, the resulting wounds themselves.
+profiles, so the Shas'ui is kept alive by moving it down - whether a
+PRECISION attack is being sent to the attached CHARACTER, which the
+proposal never assumes because it is a choice and often a bad one, and,
+when the table decided something odd, the resulting wounds themselves.
 
 Nothing is written anywhere until Apply: the caller gets the final rows
 and does the writing (in the game assistant, as a single undo step).
@@ -16,13 +18,25 @@ from tkinter import ttk
 
 import allocation
 
-COLUMNS = (("before", "Wounds", 62, tk.E),
+# The '#' column is the position in the order the PLAYER chose, which
+# is not the row order: the table is sorted by the order the damage
+# really lands in (allocation.landing_order), and the two differ
+# whenever the wounded-first rule or the character protection steps in.
+# Without the column, Move up/down would sometimes appear to do nothing.
+COLUMNS = (("pick", "#", 34, tk.E),
+           ("before", "Wounds", 62, tk.E),
            ("damage", "Damage", 62, tk.E),
            ("after", "Left", 52, tk.E),
            ("status", "", 90, tk.W))
 
+# Treeview column ids are positional ('#0' is the tree column), so they
+# are derived rather than written out: adding a column must not silently
+# move the one the double-click edits.
+_AFTER_COL = "#%d" % (1 + [c[0] for c in COLUMNS].index("after"))
+
 MANUAL_TAG = "manual"
 DEAD_TAG = "dead"
+PROTECT_TAG = "protected"
 
 
 class AllocationDialog(tk.Toplevel):
@@ -40,6 +54,10 @@ class AllocationDialog(tk.Toplevel):
         self.on_apply = on_apply
         self.order = list(range(len(self.copies)))
         self.manual = {}                  # iid -> wounds typed by hand
+        # Rows whose CHARACTER protection the player has lifted, which
+        # is the only way a PRECISION attack reaches the character: the
+        # proposal never does it by itself.
+        self.allowed = set()
         self.plan = None
 
         t = allocation.totals(self.events)
@@ -65,6 +83,7 @@ class AllocationDialog(tk.Toplevel):
                              stretch=(key == "status"))
         self.tree.tag_configure(DEAD_TAG, foreground="#a00000")
         self.tree.tag_configure(MANUAL_TAG, foreground="#00559b")
+        self.tree.tag_configure(PROTECT_TAG, foreground="#777777")
         sb = ttk.Scrollbar(frame, orient=tk.VERTICAL,
                            command=self.tree.yview)
         self.tree.configure(yscrollcommand=sb.set)
@@ -75,9 +94,14 @@ class AllocationDialog(tk.Toplevel):
         self.summary_lbl = ttk.Label(self, font=("TkDefaultFont", 10,
                                                  "bold"))
         self.summary_lbl.pack(anchor=tk.W, padx=8, pady=(4, 0))
-        ttk.Label(self, foreground="#666666", text=(
-            "Move a model down to keep it alive; double-click 'Left' to "
-            "type a number yourself.")).pack(anchor=tk.W, padx=8)
+        ttk.Label(self, foreground="#666666", wraplength=600,
+                  justify=tk.LEFT, text=(
+                      "Rows are in the order the damage lands. '#' is "
+                      "the order you chose, which Move up/down changes: "
+                      "the rules can still put a wounded model first. "
+                      "Double-click 'Left' to type a number yourself; "
+                      "'Allow character' lets a PRECISION attack reach "
+                      "an attached character.")).pack(anchor=tk.W, padx=8)
 
         bar = ttk.Frame(self)
         bar.pack(fill=tk.X, padx=8, pady=8)
@@ -85,6 +109,9 @@ class AllocationDialog(tk.Toplevel):
                    command=lambda: self._move(-1)).pack(side=tk.LEFT)
         ttk.Button(bar, text="Move down",
                    command=lambda: self._move(1)).pack(side=tk.LEFT, padx=3)
+        ttk.Button(bar, text="Allow character",
+                   command=self._toggle_allowed).pack(side=tk.LEFT,
+                                                      padx=3)
         ttk.Button(bar, text="Recompute",
                    command=self._reset).pack(side=tk.LEFT, padx=3)
         ttk.Button(bar, text="Cancel",
@@ -108,6 +135,16 @@ class AllocationDialog(tk.Toplevel):
             bits.append(f"{t['spill']} mortal (spilling)")
         return "  |  ".join(bits) or "nothing to allocate"
 
+    def _copies(self) -> list:
+        """The copies as the arithmetic must see them: the character
+        protection is lifted on the rows the player allowed."""
+        out = []
+        for c in self.copies:
+            if c.get("protected") and c["iid"] in self.allowed:
+                c = dict(c, protected=False)
+            out.append(c)
+        return out
+
     def _rows(self) -> list:
         """The proposal with the hand-typed values written over it."""
         rows = []
@@ -119,29 +156,45 @@ class AllocationDialog(tk.Toplevel):
                 st["dead"] = st["after"] <= 0 and st["before"] > 0
                 st["manual"] = True
             rows.append(st)
-        # shown in the order the damage lands, not in table order
+        # Shown in the order the damage really lands, which the chosen
+        # order only sometimes matches (see allocation.landing_order).
         index = {c["iid"]: i for i, c in enumerate(self.copies)}
-        return sorted(rows, key=lambda r: self.order.index(index[r["iid"]]))
+        landing = allocation.landing_order(self.plan, self.order)
+        return sorted(rows, key=lambda r: landing.index(index[r["iid"]]))
 
     def _recompute(self):
-        self.plan = allocation.allocate(self.copies, self.events,
-                                        self.order)
+        copies = self._copies()
+        self.plan = allocation.allocate(copies, self.events, self.order)
         self.hint_lbl.configure(text="\n".join(
             "\u2022 " + h for h in allocation.hints(
-                self.events, self.copies, self.plan)))
+                self.events, copies, self.plan)))
         keep = self.tree.selection()
         self.tree.delete(*self.tree.get_children())
+        base = {c["iid"]: bool(c.get("protected")) for c in self.copies}
+        pick = {self.copies[i]["iid"]: n
+                for n, i in enumerate(self.order, start=1)}
         for r in self._rows():
             tags = ()
             if r.get("manual"):
                 tags = (MANUAL_TAG,)
             elif r["dead"]:
                 tags = (DEAD_TAG,)
+            elif r.get("protected"):
+                tags = (PROTECT_TAG,)
             status = "DESTROYED" if r["dead"] else (
                 "hand-typed" if r.get("manual") else
                 ("wounded" if r["after"] < r["max"] else ""))
-            self.tree.insert("", tk.END, iid=r["iid"], text=r["label"],
-                             values=(f"{r['before']}/{r['max']}",
+            # The marker says both that the row IS a character and
+            # whether its protection is currently lifted: a player who
+            # allowed one two clicks ago must not have to remember.
+            mark = ""
+            if base.get(r["iid"]):
+                mark = ("  [CHARACTER - allowed]" if not r.get("protected")
+                        else "  [CHARACTER]")
+            self.tree.insert("", tk.END, iid=r["iid"],
+                             text=r["label"] + mark,
+                             values=(pick.get(r["iid"], ""),
+                                     f"{r['before']}/{r['max']}",
                                      r["damage"] or "", r["after"], status),
                              tags=tags)
         keep = [i for i in keep if self.tree.exists(i)]
@@ -183,16 +236,35 @@ class AllocationDialog(tk.Toplevel):
         self._recompute()
         self.tree.selection_set(sel[0])
 
+    def _toggle_allowed(self):
+        """Lift (or restore) the CHARACTER protection on the selected
+        row. Does nothing on a row that is not a character: there is
+        nothing to lift, and silently allowing an ordinary model would
+        be a rules change hidden behind a button."""
+        sel = self.tree.selection()
+        if not sel:
+            return
+        iid = sel[0]
+        if not any(c["iid"] == iid and c.get("protected")
+                   for c in self.copies):
+            return
+        self.allowed.symmetric_difference_update({iid})
+        # The hand-typed values belonged to the previous allocation.
+        self.manual = {}
+        self._recompute()
+        self.tree.selection_set(iid)
+
     def _reset(self):
         self.manual = {}
+        self.allowed = set()
         self._recompute()
 
     def _edit_cell(self, event):
         """Double-click on 'Left' types the resulting wounds by hand."""
         iid = self.tree.identify_row(event.y)
-        if not iid or self.tree.identify_column(event.x) != "#3":
+        if not iid or self.tree.identify_column(event.x) != _AFTER_COL:
             return
-        x, y, w, h = self.tree.bbox(iid, "#3")
+        x, y, w, h = self.tree.bbox(iid, _AFTER_COL)
         old = str(self.tree.set(iid, "after"))
         box = tk.Entry(self.tree, width=5)
         box.insert(0, old)

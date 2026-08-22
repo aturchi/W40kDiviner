@@ -15215,6 +15215,50 @@
             "extension": true
            },
            "id": "e69eff5282b34dc4894f54a2f018eefb"
+          },
+          {
+           "name": "Aquilon Optics [damage roll]",
+           "description": "Each time this model is selected to shoot, you can re-roll one Hit roll , you can re-roll one Wound roll and you can re-roll one Damage roll when resolving those attacks.",
+           "enabled": false,
+           "share_with_unit": false,
+           "conditions": [
+            {
+             "text": "Profile role",
+             "type": "profileRole",
+             "data": {
+              "profileRole": "Attacker",
+              "negate": false
+             },
+             "description": "Require the current profile to be set as the attacker or defender.",
+             "preselected": false
+            },
+            {
+             "text": "Attack type",
+             "type": "attackType",
+             "data": {
+              "attackType": "Ranged",
+              "negate": false
+             },
+             "description": "Restrict to just melee attacks or ranged attacks.",
+             "preselected": false
+            }
+           ],
+           "effect": {
+            "text": "Re-roll ONE die per activation",
+            "type": "singleReRoll",
+            "data": {
+             "roll": {
+              "title": "Damage roll",
+              "key": "damage"
+             },
+             "allowance": {
+              "title": "One roll of each kind (hit AND wound)",
+              "key": "eachKind"
+             }
+            },
+            "extension": true
+           },
+           "id": "891bbb0f21de4d5abb41ebd0977dc907"
           }
          ],
          "BS": 3
