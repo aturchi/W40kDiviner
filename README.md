@@ -395,7 +395,7 @@ only means are additive (`src/result_rows.py` owns that distinction).
 - **Audit…** — what the engine *actually* used, in words: the hit and save
   numbers with every modifier that moved them, and an **Abilities in play**
   list. This is where you find the flag left on three analyses ago.
-- **Pin for comparison** / **Compare (n)** — pin several analyses and compare
+- **Add to compare** / **Compare (n)** — pin several analyses and compare
   them column by column, with deltas against the first pin, overlaid survival
   curves and a CSV export. A pin produced under different flags or modifiers is
   flagged `DIFFERENT`. Pins live for the session only.
@@ -651,6 +651,7 @@ W40kDiviner/
 │   ├── dist_view.py         #   histogram / survival-curve canvases
 │   ├── tree_ids.py          #   game assistant table row-id grammar (pure)
 │   ├── rules_config.py      #   session-wide caps, battle-round range
+│   ├── ui_prefs.py          #   session-wide interface preferences (pure)
 │   ├── keywords_config.py   #   keyword vocabulary loader
 │   ├── ability_editor.py    #   structured ability editor
 │   ├── profile_diff.py      #   diff / selective-merge logic (pure; Merge JSON)
