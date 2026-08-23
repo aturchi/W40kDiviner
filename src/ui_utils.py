@@ -6,6 +6,8 @@
 - ScrollableFrame(): a container whose contents scroll vertically when the
   window is too short to show them, with the same auto-hiding scrollbar.
 - wheel_units(): the wheel-notch decoding behind it (X11 / Windows / macOS).
+- Tooltip(): a floating explanation for PART of a widget, chosen from the
+  pointer position (a Treeview column heading is not a widget of its own).
 - attach_yscroll() / attach_xscroll(): the same auto-hiding scrollbars for
   an existing yview/xview widget.
 - wrap_lines(): word-wrap a string to a pixel width using a font's metrics.
@@ -123,9 +125,15 @@ class ScrollableFrame(ttk.Frame):
     it is not drawn at all and the layout is exactly what it was.
 
     Only the height is negotiable: the canvas follows the body's REQUESTED
-    WIDTH, so nothing ever has to be scrolled sideways to be read. A setup
-    column that reflowed horizontally would lose the alignment of every row
-    in it, and the height was the only thing that ever overflowed.
+    WIDTH, so nothing ever has to be scrolled sideways to be read. A page
+    that reflowed horizontally would lose the alignment of every row in it,
+    and the height was the only thing that ever overflowed.
+
+    The body is STRETCHED to the viewport whenever the content is shorter
+    than it, so a child packed with expand=True (a table, a chart) still
+    grows with the window. Scrollable and resizable are therefore not a
+    choice: the page resizes while there is room and scrolls once there is
+    not.
 
     Mouse-wheel support is NOT automatic. Tk delivers a wheel event to the
     widget under the pointer and then to that widget's bind tags - never to
@@ -137,8 +145,9 @@ class ScrollableFrame(ttk.Frame):
     WHEEL_LINES = 3                     # rows scrolled per wheel notch
     _WHEEL_EVENTS = ("<MouseWheel>",    # Windows and macOS
                      "<Button-4>", "<Button-5>")   # X11
-    # Widgets that scroll themselves: the wheel over them is theirs.
-    _SELF_SCROLLING = (tk.Listbox, tk.Text, tk.Canvas, ttk.Treeview)
+    # Widgets that always scroll themselves: the wheel over them is
+    # theirs. A Canvas is judged case by case - see _scrolls_itself.
+    _SELF_SCROLLING = (tk.Listbox, tk.Text, ttk.Treeview)
 
     def __init__(self, parent, height=120, **kw):
         super().__init__(parent, **kw)
@@ -160,6 +169,7 @@ class ScrollableFrame(ttk.Frame):
                                                anchor=tk.NW)
         attach_yscroll(self.canvas, self)
         self._width = 0
+        self._size = (0, 0)     # last size pushed onto the body
         self.body.bind("<Configure>", self._on_body, add="+")
         self.canvas.bind("<Configure>", self._on_canvas, add="+")
         self._bind_one(self.canvas)     # wheel over the empty area below
@@ -167,8 +177,9 @@ class ScrollableFrame(ttk.Frame):
     # ---------- geometry ----------
 
     def _on_body(self, _event=None):
-        """The content changed size: refresh the scroll region and follow
-        the body's requested width."""
+        """The content changed size: give it the room it now asks for and
+        refresh the scroll region."""
+        self._on_canvas()
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
         want = self.body.winfo_reqwidth()
         if want != self._width:
@@ -176,11 +187,27 @@ class ScrollableFrame(ttk.Frame):
             self.canvas.configure(width=want)
 
     def _on_canvas(self, event=None):
-        """Stretch the body to the canvas width, so its children align to
-        the panel instead of to their own natural width."""
+        """Stretch the body to the canvas: the width so its children align
+        to the panel instead of to their own natural width, the height so
+        an expanding child (a chart, a table) still grows with the window.
+
+        Height is max(viewport, requested), which is what lets a page be
+        BOTH scrollable and resizable: while the window is tall enough the
+        body is the viewport and pack's expand=True shares out the slack,
+        and as soon as it is not the body falls back to the height its
+        children asked for and the scrollbar appears.
+
+        The size is only pushed when it actually changed. Setting it
+        unconditionally would be a <Configure> on the body, which comes
+        straight back here through _on_body."""
         width = (event.width if event is not None
                  else self.canvas.winfo_width())
-        self.canvas.itemconfigure(self._item, width=width)
+        height = max(event.height if event is not None
+                     else self.canvas.winfo_height(),
+                     self.body.winfo_reqheight())
+        if (width, height) != self._size:
+            self._size = (width, height)
+            self.canvas.itemconfigure(self._item, width=width, height=height)
 
     # ---------- mouse wheel ----------
 
@@ -188,10 +215,23 @@ class ScrollableFrame(ttk.Frame):
         for seq in self._WHEEL_EVENTS:
             widget.bind(seq, self._on_wheel, add="+")
 
+    @classmethod
+    def _scrolls_itself(cls, widget) -> bool:
+        """Whether the wheel over 'widget' belongs to the widget.
+
+        A Canvas is asked rather than assumed: a nested scrolling area
+        owns its wheel, but a chart drawn on a canvas scrolls nothing and
+        would otherwise be a dead patch in the middle of the page."""
+        if isinstance(widget, cls._SELF_SCROLLING):
+            return True
+        if isinstance(widget, tk.Canvas):
+            return bool(widget.cget("yscrollcommand"))
+        return False
+
     def bind_wheel(self, widget=None):
         """Bind the wheel over the body and everything inside it."""
         widget = self.body if widget is None else widget
-        if not isinstance(widget, self._SELF_SCROLLING):
+        if not self._scrolls_itself(widget):
             self._bind_one(widget)
         for child in widget.winfo_children():
             self.bind_wheel(child)
@@ -209,6 +249,72 @@ class ScrollableFrame(ttk.Frame):
             self.canvas.yview_scroll(wheel_units(event) * self.WHEEL_LINES,
                                      "units")
         return "break"
+
+
+class Tooltip:
+    """A floating explanation for part of a widget.
+
+    'text_for(event) -> str | None' decides, from the pointer position,
+    what should be shown; None means "nothing here". The callback shape
+    is what a Treeview needs: a column heading is not a widget of its
+    own, so the only way to hang help off one is to ask where the
+    pointer is (identify_region / identify_column).
+
+    The tip is built when it is due and destroyed when it is not, rather
+    than kept hidden: one label per widget that lives as long as the
+    window would be one more thing to keep in step with the font scale.
+    """
+
+    DELAY_MS = 450               # long enough not to fire while passing
+    BACKGROUND = "#ffffe0"
+
+    def __init__(self, widget, text_for, wraplength=380):
+        self._widget = widget
+        self._text_for = text_for
+        self._wrap = wraplength
+        self._win = None
+        self._text = None
+        self._job = None
+        widget.bind("<Motion>", self._on_motion, add="+")
+        for seq in ("<Leave>", "<ButtonPress>", "<Destroy>"):
+            widget.bind(seq, self._hide, add="+")
+
+    def _on_motion(self, event):
+        """Only react when the pointer moved onto something DIFFERENT:
+        a Motion event arrives per pixel, and rescheduling on each of
+        them would mean the tip never becomes due."""
+        text = self._text_for(event)
+        if text == self._text:
+            return
+        self._hide()
+        self._text = text
+        if text:
+            x, y = event.x_root, event.y_root
+            self._job = self._widget.after(self.DELAY_MS,
+                                           lambda: self._show(text, x, y))
+
+    def _show(self, text, x, y):
+        self._job = None
+        if self._win is not None or not text:
+            return
+        win = tk.Toplevel(self._widget)
+        win.overrideredirect(True)
+        tk.Label(win, text=text, justify=tk.LEFT, wraplength=self._wrap,
+                 background=self.BACKGROUND, relief=tk.SOLID,
+                 borderwidth=1).pack(ipadx=4, ipady=2)
+        # Below and right of the pointer, so the tip cannot land under it
+        # and bounce the Leave/Enter pair for ever.
+        win.geometry(f"+{x + 14}+{y + 18}")
+        self._win = win
+
+    def _hide(self, _event=None):
+        if self._job is not None:
+            self._widget.after_cancel(self._job)
+            self._job = None
+        if self._win is not None:
+            self._win.destroy()
+            self._win = None
+        self._text = None
 
 
 def multi_select_hint(parent, extra=""):

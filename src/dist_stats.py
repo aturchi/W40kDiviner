@@ -12,7 +12,10 @@ Provided:
   - histogram(): the PMF folded into a bounded number of bars, ready
     to be drawn, with the far upper tail cut off and reported apart
     (a D6-damage weapon can reach values whose probability is 1e-9,
-    and plotting them squashes everything else into the first pixel).
+    and plotting them squashes everything else into the first pixel);
+  - default_xmax(): where that automatic cut falls, so the view can
+    offer the axis length as a control and start it from the same
+    place the drawing would have chosen.
 """
 
 
@@ -64,13 +67,31 @@ def stats(pmf) -> dict:
             "mode": mode, "max": max(0, len(pmf) - 1)}
 
 
-def histogram(pmf, max_bars: int = 40, keep: float = 0.999) -> dict:
+def default_xmax(pmf, keep: float = 0.999) -> int:
+    """The last value a histogram plots when nothing forces the axis:
+    the 'keep' quantile, never past the end of the support.
+
+    Exposed because the view offers the axis length as a control and has
+    to be able to show what the automatic choice was."""
+    if not pmf:
+        return 0
+    return min(len(pmf) - 1, max(1, percentile(pmf, keep)))
+
+
+def histogram(pmf, max_bars: int = 40, keep: float = 0.999,
+              cut=None) -> dict:
     """Fold the PMF into at most 'max_bars' contiguous bars.
 
     Values above the 'keep' quantile are dropped from the bars and
     their total probability reported as 'cut_mass', so a long thin
     tail cannot flatten the body of the distribution. Bars are
     integer ranges [lo, hi] (a single value when width == 1).
+
+    'cut' forces the last value plotted - the length of the X axis -
+    and None asks for the automatic one. Either way the mass above it
+    is reported as 'cut_mass': shortening the axis hides BARS, never
+    probability, and the percentiles beside the chart keep describing
+    the whole distribution.
 
     Returns {'bins': [(lo, hi, p)], 'width': int, 'cut': int|None,
     'cut_mass': float}: 'cut' is the last value shown, None when the
@@ -80,11 +101,9 @@ def histogram(pmf, max_bars: int = 40, keep: float = 0.999) -> dict:
         return {"bins": [(0, 0, 0.0)], "width": 1, "cut": None,
                 "cut_mass": 0.0}
     top = len(pmf) - 1
-    cut = max(1, percentile(pmf, keep))
-    if cut >= top:
-        cut, cut_mass = top, 0.0
-    else:
-        cut_mass = tail_prob(pmf, cut + 1)
+    cut = default_xmax(pmf, keep) if cut is None \
+        else max(0, min(top, int(cut)))
+    cut_mass = tail_prob(pmf, cut + 1)
     n = cut + 1
     width = max(1, -(-n // max(1, max_bars)))      # ceil division
     bins = []

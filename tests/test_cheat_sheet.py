@@ -149,7 +149,8 @@ ref = ac.reference_options(dview)[0][1]
 results = ac.run_analysis(aview, dview, ref, {}, "ranged", None, {})
 rows = list(csv_module.reader(io.StringIO(result_rows.to_csv(results))))
 table = result_rows.table(results)
-assert rows[0] == ["Weapon"] + [h for _k, h, _w in result_rows.COLUMNS]
+assert rows[0] == ["Weapon"] + [h for _k, h, _w in
+                                result_rows.columns(results)]
 assert len(rows) == len(table) + 1, (len(rows), len(table))
 for csv_row, (name, values) in zip(rows[1:], table):
     assert csv_row == [name] + [str(v) for v in values], (csv_row, name)

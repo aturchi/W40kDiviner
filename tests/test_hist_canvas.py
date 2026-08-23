@@ -76,7 +76,7 @@ tk.Frame = tk.Toplevel = _Widget
 tk.StringVar = tk.BooleanVar = _Var
 ttk = types.ModuleType("tkinter.ttk")
 ttk.Frame = ttk.Label = ttk.Button = ttk.Entry = _Widget
-ttk.Radiobutton = ttk.Checkbutton = _Widget
+ttk.Radiobutton = ttk.Checkbutton = ttk.Spinbox = _Widget
 class _Font:
     """Only what the drawing code asks a font for."""
 
@@ -95,8 +95,8 @@ import dist_stats as ds               # noqa: E402
 import dist_view as dv                # noqa: E402
 
 
-def canvas(pmf, threshold=None, cumulative=True, w=700, h=300):
-    c = dv.HistogramCanvas(None, pmf, threshold, cumulative)
+def canvas(pmf, threshold=None, cumulative=True, w=700, h=300, xmax=None):
+    c = dv.HistogramCanvas(None, pmf, threshold, cumulative, xmax)
     c._w, c._h = w, h
     c._draw()
     return c
@@ -163,6 +163,29 @@ frame._which.set("net")
 frame._switch()
 assert frame._entry.get() == "2", "the typed threshold was lost"
 
+# The X-axis length follows the OPPOSITE rule, and on purpose: a
+# threshold is a question worth carrying between series, an axis length
+# is a view of one distribution and means nothing on another.
+assert frame._xmax.get() == str(ds.default_xmax(d6))
+frame._xmax.set("3")
+frame._refresh()
+assert max(hi for _lo, hi, _p in
+           ds.histogram(d6, cut=frame._xmax_value(d6))["bins"]) == 3
+frame._which.set("kills")
+frame._switch()
+assert frame._xmax.get() == str(ds.default_xmax([0.5, 0.5]))
+frame._which.set("net")
+frame._switch()
+assert frame._xmax.get() == str(ds.default_xmax(d6)), \
+    "the axis length must NOT be remembered across a switch"
+# Halfway through typing is not an error, and neither is a value the
+# series cannot reach: both fall back on something drawable.
+frame._xmax.set("")
+assert frame._xmax_value(d6) is None
+frame._xmax.set("999")
+assert frame._xmax_value(d6) == 6
+frame._refresh()
+
 # A non-numeric threshold must not raise, it just switches the readout
 # off (the user is halfway through typing).
 frame._entry.set("")
@@ -200,5 +223,38 @@ ov2 = dv.OverlayCanvas(None, series)
 ov2._w, ov2._h = 50, 20
 ov2._draw()
 assert not ov2.shapes
+
+# ---- nothing is drawn off the top of the canvas -----------------------
+
+# The annotations above the plotting frame ("tail above N", "P(>= v)")
+# hang from its top edge by a BOTTOM anchor, so the band above it must
+# be at least one line of the caption font tall. It was 12 px against a
+# 13 px line and the captions were clipped; at 150% font they would have
+# been clipped by three times as much, so the band follows the font.
+LINE = 13                             # what the stub font reports
+for _kind, _coords, _kw in canvas(d6, xmax=3).shapes:
+    if _kind != "text":
+        continue
+    top = _coords[1] - (LINE if str(_kw.get("anchor", "")).startswith("s")
+                        else LINE / 2)
+    assert top >= 0, (_kw.get("text"), _coords, _kw.get("anchor"))
+
+
+# ---- a forced X axis --------------------------------------------------
+
+# Shortening the axis drops BARS and says so; it must never change the
+# distribution, which the percentiles beside the chart still describe.
+short = canvas(d6, xmax=3)
+labels = [s[2]["text"] for s in short.shapes if s[0] == "text"]
+assert not any(lab in ("4", "5", "6") for lab in labels), labels
+assert any(str(lab).startswith("tail above 3") for lab in labels), labels
+# The bars that remain are redrawn wider, not left in place: the axis is
+# rescaled, so the last one still ends at the right edge of the frame.
+bars = [s for s in short.shapes if s[0] == "rect"]
+assert abs(bars[-1][1][2] - (700 - dv._PAD_R)) < 2, bars[-1][1]
+# Asking for more than the support is clamped, not honoured, and draws
+# exactly what the automatic axis would have.
+assert len([s for s in canvas(d6, xmax=999).shapes if s[0] == "rect"]) == \
+    len([s for s in canvas(d6).shapes if s[0] == "rect"])
 
 print("histogram canvas: OK (%d shapes)" % len(canvas(d6).shapes))

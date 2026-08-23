@@ -17,6 +17,7 @@ from ui_utils import scrollable_listbox
 import attack_math
 import modifier_engine
 import rules_config
+import ui_prefs
 import mod_presets
 
 def _multi_select(parent, title, prompt, items, selected=(),
@@ -629,13 +630,15 @@ FONT_SCALE_CHOICES = ("80", "90", "100", "125", "150", "175", "200")
 FONT_SCALE_MIN, FONT_SCALE_MAX = 50, 300
 
 
-def show_options_dialog(parent, caps=True):
-    """Global options: the font scale (accessibility) and, where the
-    program actually computes attacks, the session-wide modifier caps.
+def show_options_dialog(parent, caps=True, charts=False):
+    """Global options: the font scale (accessibility), the session-wide
+    modifier caps where the program actually computes attacks, and the
+    chart placement where it draws any.
 
     'caps' is False in the profile editor. rules_config is process-wide
     state read by the attack maths, and the editor never runs any: a cap
-    set there would be a control that silently does nothing."""
+    set there would be a control that silently does nothing. 'charts' is
+    True in the analyzer alone, for the same reason."""
     win = tk.Toplevel(parent)
     win.title("Options")
     win.transient(parent)
@@ -649,6 +652,19 @@ def show_options_dialog(parent, caps=True):
                  values=list(FONT_SCALE_CHOICES)).grid(
         row=row, column=1, padx=6, pady=(6, 2))
     row += 1
+
+    embed = tk.BooleanVar(value=ui_prefs.EMBED_DISTRIBUTION)
+    if charts:
+        ttk.Checkbutton(
+            win, variable=embed,
+            text="Show the combined distribution in the result "
+                 "window").grid(row=row, column=0, columnspan=2,
+                                sticky=tk.W, padx=6, pady=2)
+        row += 1
+        ttk.Label(win, foreground=ui.HINT_COLOR, wraplength=320,
+                  text="Off: double-click the TOTAL row for it.").grid(
+            row=row, column=0, columnspan=2, sticky=tk.W, padx=6)
+        row += 1
 
     entries = {}
     if caps:
@@ -687,6 +703,8 @@ def show_options_dialog(parent, caps=True):
                 messagebox.showerror("Options", f"Invalid caps: {exc}")
                 return
             rules_config.set_caps(roll=vals[0], rerolls=vals[1])
+        if charts:
+            ui_prefs.set_prefs(embed_distribution=embed.get())
         try:
             scale = max(FONT_SCALE_MIN,
                         min(FONT_SCALE_MAX, int(font_var.get()))) / 100.0

@@ -39,6 +39,7 @@ import analyzer_core          # noqa: E402
 import leader_core as lc      # noqa: E402
 import inspect_dialog         # noqa: E402
 import dist_stats             # noqa: E402
+import ui_prefs               # noqa: E402
 import dist_view              # noqa: E402
 import result_rows            # noqa: E402
 import comparison             # noqa: E402
@@ -47,6 +48,7 @@ import session_io             # noqa: E402
 from unit_model import units_from_native  # noqa: E402
 from setup_panel import SetupPanel, show_options_dialog  # noqa: E402
 from search_widget import attach_search    # noqa: E402
+import ui_utils as ui          # noqa: E402
 from ui_utils import (scrollable_listbox, multi_select_hint,  # noqa: E402
                       save_text)
 from army_load_dialog import ArmyLoadDialog  # noqa: E402
@@ -91,7 +93,8 @@ class AnalyzerApp(tk.Tk):
                                       command=self.cmd_compare)
         self.compare_btn.pack(side=tk.LEFT, padx=3)
         ttk.Button(bar, text="Options",
-                   command=lambda: show_options_dialog(self)).pack(
+                   command=lambda: show_options_dialog(self,
+                                                       charts=True)).pack(
             side=tk.LEFT, padx=3)
         self.status = ttk.Label(bar, text="No file loaded")
         self.status.pack(side=tk.LEFT, padx=10)
@@ -583,7 +586,11 @@ class AnalyzerApp(tk.Tk):
         tab per profile."""
         win = tk.Toplevel(self)
         win.title(f"{att.name}  vs  {defender.name}")
-        win.geometry("980x520")
+        # A page without the inline chart is half the height, and a
+        # window sized for a chart that is not there would open mostly
+        # empty on a small screen.
+        win.geometry("1000x820" if ui_prefs.EMBED_DISTRIBUTION
+                     else "1000x560")
         heading = f"{att.name} vs {defender.name}"
         if len(entries) == 1:
             label, ref, results = entries[0]
@@ -609,9 +616,20 @@ class AnalyzerApp(tk.Tk):
 
     def _result_page(self, parent, label, ref, results, heading="",
                      context=""):
-        """Per-weapon table for one defensive profile, closed by a
-        totals row. The rows themselves are built by result_rows, which
-        knows what may be summed and what may not."""
+        """Per-weapon table for one defensive profile, closed by a totals
+        row and by the distribution of the whole unit's output. The rows
+        themselves are built by result_rows, which knows what may be
+        summed and what may not.
+
+        The combined chart is inline only when ui_prefs asks for it; by
+        default it is one double-click on the TOTAL row, the same gesture
+        as a weapon's own chart. Either way the page scrolls: with the
+        chart in it the content is taller than a 768-line screen, and
+        while the window is tall enough the table and the chart share the
+        slack (both expand)."""
+        scroll = ui.ScrollableFrame(parent)
+        scroll.pack(fill=tk.BOTH, expand=True)
+        parent = scroll.body
         t = results["totals"]
         unit_w = max(1, int(ref.get("W") or 1) * int(ref.get("models") or 1))
         ttk.Label(parent, text=f"Defender profile: {label}  |  values are "
@@ -621,61 +639,101 @@ class AnalyzerApp(tk.Tk):
                   text="Effective = attacks that dealt damage (past the "
                        "save/invuln and FNP), not wound rolls.  Inflicted "
                        "= wounds actually taken off the unit, waste "
-                       "deducted.  On a weapon row Inflicted and Kills "
-                       "are that weapon ALONE against a full-strength "
-                       "unit, so they do not add up to the totals, which "
-                       "chain the weapons into the same unit.  Double-"
-                       "click a weapon for its distribution."
+                       "deducted.  Double-click a weapon for its own "
+                       "distribution, or the TOTAL row for the whole unit "
+                       "combined."
                   ).pack(anchor=tk.W, padx=6, pady=(0, 4))
 
-        tree = ttk.Treeview(parent, columns=result_rows.KEYS,
+        # Which columns exist depends on the analysis (Self-dmg only
+        # shows up when a HAZARDOUS weapon is in the list), so the key
+        # list is read once here and every row is projected onto it.
+        cols = result_rows.keys(results)
+        tree = ttk.Treeview(parent, columns=cols,
                             show="tree headings", height=11)
         tree.heading("#0", text="Weapon")
         tree.column("#0", width=230)
-        for key, head, width in result_rows.COLUMNS:
+        for key, head, width in result_rows.columns(results):
             tree.heading(key, text=head)
             tree.column(key, width=width, anchor=tk.E)
+        # Help on every heading: which column is additive and whether a
+        # weapon row means the same thing as the totals row is exactly
+        # where this table gets misread.
+        ui.Tooltip(tree, lambda e: self._heading_help(tree, e, cols))
         pmfs = {}                      # tree row -> that weapon's result
         for r in results["weapons"]:
             iid = tree.insert("", tk.END, text=r["name"],
-                              values=result_rows.weapon_row(r))
+                              values=result_rows.weapon_row(r, cols))
             pmfs[iid] = r
         # Weapons excluded by the attack setup (indirect fire) are shown
         # greyed out with the reason instead of disappearing.
         tree.tag_configure("skipped", foreground="#888888")
         for r in results.get("skipped", []):
             tree.insert("", tk.END, text=r["name"], tags=("skipped",),
-                        values=result_rows.skipped_row(r))
+                        values=result_rows.skipped_row(r, cols))
         base = tkfont.nametofont("TkDefaultFont")
         tree.tag_configure("totals", background="#eef2f7",
                            font=(base.cget("family"), base.cget("size"),
                                  "bold"))
-        tree.insert("", tk.END, tags=("totals",),
-                    text=result_rows.totals_label(results),
-                    values=result_rows.totals_row(results))
+        totals_iid = tree.insert("", tk.END, tags=("totals",),
+                                 text=result_rows.totals_label(results),
+                                 values=result_rows.totals_row(results,
+                                                               cols))
         tree.pack(fill=tk.BOTH, expand=True, padx=6)
 
         note = (f"Target: {ref.get('models')} model(s) x W{ref.get('W')} "
                 f"= {unit_w} wounds on this profile. Models killed assume "
-                f"standard allocation (one model at a time, spilling "
-                f"mortal wounds spent last): no precision, no visibility "
-                f"rules, no opponent's choices.")
-        self._totals_block(parent, t, unit_w, heading, label, note,
-                           results, context)
+                f"standard allocation.")
+        series = self._totals_block(parent, t, unit_w, heading, label,
+                                    results, context)
+        # Every double-clickable row, weapons and the TOTAL alike: one
+        # gesture, one table, so a row either has a chart or it has not
+        # (a skipped weapon carries no PMF and is simply absent).
+        dists = {iid: (f"{heading} - {r['name']}",
+                       dist_view.result_series(
+                           r.get("removed_pmf") or r["damage_net_pmf"],
+                           r["damage_pmf"], r.get("kills_pmf"), unit_w,
+                           ref.get("models")),
+                       f"{label}\n{note}\nThis weapon alone, against a "
+                       f"target unit at full strength.")
+                 for iid, r in pmfs.items()}
+        dists[totals_iid] = (f"{heading} - all weapons", series,
+                             f"{label}\n{note}\nEvery unmasked weapon is "
+                             f"summed here.")
         tree.bind("<Double-1>",
-                  lambda e: self._open_weapon_dist(e, tree, pmfs, unit_w,
-                                                   ref, heading, label,
-                                                   note))
+                  lambda e: self._open_row_dist(e, tree, dists))
         if results["warnings"]:
             ttk.Label(parent, foreground="#a40",
                       text="Not modelled: "
                            + "; ".join(results["warnings"])[:300],
                       wraplength=940).pack(anchor=tk.W, padx=6, pady=2)
+        if ui_prefs.EMBED_DISTRIBUTION:
+            self._embed_distribution(parent, series, note)
+        # Last: the wheel is bound per widget, so every child must exist.
+        scroll.bind_wheel()
 
-    def _totals_block(self, parent, t, unit_w, heading, label, note,
+    @staticmethod
+    def _embed_distribution(parent, series, note):
+        """The combined chart in the page instead of behind a gesture.
+        Same widget as the double-click window, so the two readings
+        cannot drift apart."""
+        head = ttk.Frame(parent)
+        head.pack(fill=tk.X, padx=6, pady=(6, 0))
+        ttk.Label(head, text="All weapons combined",
+                  font=("TkDefaultFont", 10, "bold")).pack(side=tk.LEFT)
+        ttk.Label(head, foreground="#666666",
+                  text="  - every unmasked weapon is summed here, "
+                       "mutually exclusive profiles included: mask the "
+                       "ones you are not firing").pack(side=tk.LEFT)
+        dist_view.DistributionFrame(parent, series, note=note,
+                                    note_wrap=940).pack(
+            fill=tk.BOTH, expand=True, padx=6, pady=(0, 6))
+
+    def _totals_block(self, parent, t, unit_w, heading, label,
                       results=None, context=""):
         """What the totals row cannot hold: the spread of the wounds
-        inflicted, the odds of wiping the unit out, and the way in."""
+        inflicted, the odds of wiping the unit out, and the way in.
+        Returns the series of the whole unit's output, which the caller
+        charts underneath."""
         eff = t.get("removed_pmf") or t["damage_net_pmf"]
         st = dist_stats.stats(eff)
         row = ttk.Frame(parent)
@@ -686,13 +744,6 @@ class AnalyzerApp(tk.Tk):
             f"P(>= {unit_w}, the whole unit) = "
             f"{dist_stats.tail_prob(eff, unit_w) * 100:.1f}%")).pack(
             side=tk.LEFT)
-        series = dist_view.result_series(eff, t["damage_pmf"],
-                                         t.get("kills_pmf"), unit_w,
-                                         t.get("models"))
-        ttk.Button(row, text="Distribution...",
-                   command=lambda: dist_view.open_distribution(
-                       self, f"{heading} - all weapons", series,
-                       note=f"{label}\n{note}")).pack(side=tk.RIGHT)
         if results is not None:
             ttk.Button(row, text="Export CSV...",
                        command=lambda: self._export_table(
@@ -702,7 +753,7 @@ class AnalyzerApp(tk.Tk):
                        command=lambda: self._open_audit(
                            f"{heading} - {label}", results)).pack(
                 side=tk.RIGHT, padx=6)
-            pin_btn = ttk.Button(row, text="Pin for comparison")
+            pin_btn = ttk.Button(row, text="Add to compare")
             pin_btn.configure(command=lambda: self._pin(
                 f"{heading} [{label.split('(')[0].strip()}]", results,
                 context, pin_btn))
@@ -715,6 +766,29 @@ class AnalyzerApp(tk.Tk):
                 font=("TkDefaultFont", 10, "bold")).pack(anchor=tk.W,
                                                          padx=6, pady=2)
             self._order_hint(parent, t)
+        return dist_view.result_series(eff, t["damage_pmf"],
+                                       t.get("kills_pmf"), unit_w,
+                                       t.get("models"))
+
+    @staticmethod
+    def _heading_help(tree, event, cols):
+        """The help text for the column heading under the pointer, or
+        None anywhere else - over the rows the numbers speak for
+        themselves. identify_column() numbers the value columns from
+        '#1' and calls the tree column '#0', which is the weapon name
+        and has its own note."""
+        if tree.identify_region(event.x, event.y) != "heading":
+            return None
+        column = tree.identify_column(event.x)
+        try:
+            index = int(column[1:]) - 1
+        except ValueError:
+            return None
+        if index == -1:
+            return result_rows.NAME_HELP
+        if not 0 <= index < len(cols):
+            return None
+        return result_rows.COLUMN_HELP.get(cols[index])
 
     @staticmethod
     def _order_hint(parent, t):
@@ -789,7 +863,7 @@ class AnalyzerApp(tk.Tk):
         self.pins.append(comparison.make_pin(name, results, context))
         self._refresh_compare_btn()
         if button is not None:
-            button.configure(text=f"Pinned (#{len(self.pins)})",
+            button.configure(text=f"Added (#{len(self.pins)})",
                              state=tk.DISABLED)
 
     def _refresh_compare_btn(self):
@@ -801,7 +875,7 @@ class AnalyzerApp(tk.Tk):
             messagebox.showinfo(
                 "Compare",
                 "Pin at least two result pages first: run an analysis and "
-                "use 'Pin for comparison' at the bottom of the result "
+                "use 'Add to compare' at the bottom of the result "
                 "window.")
             return
         ComparisonWindow(self, self.pins, self._clear_pins)
@@ -810,22 +884,17 @@ class AnalyzerApp(tk.Tk):
         self.pins = []
         self._refresh_compare_btn()
 
-    def _open_weapon_dist(self, event, tree, pmfs, unit_w, ref, heading,
-                          label, note):
-        """Distribution window for the double-clicked weapon row. The row
-        is read from the click itself, so a double-click on the header or
-        on empty space does nothing; skipped weapons carry no PMF and are
-        ignored the same way."""
-        r = pmfs.get(tree.identify_row(event.y))
-        if not r:
+    def _open_row_dist(self, event, tree, dists):
+        """Distribution window for the double-clicked row, weapon or
+        TOTAL. The row is read from the click itself, so a double-click
+        on the header or on empty space does nothing; a skipped weapon
+        carries no PMF, is not in the table, and is ignored the same
+        way."""
+        entry = dists.get(tree.identify_row(event.y))
+        if entry is None:
             return
-        series = dist_view.result_series(
-            r.get("removed_pmf") or r["damage_net_pmf"], r["damage_pmf"],
-            r.get("kills_pmf"), unit_w, ref.get("models"))
-        dist_view.open_distribution(
-            self, f"{heading} - {r['name']}", series,
-            note=f"{label}\n{note}\nThis weapon alone, against a target "
-                 f"unit at full strength.")
+        title, series, note = entry
+        dist_view.open_distribution(self, title, series, note=note)
 
 
 class ComparisonWindow(tk.Toplevel):

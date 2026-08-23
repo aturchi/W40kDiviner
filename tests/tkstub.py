@@ -46,6 +46,8 @@ VERTICAL, HORIZONTAL = "vertical", "horizontal"
 EXTENDED, BROWSE, SINGLE = "extended", "browse", "single"
 NORMAL, DISABLED, ACTIVE = "normal", "disabled", "active"
 WORD, CHAR = "word", "char"
+FLAT, RAISED, SUNKEN, GROOVE, RIDGE, SOLID = (
+    "flat", "raised", "sunken", "groove", "ridge", "solid")
 INSERT, ANCHOR, SEL_FIRST, SEL_LAST = "insert", "anchor", "sel.first", "sel.last"
 TclError = type("TclError", (Exception,), {})
 
@@ -233,6 +235,18 @@ class Tk(Misc):
         pass
 
     maxsize = resizable = minsize
+
+    def overrideredirect(self, *a):
+        """Undecorated window (tooltips). No-op here: the stub has no
+        window manager to tell."""
+
+    def attributes(self, *a):
+        pass
+
+    wm_overrideredirect = overrideredirect
+    wm_attributes = attributes
+    wm_geometry = geometry
+    wm_title = title
 
     def protocol(self, *a):
         pass
