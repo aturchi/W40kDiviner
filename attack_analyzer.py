@@ -45,7 +45,7 @@ import comparison             # noqa: E402
 import audit                  # noqa: E402
 import session_io             # noqa: E402
 from unit_model import units_from_native  # noqa: E402
-from setup_panel import SetupPanel, show_options_dialog, show_font_dialog  # noqa: E402
+from setup_panel import SetupPanel, show_options_dialog  # noqa: E402
 from search_widget import attach_search    # noqa: E402
 from ui_utils import (scrollable_listbox, multi_select_hint,  # noqa: E402
                       save_text)
@@ -92,9 +92,6 @@ class AnalyzerApp(tk.Tk):
         self.compare_btn.pack(side=tk.LEFT, padx=3)
         ttk.Button(bar, text="Options",
                    command=lambda: show_options_dialog(self)).pack(
-            side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Font size",
-                   command=lambda: show_font_dialog(self)).pack(
             side=tk.LEFT, padx=3)
         self.status = ttk.Label(bar, text="No file loaded")
         self.status.pack(side=tk.LEFT, padx=10)

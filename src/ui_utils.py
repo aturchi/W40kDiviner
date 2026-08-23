@@ -3,6 +3,9 @@
 - scrollable_listbox(): a Listbox packed next to auto-hiding scrollbars
   (vertical always, horizontal on request) that appear only when the
   content overflows.
+- ScrollableFrame(): a container whose contents scroll vertically when the
+  window is too short to show them, with the same auto-hiding scrollbar.
+- wheel_units(): the wheel-notch decoding behind it (X11 / Windows / macOS).
 - attach_yscroll() / attach_xscroll(): the same auto-hiding scrollbars for
   an existing yview/xview widget.
 - wrap_lines(): word-wrap a string to a pixel width using a font's metrics.
@@ -86,6 +89,126 @@ def scrollable_listbox(parent, *, xscroll=True, **listbox_kwargs):
     if xscroll:
         attach_xscroll(lb, frame)
     return frame, lb
+
+
+def wheel_units(event) -> int:
+    """Wheel notches as a scroll direction: +1 per notch DOWN, -1 per notch
+    UP, 0 when the event carries no movement.
+
+    Tk reports a wheel in three different ways and every one of them has to
+    be handled here: X11 sends Button-4 (up) and Button-5 (down) with no
+    delta at all, Windows sends <MouseWheel> with a delta in multiples of
+    120, and macOS sends <MouseWheel> with a small delta (often 1). The
+    sign is inverted on the way out because a wheel turned UP scrolls the
+    view towards the TOP, which is a NEGATIVE yview_scroll."""
+    num = getattr(event, "num", 0)
+    if num == 4:
+        return -1
+    if num == 5:
+        return +1
+    delta = getattr(event, "delta", 0) or 0
+    if not delta:
+        return 0
+    notches = int(delta / 120) if abs(delta) >= 120 else (1 if delta > 0
+                                                          else -1)
+    return -notches
+
+
+class ScrollableFrame(ttk.Frame):
+    """A container whose contents scroll VERTICALLY when they do not fit.
+
+    Pack or grid the ScrollableFrame where a plain Frame would have gone
+    and put the children into '.body'. The scrollbar is the auto-hiding one
+    used everywhere else, so on a screen tall enough for the whole content
+    it is not drawn at all and the layout is exactly what it was.
+
+    Only the height is negotiable: the canvas follows the body's REQUESTED
+    WIDTH, so nothing ever has to be scrolled sideways to be read. A setup
+    column that reflowed horizontally would lose the alignment of every row
+    in it, and the height was the only thing that ever overflowed.
+
+    Mouse-wheel support is NOT automatic. Tk delivers a wheel event to the
+    widget under the pointer and then to that widget's bind tags - never to
+    its parent - so a wheel over a checkbutton inside the body would not
+    reach the canvas. Call bind_wheel() once, after the body has been
+    populated; a widget created later needs its own call.
+    """
+
+    WHEEL_LINES = 3                     # rows scrolled per wheel notch
+    _WHEEL_EVENTS = ("<MouseWheel>",    # Windows and macOS
+                     "<Button-4>", "<Button-5>")   # X11
+    # Widgets that scroll themselves: the wheel over them is theirs.
+    _SELF_SCROLLING = (tk.Listbox, tk.Text, tk.Canvas, ttk.Treeview)
+
+    def __init__(self, parent, height=120, **kw):
+        super().__init__(parent, **kw)
+        # A deliberately small requested height: the canvas is stretched by
+        # its geometry manager anyway (the hosts pack the panel with
+        # fill=Y), while asking for the full content height would push the
+        # toplevel's requested size back up to the very size this class
+        # exists to stop requiring on a short screen.
+        self.canvas = tk.Canvas(self, height=height, borderwidth=0,
+                                highlightthickness=0)
+        # A tk.Canvas does not follow the ttk theme, so the strip left
+        # below shorter-than-the-window content would be a differently
+        # coloured band. Copy the themed frame background onto it.
+        background = ttk.Style(self).lookup("TFrame", "background")
+        if background:
+            self.canvas.configure(background=background)
+        self.body = ttk.Frame(self.canvas)
+        self._item = self.canvas.create_window((0, 0), window=self.body,
+                                               anchor=tk.NW)
+        attach_yscroll(self.canvas, self)
+        self._width = 0
+        self.body.bind("<Configure>", self._on_body, add="+")
+        self.canvas.bind("<Configure>", self._on_canvas, add="+")
+        self._bind_one(self.canvas)     # wheel over the empty area below
+
+    # ---------- geometry ----------
+
+    def _on_body(self, _event=None):
+        """The content changed size: refresh the scroll region and follow
+        the body's requested width."""
+        self.canvas.configure(scrollregion=self.canvas.bbox("all"))
+        want = self.body.winfo_reqwidth()
+        if want != self._width:
+            self._width = want
+            self.canvas.configure(width=want)
+
+    def _on_canvas(self, event=None):
+        """Stretch the body to the canvas width, so its children align to
+        the panel instead of to their own natural width."""
+        width = (event.width if event is not None
+                 else self.canvas.winfo_width())
+        self.canvas.itemconfigure(self._item, width=width)
+
+    # ---------- mouse wheel ----------
+
+    def _bind_one(self, widget):
+        for seq in self._WHEEL_EVENTS:
+            widget.bind(seq, self._on_wheel, add="+")
+
+    def bind_wheel(self, widget=None):
+        """Bind the wheel over the body and everything inside it."""
+        widget = self.body if widget is None else widget
+        if not isinstance(widget, self._SELF_SCROLLING):
+            self._bind_one(widget)
+        for child in widget.winfo_children():
+            self.bind_wheel(child)
+
+    def _on_wheel(self, event):
+        """Scroll the panel, and stop there.
+
+        'break' is returned even when there is nothing to scroll: a ttk
+        Spinbox has a wheel binding of its own that CHANGES ITS VALUE, and
+        silently editing the battle round because the pointer happened to
+        be over that box would be a worse bug than a wheel that does
+        nothing."""
+        lo, hi = self.canvas.yview()
+        if float(lo) > 0.0 or float(hi) < 1.0:
+            self.canvas.yview_scroll(wheel_units(event) * self.WHEEL_LINES,
+                                     "units")
+        return "break"
 
 
 def multi_select_hint(parent, extra=""):

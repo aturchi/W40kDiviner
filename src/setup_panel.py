@@ -1,7 +1,12 @@
 """Shared Tk setup panel: attack mode, context flags, manual modifiers
 (rolls, re-rolls, characteristics) and the global-options dialog. Used
 by both the attack analyzer (program 2) and the game assistant
-(program 1) so the context semantics stay identical."""
+(program 1) so the context semantics stay identical.
+
+show_options_dialog() carries the font scale as well as the modifier
+caps: two toolbar buttons for what is one "settings" idea was one button
+too many, and the profile editor - which has no caps to set - opens the
+same dialog with caps=False."""
 
 import tkinter as tk
 import tkinter.font as tkfont
@@ -154,11 +159,26 @@ def mod_hint(kind, key) -> str:
 
 class SetupPanel(ttk.LabelFrame):
     """Attack-setup column. on_mode_change is called when the attack
-    mode radio changes (the host refreshes the melee weapon choices)."""
+    mode radio changes (the host refreshes the melee weapon choices).
+
+    The controls do not live in the LabelFrame itself but in '.body', a
+    ui_utils.ScrollableFrame content area, so the column stays usable on a
+    screen too short to show all of it. Anything added to the panel later
+    must go into 'self.body' and be passed to 'self._scroll.bind_wheel()',
+    or it will be built outside the scrolling region."""
 
     def __init__(self, parent, on_mode_change=None):
         super().__init__(parent, text="Attack setup")
         self._on_mode_change = on_mode_change or (lambda: None)
+        # The column is taller than a 768-line screen once every flag,
+        # the modifier list and the presets are in it, and a LabelFrame
+        # simply clips whatever does not fit - the bottom rows were
+        # unreachable, not just unreadable. Everything therefore goes
+        # into a scrolling body; the scrollbar hides itself on a screen
+        # tall enough, so nothing changes there.
+        self._scroll = ui.ScrollableFrame(self)
+        self._scroll.pack(fill=tk.BOTH, expand=True)
+        body = self.body = self._scroll.body
         self.mode = tk.StringVar(value="ranged")
         for val, lab in [("ranged", "Ranged"),
                          # Close-quarters shooting (11th ed.): firing at
@@ -169,19 +189,19 @@ class SetupPanel(ttk.LabelFrame):
                          # separate pistol mode any more.
                          ("close_quarters", "Close quarters"),
                          ("melee", "Melee")]:
-            ttk.Radiobutton(self, text=lab, value=val, variable=self.mode,
+            ttk.Radiobutton(body, text=lab, value=val, variable=self.mode,
                             command=self._on_mode_change).pack(
                 anchor=tk.W, padx=4)
-        ttk.Label(self, text="Melee weapon:").pack(anchor=tk.W, padx=4)
-        self.melee_combo = ttk.Combobox(self, state="disabled", width=28)
+        ttk.Label(body, text="Melee weapon:").pack(anchor=tk.W, padx=4)
+        self.melee_combo = ttk.Combobox(body, state="disabled", width=28)
         self.melee_combo.pack(padx=4, pady=2)
 
-        ttk.Separator(self).pack(fill=tk.X, pady=4)
+        ttk.Separator(body).pack(fill=tk.X, pady=4)
         self.flag_vars = {}
         self._flag_checks = {}       # key -> Checkbutton (for enabling)
         for key, label in FLAGS:
             var = tk.BooleanVar(value=False)
-            cb = ttk.Checkbutton(self, text=label, variable=var)
+            cb = ttk.Checkbutton(body, text=label, variable=var)
             cb.pack(anchor=tk.W, padx=4)
             self.flag_vars[key] = var
             self._flag_checks[key] = cb
@@ -193,7 +213,7 @@ class SetupPanel(ttk.LabelFrame):
 
         # Overwatch: a tick plus the unmodified roll it needs. The field
         # is only meaningful while the tick is on, so it follows it.
-        row = ttk.Frame(self)
+        row = ttk.Frame(body)
         row.pack(anchor=tk.W, padx=4)
         self.flag_vars["overwatch"] = tk.BooleanVar()
         ttk.Checkbutton(row, text="Overwatch: hits on",
@@ -216,7 +236,7 @@ class SetupPanel(ttk.LabelFrame):
         # starts at 1 rather than at "unset". It exists for the
         # battleRound ability condition and for nothing else: none of
         # the maths reads it.
-        row = ttk.Frame(self)
+        row = ttk.Frame(body)
         row.pack(anchor=tk.W, padx=4)
         ttk.Label(row, text="Battle round:").pack(side=tk.LEFT)
         lo, hi = rules_config.BATTLE_ROUND_RANGE
@@ -226,15 +246,15 @@ class SetupPanel(ttk.LabelFrame):
                     textvariable=self.battle_round).pack(side=tk.LEFT,
                                                          padx=3)
 
-        ttk.Separator(self).pack(fill=tk.X, pady=4)
+        ttk.Separator(body).pack(fill=tk.X, pady=4)
         # Manual modifiers: only the HIT and WOUND roll modifiers are
         # capped (CAP_ROLL_MOD) in the attack maths - save, invuln and
         # FNP modifiers apply in full. Characteristic modifiers join the
         # ability deltas inside the combat views and are uncapped, bound
         # only by the absolute limits (BS/WS 2+..6+, Sv 2+, AP <= 0);
         # re-rolls are limited by CAP_REROLLS ('fails' supersedes '1s').
-        ttk.Label(self, text="Manual modifiers:").pack(anchor=tk.W, padx=4)
-        mrow = ttk.Frame(self)
+        ttk.Label(body, text="Manual modifiers:").pack(anchor=tk.W, padx=4)
+        mrow = ttk.Frame(body)
         mrow.pack(anchor=tk.W, padx=4)
         self.mod_target = ttk.Combobox(
             mrow, state="readonly", width=20,
@@ -245,7 +265,7 @@ class SetupPanel(ttk.LabelFrame):
         self.mod_value.grid(row=0, column=1, padx=3)
         ttk.Button(mrow, text="Add", width=5,
                    command=self.cmd_add_mod).grid(row=0, column=2)
-        self.mod_hint_label = ttk.Label(self, text="",
+        self.mod_hint_label = ttk.Label(body, text="",
                                         foreground=ui.HINT_COLOR)
         self.mod_hint_label.pack(anchor=tk.W, padx=4)
         self.mod_target.bind("<<ComboboxSelected>>",
@@ -253,14 +273,14 @@ class SetupPanel(ttk.LabelFrame):
         self._sync_mod_value()      # fills the value field and the hint
         self.mods = []               # [(label, kind, key, value)]
         mod_frame, self.mod_list = scrollable_listbox(
-            self, height=5, exportselection=False)
+            body, height=5, exportselection=False)
         mod_frame.pack(fill=tk.X, padx=4, pady=2)
-        ttk.Button(self, text="Remove",
+        ttk.Button(body, text="Remove",
                    command=self.cmd_remove_mod).pack(anchor=tk.W, padx=4)
 
         # Named bundles of the modifiers above, saved with the session.
         self.presets = mod_presets.PresetStore()
-        prow = ttk.Frame(self)
+        prow = ttk.Frame(body)
         prow.pack(fill=tk.X, padx=4, pady=(4, 0))
         ttk.Label(prow, text="Preset:").pack(side=tk.LEFT)
         self.preset_box = ttk.Combobox(prow, state="readonly", width=18,
@@ -272,29 +292,32 @@ class SetupPanel(ttk.LabelFrame):
                    command=self.cmd_save_preset).pack(side=tk.LEFT, padx=3)
         ttk.Button(prow, text="Delete", width=7,
                    command=self.cmd_delete_preset).pack(side=tk.LEFT)
-        self.preset_hint = ttk.Label(self, text="", foreground=ui.HINT_COLOR)
+        self.preset_hint = ttk.Label(body, text="", foreground=ui.HINT_COLOR)
         self.preset_hint.pack(anchor=tk.W, padx=4)
         self.preset_box.bind("<<ComboboxSelected>>",
                              lambda _e: self._sync_preset_hint())
 
-        ttk.Separator(self).pack(fill=tk.X, pady=4)
+        ttk.Separator(body).pack(fill=tk.X, pady=4)
         # Ability selection: which of the attacker's optional abilities
         # are used, and which extra ones every attack gets.
         self.disabled_abilities = []      # switched off for this attack
         self.extra_abilities = []         # added to EVERY attack
         self.optimise_abilities = tk.BooleanVar(value=True)
-        arow = ttk.Frame(self)
+        arow = ttk.Frame(body)
         arow.pack(anchor=tk.W, padx=4, pady=2)
         ttk.Button(arow, text="Attack abilities...",
                    command=self.cmd_pick_abilities).pack(side=tk.LEFT)
         ttk.Button(arow, text="Extra abilities...",
                    command=self.cmd_pick_extra).pack(side=tk.LEFT, padx=4)
-        self.ability_label = ttk.Label(self, text="all abilities used",
+        self.ability_label = ttk.Label(body, text="all abilities used",
                                        foreground=ui.HINT_COLOR)
         self.ability_label.pack(anchor=tk.W, padx=4)
         # Fills the preset combo and its hint ("no preset saved" until
         # the first one is stored).
         self._refresh_presets()
+        # Last, once every child exists: the wheel has to be bound on the
+        # widgets themselves, not on the container (see ScrollableFrame).
+        self._scroll.bind_wheel()
 
     # ---------- manual modifiers ----------
 
@@ -598,65 +621,80 @@ def apply_font_scale(root, scale: float):
         pass
 
 
-def show_font_dialog(parent):
-    """Small accessibility dialog to pick a global font size (percentage
-    of the default). Applies to the whole application window."""
+# Offered percentages, and the range a hand-set value is clamped to.
+# The list is the control; the bounds exist because the value used to be
+# typed and are kept as the guard on a value that reaches apply_font_scale
+# from anywhere else.
+FONT_SCALE_CHOICES = ("80", "90", "100", "125", "150", "175", "200")
+FONT_SCALE_MIN, FONT_SCALE_MAX = 50, 300
+
+
+def show_options_dialog(parent, caps=True):
+    """Global options: the font scale (accessibility) and, where the
+    program actually computes attacks, the session-wide modifier caps.
+
+    'caps' is False in the profile editor. rules_config is process-wide
+    state read by the attack maths, and the editor never runs any: a cap
+    set there would be a control that silently does nothing."""
     win = tk.Toplevel(parent)
-    win.title("Font size")
+    win.title("Options")
     win.transient(parent)
+    row = 0
+    # Font size: applies to the whole application window, not to this
+    # dialog's own settings, hence its place above the separator.
     ttk.Label(win, text="Font size (% of default):").grid(
-        row=0, column=0, padx=8, pady=6, sticky=tk.W)
-    var = tk.StringVar(value=str(int(round(_CURRENT_SCALE * 100))))
-    ttk.Combobox(win, textvariable=var, state="readonly", width=8,
-                 values=["80", "90", "100", "125", "150", "175", "200"]).grid(
-        row=0, column=1, padx=8, pady=6)
+        row=row, column=0, sticky=tk.W, padx=6, pady=(6, 2))
+    font_var = tk.StringVar(value=str(int(round(_CURRENT_SCALE * 100))))
+    ttk.Combobox(win, textvariable=font_var, state="readonly", width=6,
+                 values=list(FONT_SCALE_CHOICES)).grid(
+        row=row, column=1, padx=6, pady=(6, 2))
+    row += 1
+
+    entries = {}
+    if caps:
+        ttk.Separator(win, orient=tk.HORIZONTAL).grid(
+            row=row, column=0, columnspan=2, sticky=tk.EW, padx=6, pady=6)
+        row += 1
+        ttk.Label(win, text="Modifier caps (empty = no cap):").grid(
+            row=row, column=0, columnspan=2, sticky=tk.W, padx=6, pady=2)
+        row += 1
+        # Only the HIT and WOUND roll modifiers are capped in 11th ed.
+        # Saves, invulns and FNP take their modifiers in full, and
+        # characteristics are bounded by absolute limits, not by a cap.
+        for label, cur in [("Hit/wound roll modifier cap",
+                            rules_config.CAP_ROLL_MOD),
+                           ("Re-roll cap (per die)",
+                            rules_config.CAP_REROLLS)]:
+            ttk.Label(win, text=label).grid(row=row, column=0, sticky=tk.W,
+                                            padx=6, pady=2)
+            e = ttk.Entry(win, width=6)
+            e.insert(0, "" if cur is None else str(cur))
+            e.grid(row=row, column=1, padx=6)
+            entries[label] = e
+            row += 1
 
     def apply():
+        # Caps first: they are the part that can be rejected, and the
+        # font must not have been rescaled under a dialog the user is
+        # about to be sent back to.
+        if caps:
+            try:
+                vals = [None if not e.get().strip() else int(e.get())
+                        for e in entries.values()]
+                if vals[1] is None or vals[1] < 0:
+                    raise ValueError("re-roll cap must be an integer >= 0")
+            except ValueError as exc:
+                messagebox.showerror("Options", f"Invalid caps: {exc}")
+                return
+            rules_config.set_caps(roll=vals[0], rerolls=vals[1])
         try:
-            scale = max(50, min(300, int(var.get()))) / 100.0
-        except ValueError:
-            return
-        apply_font_scale(parent.winfo_toplevel(), scale)
+            scale = max(FONT_SCALE_MIN,
+                        min(FONT_SCALE_MAX, int(font_var.get()))) / 100.0
+        except ValueError:              # readonly combobox: unreachable
+            scale = None
+        if scale is not None:
+            apply_font_scale(parent.winfo_toplevel(), scale)
         win.destroy()
 
     ttk.Button(win, text="Apply", command=apply).grid(
-        row=1, column=0, columnspan=2, pady=8)
-
-
-def show_options_dialog(parent):
-    """Global caps dialog (session-wide, via rules_config.set_caps)."""
-    win = tk.Toplevel(parent)
-    win.title("Global options")
-    win.transient(parent)
-    ttk.Label(win, text="Modifier caps (empty = no cap):").grid(
-        row=0, column=0, columnspan=2, sticky=tk.W, padx=6, pady=4)
-    entries = {}
-    # Only the HIT and WOUND roll modifiers are capped in 11th ed.
-    # Saves, invulns and FNP take their modifiers in full, and
-    # characteristics are bounded by absolute limits, not by a cap.
-    for r, (label, cur) in enumerate(
-            [("Hit/wound roll modifier cap",
-              rules_config.CAP_ROLL_MOD),
-             ("Re-roll cap (per die)", rules_config.CAP_REROLLS)],
-            start=1):
-        ttk.Label(win, text=label).grid(row=r, column=0, sticky=tk.W,
-                                        padx=6, pady=2)
-        e = ttk.Entry(win, width=6)
-        e.insert(0, "" if cur is None else str(cur))
-        e.grid(row=r, column=1, padx=6)
-        entries[label] = e
-
-    def apply():
-        try:
-            vals = [None if not e.get().strip() else int(e.get())
-                    for e in entries.values()]
-            if vals[1] is None or vals[1] < 0:
-                raise ValueError("re-roll cap must be an integer >= 0")
-        except ValueError as exc:
-            messagebox.showerror("Options", f"Invalid caps: {exc}")
-            return
-        rules_config.set_caps(roll=vals[0], rerolls=vals[1])
-        win.destroy()
-
-    ttk.Button(win, text="Apply",
-               command=apply).grid(row=4, column=0, columnspan=2, pady=6)
+        row=row, column=0, columnspan=2, pady=8)

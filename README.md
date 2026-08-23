@@ -420,8 +420,7 @@ only means are additive (`src/result_rows.py` owns that distinction).
   (two presets are often active together) and skips entries already present;
   presets hold modifiers only, not the context flags;
 - **Options** — session-wide caps (roll-modifier cap, re-roll cap) enforced by
-  `src/rules_config.py`;
-- **Font size** — global accessibility scaling.
+  `src/rules_config.py`, and the global font scale (accessibility).
 
 ---
 
@@ -540,10 +539,9 @@ Both modes:
   ends in `.txt`. Dice characteristics are printed as the datasheet writes them
   (`A D6`), never rolled, and a **disabled ability is printed as `[OFF]`**
   rather than dropped — an ability missing from the sheet would be invisible.
-- **Font size** — a global font-scaling dialog is available in the Analyzer and
-  Game Assistant for accessibility.
-- **Options / caps** — modifier and re-roll caps are set once per session and
-  apply to every calculation.
+- **Options** — one dialog in all three programs: the global font scale
+  (accessibility) plus, in the Analyzer and the Game Assistant, the modifier
+  and re-roll caps, set once per session and applied to every calculation.
 
 ---
 

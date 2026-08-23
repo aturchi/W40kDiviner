@@ -332,6 +332,10 @@ class Canvas(Widget):
 
     create_oval = create_polygon = create_rectangle
 
+    def create_window(self, *a, **k):
+        self._items.append(("window", a, k))
+        return len(self._items)
+
     def delete(self, *a):
         self._items = []
 
@@ -342,12 +346,22 @@ class Canvas(Widget):
         return Widget.configure(self, cnf, **kw)
 
     def yview(self, *a):
-        pass
+        """Fraction pair, as the real widget returns it. The stub view
+        always shows everything, so a scrollable container built on it
+        reads as 'nothing to scroll' instead of crashing on None."""
+        return (0.0, 1.0)
 
     xview = yview
 
+    def yview_scroll(self, *a):
+        self._scrolled = getattr(self, "_scrolled", 0) + (a[0] if a else 0)
+
+    xview_scroll = yview_scroll
+
     def itemconfigure(self, *a, **k):
         pass
+
+    itemconfig = itemconfigure
 
 
 class Entry(Widget):

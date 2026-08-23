@@ -26,7 +26,7 @@ import node_templates as nt  # noqa: E402
 import validation            # noqa: E402
 from editor_widgets import PickerDialog  # noqa: E402
 from ability_editor import AbilityEditor  # noqa: E402
-from setup_panel import show_font_dialog  # noqa: E402
+from setup_panel import show_options_dialog  # noqa: E402
 from merge_dialog import MergeDialog  # noqa: E402
 
 SCALARS = (str, int, float, bool, type(None))
@@ -98,10 +98,11 @@ class EditorApp(tk.Tk):
                                      command=self.cmd_merge_json,
                                      state=tk.DISABLED)
         self._merge_btn.pack(side=tk.LEFT, padx=3, pady=3)
-        # Accessibility: always-enabled font-size control (not part of the
-        # selection-managed button set above).
-        ttk.Button(bar, text="Font size",
-                   command=lambda: show_font_dialog(self)).pack(
+        # Always-enabled settings button (not part of the selection-managed
+        # button set above). caps=False: the modifier caps belong to the
+        # attack maths, which this program never runs.
+        ttk.Button(bar, text="Options",
+                   command=lambda: show_options_dialog(self, caps=False)).pack(
             side=tk.LEFT, padx=3, pady=3)
         self.status = ttk.Label(bar, text="No file loaded")
         self.status.pack(side=tk.LEFT, padx=10)
