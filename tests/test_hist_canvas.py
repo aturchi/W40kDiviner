@@ -22,9 +22,8 @@ resized directly instead of through the Options dialog, which is what
 apply_font_scale does anyway.
 """
 import gc
-import sys
 
-import testpaths                      # sets up sys.path to the engine src/
+import testpaths                      # noqa: F401  (sets sys.path)
 import tkstub
 
 # --- toolkit selection ---------------------------------------------------

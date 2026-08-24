@@ -29,7 +29,6 @@ import native_format          # noqa: E402
 import analyzer_core          # noqa: E402
 import attack_math            # noqa: E402
 import attack_resolve         # noqa: E402
-from unit_model import units_from_native      # noqa: E402
 from editor_widgets import PickerDialog       # noqa: E402
 import ability_ids                            # noqa: E402
 import leader_core as lc                      # noqa: E402
