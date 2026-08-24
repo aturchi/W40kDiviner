@@ -317,6 +317,60 @@ class Tooltip:
         self._text = None
 
 
+# A NAMED font that is TkDefaultFont in bold.
+#
+# ("TkDefaultFont", 10, "bold") reads like a request for the default font
+# in bold, and is not one: Tk parses a three-element description as
+# family / size / style, so "TkDefaultFont" is taken as a FAMILY - there
+# is no such family, and the default one is substituted - while the 10 is
+# a literal point size. apply_font_scale() reconfigures NAMED fonts, and
+# a literal is not one, so every widget built that way stayed put while
+# everything around it grew. In the distribution window's statistics
+# table that was forty cells frozen against eight headings that scaled.
+BOLD_FONT = "W40kBold"
+
+
+def bold_font() -> str:
+    """The NAME of the bold twin of TkDefaultFont, created on first use.
+
+    A name and not a Font object, because that is what a widget's 'font'
+    option has to hold for Tk to keep following the font when it is
+    reconfigured later - which is the whole point.
+    """
+    try:
+        tkfont.nametofont(BOLD_FONT)
+    except tk.TclError:
+        base = tkfont.nametofont("TkDefaultFont")
+        created = tkfont.Font(name=BOLD_FONT, exists=False, weight="bold",
+                              family=base.cget("family"),
+                              size=base.cget("size"))
+        # tkinter.font.Font destroys the Tk font it CREATED as soon as
+        # the Python wrapper is collected, and nothing here holds the
+        # wrapper. Clearing the flag is what makes the named font
+        # outlive this call. The failure was silent: Tk reads a font
+        # name it does not know as a FAMILY name, does not find that
+        # either, and quietly falls back to the default - so every label
+        # was built without error and without being bold.
+        created.delete_font = False
+    return BOLD_FONT
+
+
+def sync_bold_font():
+    """Put the bold twin back in step with TkDefaultFont.
+
+    Called at the end of apply_font_scale(). Idempotent and derived from
+    the base font rather than from the scale, so the two cannot drift
+    whatever order the fonts are created and rescaled in - in particular
+    a window opened for the first time AFTER the scale was changed.
+    """
+    try:
+        base = tkfont.nametofont("TkDefaultFont")
+        tkfont.nametofont(bold_font()).configure(
+            family=base.cget("family"), size=base.cget("size"))
+    except tk.TclError:
+        pass
+
+
 def multi_select_hint(parent, extra=""):
     """Small grey label reminding that a list accepts multiple selections
     (Ctrl+click, Cmd+click on macOS). Returns the Label WITHOUT geometry

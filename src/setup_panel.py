@@ -620,6 +620,9 @@ def apply_font_scale(root, scale: float):
         ttk.Style(root).configure("Treeview", rowheight=line + 4)
     except tk.TclError:
         pass
+    # The bold twin is derived from TkDefaultFont, not from the scale,
+    # so it follows however this is called (see ui_utils.bold_font).
+    ui.sync_bold_font()
 
 
 # Offered percentages, and the range a hand-set value is clamped to.

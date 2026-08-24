@@ -23,6 +23,25 @@ close(s["mean"], 3.5)
 close(s["sd"], (35 / 12) ** 0.5)          # variance of a d6 = 35/12
 assert s["max"] == 6
 
+# ---- 'max' is the top of the SUPPORT, not the end of the list --------
+# kill_chain sizes its vectors on the target (models + 1, W*models + 1)
+# and leaves what the weapon cannot reach at exactly zero, so reading the
+# maximum off len(pmf) reported the unit's model count as if it were a
+# statistic of the attack.
+assert ds.support_top(d6) == 6
+assert ds.support_top([0.0] + [1 / 6] * 6 + [0.0] * 9) == 6
+assert ds.stats([0.0] + [1 / 6] * 6 + [0.0] * 9)["max"] == 6
+assert ds.support_top([1.0]) == 0
+assert ds.support_top([1.0, 0.0, 0.0]) == 0
+assert ds.support_top([]) == 0                 # no support at all
+assert ds.support_top([0.0, 0.0]) == 0         # all-zero: no value at all
+# A leading run of zeros is not a reason to look further down.
+assert ds.support_top([0.0, 0.0, 0.5, 0.5, 0.0]) == 3
+# The other statistics are blind to trailing zeros and must stay so.
+padded = ds.stats(d6 + [0.0] * 5)
+for k in ("mean", "sd", "median", "lo", "hi", "mode"):
+    assert padded[k] == ds.stats(d6)[k], k
+
 # A quantile is the SMALLEST value reaching q, boundaries included:
 # P(X <= 3) is exactly 0.5 for a d6, so p50 is 3 and not 4.
 assert ds.percentile(d6, 0.5) == 3

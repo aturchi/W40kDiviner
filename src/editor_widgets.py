@@ -11,7 +11,8 @@ decide whether to clone them.
 
 import tkinter as tk
 from tkinter import ttk
-from tkinter import font as tkfont
+
+import ui_utils as ui
 
 SUGGESTED_TAG = "suggested"
 
@@ -48,12 +49,12 @@ class PickerDialog(tk.Toplevel):
         self.tree.configure(yscrollcommand=bar.set)
         bar.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        # Bold font kept on the instance: a Tk font object is destroyed
-        # when garbage collected, which would silently drop the tag.
-        self._bold_font = tkfont.Font(
-            font=tkfont.nametofont("TkDefaultFont"))
-        self._bold_font.configure(weight="bold")
-        self.tree.tag_configure(SUGGESTED_TAG, font=self._bold_font)
+        # A NAMED font rather than a copy of TkDefaultFont: a copy has
+        # to be kept alive on the instance (Tk destroys a font object
+        # when it is collected, silently dropping the tag) AND it stops
+        # following the font scale, because rescaling reconfigures the
+        # named fonts and a copy is not one of them.
+        self.tree.tag_configure(SUGGESTED_TAG, font=ui.bold_font())
         self.tree.bind("<Double-Button-1>", lambda e: self.cmd_ok())
         row = ttk.Frame(self)
         row.pack(pady=4)

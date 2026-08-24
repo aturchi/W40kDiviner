@@ -48,7 +48,7 @@ class AttackLogWindow(tk.Toplevel):
         bar.pack(fill=tk.X, padx=6, pady=6)
         ttk.Button(bar, text="New turn",
                    command=self.cmd_new_turn).pack(side=tk.LEFT)
-        self.turn_lbl = ttk.Label(bar, font=("TkDefaultFont", 10, "bold"))
+        self.turn_lbl = ttk.Label(bar, font=ui.bold_font())
         self.turn_lbl.pack(side=tk.LEFT, padx=8)
         ttk.Button(bar, text="Delete selected",
                    command=self.cmd_delete).pack(side=tk.LEFT, padx=3)

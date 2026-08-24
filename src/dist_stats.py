@@ -8,6 +8,8 @@ them, which is why it is GUI-free and fully testable headless.
 Provided:
   - percentile() / tail_prob(): the two questions a player actually
     asks ("how bad can it get", "what are my odds of at least N");
+  - support_top(): the largest value the law can actually produce,
+    which is NOT the end of the list it is stored in;
   - stats(): mean / sd / median / mode and the SPREAD pair in one
     dict. The pair is keyed 'lo' and 'hi', never by its percentile:
     which two percentiles are reported is a matter of taste (SPREAD
@@ -50,6 +52,27 @@ def percentile(pmf, q: float) -> int:
     return max(0, len(pmf) - 1)
 
 
+def support_top(pmf) -> int:
+    """The largest value the PMF gives a non-zero probability to.
+
+    NOT ``len(pmf) - 1``. The allocation chain sizes its vectors on the
+    TARGET - ``models + 1`` for the kills, ``W * models + 1`` for the
+    wounds removed - and leaves everything it cannot reach at exactly
+    zero, so the end of the list describes the unit being shot at and
+    not the attack at all: a weapon that can kill one model out of five
+    still stores its law in a six-long vector.
+
+    Strictly ``> 0`` rather than an epsilon: the analytic laws leave
+    structural zeros exact, and kill_chain renormalises after pruning at
+    1e-15, so anything still positive here is a value the dice can
+    actually produce.
+    """
+    for v in range(len(pmf) - 1, -1, -1):
+        if pmf[v] > 0.0:
+            return v
+    return 0
+
+
 def tail_prob(pmf, n: int) -> float:
     """P(X >= n): the probability of dealing AT LEAST n damage."""
     if n <= 0:
@@ -70,7 +93,12 @@ SPREAD_LABELS = tuple("p%d" % round(q * 100) for q in SPREAD)
 
 def stats(pmf) -> dict:
     """mean, sd, median, mode, the top of the support, and the SPREAD
-    pair as 'lo' and 'hi' (see SPREAD for which percentiles those are)."""
+    pair as 'lo' and 'hi' (see SPREAD for which percentiles those are).
+
+    'max' is support_top(), not ``len(pmf) - 1``: the two differ on
+    every law the allocation chain produces, and the second is a
+    property of the target unit rather than a statistic of the attack.
+    """
     mean = sum(v * p for v, p in enumerate(pmf))
     var = sum(p * (v - mean) ** 2 for v, p in enumerate(pmf))
     mode = max(range(len(pmf)), key=lambda v: pmf[v]) if pmf else 0
@@ -78,7 +106,7 @@ def stats(pmf) -> dict:
             "median": percentile(pmf, 0.5),
             "lo": percentile(pmf, SPREAD[0]),
             "hi": percentile(pmf, SPREAD[1]),
-            "mode": mode, "max": max(0, len(pmf) - 1)}
+            "mode": mode, "max": support_top(pmf)}
 
 
 def default_xmax(pmf, keep: float = 0.999) -> int:

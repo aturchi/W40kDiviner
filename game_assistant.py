@@ -43,6 +43,7 @@ import allocation                             # noqa: E402
 import alloc_dialog                           # noqa: E402
 from search_widget import attach_search       # noqa: E402
 from ui_utils import scrollable_listbox, multi_select_hint  # noqa: E402
+import ui_utils as ui                          # noqa: E402
 from setup_panel import (SetupPanel, show_options_dialog,   # noqa: E402
                          FLAGS)
 
@@ -110,7 +111,7 @@ class ArmySetupDialog(tk.Toplevel):
                        command=lambda s=side: self.cmd_remove(s)).pack(
                 fill=tk.X, padx=3, pady=2)
             lbl = ttk.Label(frame, text="Total: 0 pts",
-                            font=("TkDefaultFont", 10, "bold"))
+                            font=ui.bold_font())
             lbl.pack(anchor=tk.W, padx=3, pady=2)
             self.dst_list[side], self.total_lbl[side] = lb, lbl
 
@@ -846,7 +847,7 @@ class GameAssistantApp(tk.Tk):
         win.geometry("560x440")
         txt = tk.Text(win, wrap=tk.WORD)
         txt.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
-        txt.tag_configure("h", font=("TkDefaultFont", 10, "bold"))
+        txt.tag_configure("h", font=ui.bold_font())
         txt.tag_configure("mw", foreground="#a00000")
         inv = f" inv{ref['invuln']}+" if ref.get("invuln") else ""
         fnp = f" fnp{ref['fnp']}+" if ref.get("fnp") else ""

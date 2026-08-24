@@ -29,7 +29,6 @@ import os
 import sys
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from tkinter import font as tkfont
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "src"))
@@ -684,10 +683,12 @@ class AnalyzerApp(tk.Tk):
         for r in results.get("skipped", []):
             tree.insert("", tk.END, text=r["name"], tags=("skipped",),
                         values=result_rows.skipped_row(r, cols))
-        base = tkfont.nametofont("TkDefaultFont")
+        # A NAMED font, not (family, size, "bold") read off TkDefaultFont
+        # here: that copies the size as it is NOW and freezes it, so the
+        # totals row stayed put while every other row followed a change
+        # of font scale.
         tree.tag_configure("totals", background="#eef2f7",
-                           font=(base.cget("family"), base.cget("size"),
-                                 "bold"))
+                           font=ui.bold_font())
         totals_iid = tree.insert("", tk.END, tags=("totals",),
                                  text=result_rows.totals_label(results),
                                  values=result_rows.totals_row(results,
@@ -747,7 +748,7 @@ class AnalyzerApp(tk.Tk):
         head = ttk.Frame(parent)
         head.pack(fill=tk.X, padx=6, pady=(6, 0))
         ttk.Label(head, text="All weapons combined",
-                  font=("TkDefaultFont", 10, "bold")).pack(side=tk.LEFT)
+                  font=ui.bold_font()).pack(side=tk.LEFT)
         ttk.Label(head, foreground="#666666",
                   text="  - every unmasked weapon is summed here: mask "
                        "the ones not firing").pack(side=tk.LEFT)
@@ -765,7 +766,7 @@ class AnalyzerApp(tk.Tk):
         st = dist_stats.stats(eff)
         row = ttk.Frame(parent)
         row.pack(fill=tk.X, padx=6, pady=(4, 2))
-        ttk.Label(row, font=("TkDefaultFont", 10, "bold"), text=(
+        ttk.Label(row, font=ui.bold_font(), text=(
             f"Wounds inflicted  {dist_stats.SPREAD_LABELS[0]} "
             f"{st['lo']}  |  median {st['median']}  |  "
             f"{dist_stats.SPREAD_LABELS[1]} {st['hi']}      "
@@ -791,7 +792,7 @@ class AnalyzerApp(tk.Tk):
             ttk.Label(parent, foreground="#25541f", text=(
                 f"Models killed: median {k['median']}   |   "
                 f"P(unit destroyed) = {t['p_wipe'] * 100:.1f}%"),
-                font=("TkDefaultFont", 10, "bold")).pack(anchor=tk.W,
+                font=ui.bold_font()).pack(anchor=tk.W,
                                                          padx=6, pady=2)
             self._order_hint(parent, t)
         return dist_view.result_series(eff, t["damage_pmf"],
@@ -842,7 +843,7 @@ class AnalyzerApp(tk.Tk):
         win.title(f"Audit - {title}")
         win.geometry("860x560")
         ttk.Label(win, text=title,
-                  font=("TkDefaultFont", 10, "bold")).pack(anchor=tk.W,
+                  font=ui.bold_font()).pack(anchor=tk.W,
                                                            padx=6,
                                                            pady=(6, 0))
         ttk.Label(win, foreground="#666666", wraplength=820,
@@ -965,10 +966,8 @@ class ComparisonWindow(tk.Toplevel):
         for i, pin in enumerate(self.pins):
             tree.heading(cols[i], text=f"#{i + 1}")
             tree.column(cols[i], width=180, anchor=tk.W)
-        base = tkfont.nametofont("TkDefaultFont")
         tree.tag_configure("head", background="#eef2f7",
-                           font=(base.cget("family"), base.cget("size"),
-                                 "bold"))
+                           font=ui.bold_font())
         tree.tag_configure("warn", foreground="#a40")
         for label, cells in comparison.context_rows(self.pins):
             tag = "warn" if (label == "vs first"

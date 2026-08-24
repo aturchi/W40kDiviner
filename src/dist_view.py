@@ -28,8 +28,78 @@ TEXT = "#333333"
 # ("tail above N", "P(>= v)") are drawn with a bottom anchor on its top
 # edge, so the band has to be at least one line of the caption font tall
 # or they are cut off by the top of the canvas - and the font scales.
+#
+# The other three are FALLBACKS, used only when the font cannot be
+# measured (a stub in a headless test). What the margins have to hold is
+# the scale labels, whose width is a property of the font and not a
+# constant: as fixed numbers they clipped the leftmost scale, and every
+# step of the font scale made it worse.
 _PAD_L, _PAD_R, _PAD_T, _PAD_B = 52, 46, 12, 34
 _MIN_BAR_PX = 11              # narrower than this and the bars merge
+# The smallest plotting frame worth drawing, measured on the frame
+# ITSELF and not on the canvas: the margins around it are now font-sized
+# at both ends, so a limit expressed in canvas size cannot stay true to
+# them. Width is the four bars _draw() always asks for; height is where
+# the five grid lines stop being distinguishable.
+_MIN_PLOT_W, _MIN_PLOT_H = 4 * _MIN_BAR_PX, 20
+
+# Every top the probability axis can be rounded up to (see _nice_top).
+_NICE_TOPS = (0.02, 0.05, 0.1, 0.2, 0.25, 0.5, 1.0)
+_GAP = 5                      # scale label to the frame it labels
+_EDGE = 3                     # scale label to the edge of the canvas
+_CUM_CAPTION = "P(>= v)"
+_CUM_LABELS = [f"{k * 25}%" for k in range(5)]
+
+
+def _axis_decimals(top: float) -> int:
+    """Decimals on the probability scale. A fine scale (top = 2%) would
+    print '0% 1% 1% 2% 2%' at zero decimals, so the precision follows
+    the tick step."""
+    return 0 if top >= 0.2 else (1 if top >= 0.04 else 2)
+
+
+def _prob_labels():
+    """Every label the left probability scale can ever print.
+
+    Finite, and that is the point: the top of the axis is one of
+    _NICE_TOPS and the decimals follow from it, so this is the whole
+    vocabulary of that scale. The margin can therefore be measured
+    BEFORE the top is known - which it has to be, since the top comes
+    out of a binning that needs the margin to have been chosen already.
+    """
+    return [f"{top * k / 4 * 100:.{_axis_decimals(top)}f}%"
+            for top in _NICE_TOPS for k in range(5)]
+
+
+def _measure(font, texts, fallback: int) -> int:
+    """Width in pixels of the widest of 'texts'.
+
+    Falls back to a constant rather than raising: a font that cannot be
+    measured is a headless stub or a broken font name, and a chart drawn
+    with slightly wrong margins beats a chart not drawn at all.
+    """
+    try:
+        return max(font.measure(t) for t in texts)
+    except Exception:
+        return fallback
+
+
+def _inner(canvas):
+    """The DRAWABLE size of a canvas, its border excluded.
+
+    winfo_width() / winfo_height() report the widget, border and
+    highlight ring included, while canvas coordinate (0, 0) is the
+    top-left corner of the area INSIDE them. Drawing out to
+    winfo_width() therefore puts the last couple of pixels underneath
+    the border, which is enough to shave the '%' off the end of the
+    right-hand scale - and the whole of it once the font is scaled up.
+    """
+    try:
+        inset = 2 * (int(canvas.cget("highlightthickness"))
+                     + int(canvas.cget("borderwidth")))
+    except Exception:
+        inset = 0
+    return canvas.winfo_width() - inset, canvas.winfo_height() - inset
 
 
 class HistogramCanvas(tk.Canvas):
@@ -78,12 +148,28 @@ class HistogramCanvas(tk.Canvas):
 
     def _draw(self):
         self.delete("all")
-        w, h = self.winfo_width(), self.winfo_height()
-        if w < 60 or h < 50:
-            return
+        w, h = _inner(self)
         font = tkfont.nametofont("TkSmallCaptionFont")
-        x0, x1 = _PAD_L, w - _PAD_R
-        y0, y1 = max(_PAD_T, font.metrics("linespace") + 4), h - _PAD_B
+        line = font.metrics("linespace")
+        # Each margin is sized on what has to fit in it. The left scale
+        # is drawn with an EAST anchor at x0 - _GAP, so it grows towards
+        # the edge of the canvas and a fixed margin clipped it; the right
+        # one is anchored WEST at x1 + _GAP and does the same outwards.
+        x0 = _EDGE + _measure(font, _prob_labels(),
+                              _PAD_L - _GAP - _EDGE) + _GAP
+        x1 = w - (_GAP + _measure(font, _CUM_LABELS + [_CUM_CAPTION],
+                                  _PAD_R - _GAP - _EDGE) + _EDGE)
+        y0, y1 = max(_PAD_T, line + 4), h - max(_PAD_B, line + 4 + _EDGE)
+        # Give up AFTER working out the frame, not before. A guard on the
+        # canvas size cannot know the margins: between a left scale that
+        # follows the font and a right one that does too, a canvas large
+        # enough by any constant could still produce x1 < x0 or y1 < y0.
+        # Every length downstream is then negative - bars grow upwards
+        # out of the axis and the probability scale is drawn upside down
+        # - and a mirrored chart is worse than no chart, because it still
+        # looks like a reading.
+        if x1 - x0 < _MIN_PLOT_W or y1 - y0 < _MIN_PLOT_H:
+            return
         max_bars = max(4, (x1 - x0) // _MIN_BAR_PX)
         hist = ds.histogram(self._pmf, max_bars=max_bars, cut=self._xmax,
                             low=self._xmin)
@@ -112,31 +198,51 @@ class HistogramCanvas(tk.Canvas):
         # The mass outside the window, annotated at the end it fell off:
         # a narrowed axis must never look like a smaller distribution.
         if hist["cut"] is not None:
-            self.create_text(
-                x1, y0 - 2, anchor=tk.SE, fill=TEXT, font=font,
-                text=f"tail above {hist['cut']}: "
-                     f"{hist['cut_mass'] * 100:.2f}% (not plotted)")
+            self._note(x1, y0 - 2, w, font, True,
+                       f"tail above {hist['cut']}: "
+                       f"{hist['cut_mass'] * 100:.2f}% (not plotted)")
         if hist["low"] is not None:
-            self.create_text(
-                x0, y0 - 2, anchor=tk.SW, fill=TEXT, font=font,
-                text=f"below {hist['low']}: "
-                     f"{hist['low_mass'] * 100:.2f}% (not plotted)")
+            self._note(x0, y0 - 2, w, font, False,
+                       f"below {hist['low']}: "
+                       f"{hist['low_mass'] * 100:.2f}% (not plotted)")
+
+    def _note(self, x, y, w, font, right, text):
+        """One of the two 'not plotted' captions, kept inside the canvas.
+
+        They hang off the ends of the FRAME, but how wide they are is
+        decided by the font and by the numbers in them, so the
+        right-hand one used to be drawn starting at a negative x on a
+        narrow chart - Tk then cut off its beginning, which is the half
+        that says what the number means. Clamped, a caption too long for
+        the canvas loses its END instead, and the end is '(not plotted)'.
+        """
+        span = _measure(font, [text], len(text) * 6)
+        left = x - span if right else x
+        self.create_text(max(_EDGE, min(left, w - span - _EDGE)), y,
+                         anchor=tk.SW, fill=TEXT, font=font, text=text)
 
     def _axes(self, x0, y0, x1, y1, top, font):
         """Frame, horizontal grid and the left (probability) scale."""
-        # A fine scale (top = 2%) would print "0% 1% 1% 2% 2%" at zero
-        # decimals: pick the precision from the tick step.
-        dec = 0 if top >= 0.2 else (1 if top >= 0.04 else 2)
+        dec = _axis_decimals(top)
         for k in range(5):
             y = y1 - k * (y1 - y0) / 4
             self.create_line(x0, y, x1, y, fill=GRID if k else AXIS)
-            self.create_text(x0 - 5, y, anchor=tk.E, fill=TEXT, font=font,
+            self.create_text(x0 - _GAP, y, anchor=tk.E, fill=TEXT,
+                             font=font,
                              text=f"{top * k / 4 * 100:.{dec}f}%")
         self.create_line(x0, y0, x0, y1, fill=AXIS)
 
     def _xlabels(self, bins, x0, y1, bw, font):
-        """Value labels under the bars, thinned out so they never touch."""
-        step = max(1, int(round(46 / max(bw, 1))))
+        """Value labels under the bars, thinned out so they never touch.
+
+        How many fit is decided by MEASURING the labels actually about
+        to be drawn: '10-14' at 200% is three times the width of '3' at
+        100%, and a constant spacing had them overlapping at one end of
+        that range and needlessly sparse at the other."""
+        texts = [str(lo) if lo == hi else f"{lo}-{hi}"
+                 for lo, hi, _p in bins]
+        need = _measure(font, texts, 40) + _GAP
+        step = max(1, int(round(need / max(bw, 1))))
         for i, (lo, hi, _p) in enumerate(bins):
             if i % step:
                 continue
@@ -167,10 +273,10 @@ class HistogramCanvas(tk.Canvas):
         x1 = x0 + len(bins) * bw
         for k in range(5):
             y = y1 - k * (y1 - y0) / 4
-            self.create_text(x1 + 5, y, anchor=tk.W, fill=CUM_LINE,
-                             font=font, text=f"{k * 25}%")
-        self.create_text(x1 + 5, y0 - 2, anchor=tk.SW, fill=CUM_LINE,
-                         font=font, text="P(>= v)")
+            self.create_text(x1 + _GAP, y, anchor=tk.W, fill=CUM_LINE,
+                             font=font, text=_CUM_LABELS[k])
+        self.create_text(x1 + _GAP, y0 - 2, anchor=tk.SW, fill=CUM_LINE,
+                         font=font, text=_CUM_CAPTION)
 
 
 def _nice_top(peak: float) -> float:
@@ -263,8 +369,7 @@ class DistributionFrame(ttk.Frame):
         ent = ttk.Entry(row, textvariable=self._entry, width=6)
         ent.pack(side=tk.LEFT)
         ttk.Label(row, text=") =").pack(side=tk.LEFT)
-        self.tail_lbl = ttk.Label(row, text="",
-                                  font=("TkDefaultFont", 10, "bold"))
+        self.tail_lbl = ttk.Label(row, text="", font=ui.bold_font())
         self.tail_lbl.pack(side=tk.LEFT, padx=4)
         ent.bind("<KeyRelease>", lambda _e: self._refresh())
 
@@ -323,10 +428,16 @@ class DistributionFrame(ttk.Frame):
         self._highlight()
 
     def _highlight(self):
-        """Bold the row of the series currently on the chart."""
+        """Bold the row of the series currently on the chart.
+
+        Both fonts are NAMED - "TkDefaultFont" and its bold twin - so
+        the cells follow the font scale. Written as a literal
+        ("TkDefaultFont", 10, "bold") tuple they did not, and the table
+        stayed at 10 pt under headings that grew (see ui_utils).
+        """
+        which = self._which.get()
         for key, cells in self._stat_rows.items():
-            font = ("TkDefaultFont", 10,
-                    "bold" if key == self._which.get() else "normal")
+            font = ui.bold_font() if key == which else "TkDefaultFont"
             for cell in cells:
                 cell.configure(font=font)
 
@@ -437,7 +548,7 @@ def open_distribution(parent, title, series, note=""):
     win = tk.Toplevel(parent)
     win.title(title)
     win.geometry("880x680")
-    ttk.Label(win, text=title, font=("TkDefaultFont", 10, "bold")).pack(
+    ttk.Label(win, text=title, font=ui.bold_font()).pack(
         anchor=tk.W, padx=6, pady=(6, 0))
     frame = DistributionFrame(win, series, note=note)
     frame.pack(fill=tk.BOTH, expand=True)
@@ -459,6 +570,15 @@ class OverlayCanvas(tk.Canvas):
     exactly the question 'is this loadout better' asks. A vertical
     marker shows the threshold - usually the target unit's wounds - so
     the reader can see where each curve crosses it.
+
+    The value axis runs to the highest value ANY of the series can
+    actually reach, not to the end of the longest vector: the laws that
+    come out of the allocation chain are sized on the target unit, so
+    reading the axis off their length drew a chart whose right-hand
+    part was empty by construction and squashed every curve into the
+    left of it. When the threshold falls outside that range it is
+    reported in words instead of drawn, because a marker silently
+    dropped and a marker that never applied look the same.
     """
 
     def __init__(self, parent, series=None, threshold=None, **kw):
@@ -479,18 +599,29 @@ class OverlayCanvas(tk.Canvas):
 
     def _draw(self):
         self.delete("all")
-        w, h = self.winfo_width(), self.winfo_height()
-        if w < 80 or h < 60 or not self._series:
+        w, h = _inner(self)
+        if not self._series:
             return
         font = tkfont.nametofont("TkSmallCaptionFont")
-        x0, x1, y0, y1 = 46, w - 12, 12, h - 30
-        vmax = max((len(s["pmf"]) - 1 for s in self._series if s["pmf"]),
-                   default=1) or 1
+        line = font.metrics("linespace")
+        # Same rule as the histogram: the left scale is anchored EAST and
+        # grows towards the edge of the canvas, the value labels hang
+        # below the frame by one line of the caption font. Both were
+        # constants and both were clipped once the font was scaled up.
+        x0 = _EDGE + _measure(font, _CUM_LABELS, 46 - _GAP - _EDGE) + _GAP
+        x1, y0 = w - 12, 12
+        y1 = h - max(30, line + 4 + _EDGE)
+        if x1 - x0 < _MIN_PLOT_W or y1 - y0 < _MIN_PLOT_H:
+            return
+        # The top of the SUPPORT, not the end of the vector: see the
+        # class docstring and dist_stats.support_top().
+        vmax = max((ds.support_top(s["pmf"]) for s in self._series
+                    if s["pmf"]), default=1) or 1
         for k in range(5):                      # grid and probability axis
             y = y1 - k * (y1 - y0) / 4
             self.create_line(x0, y, x1, y, fill=GRID if k else AXIS)
-            self.create_text(x0 - 5, y, anchor=tk.E, fill=TEXT, font=font,
-                             text=f"{k * 25}%")
+            self.create_text(x0 - _GAP, y, anchor=tk.E, fill=TEXT,
+                             font=font, text=_CUM_LABELS[k])
         self.create_line(x0, y0, x0, y1, fill=AXIS)
         for k in range(6):                      # value axis
             v = round(vmax * k / 5)
@@ -502,6 +633,14 @@ class OverlayCanvas(tk.Canvas):
             self.create_line(x, y0, x, y1, fill="#c0504d", dash=(3, 2))
             self.create_text(x + 3, y0, anchor=tk.NW, fill="#c0504d",
                              font=font, text=f">= {self._threshold}")
+        elif self._threshold is not None and self._threshold > vmax:
+            # Off the right of the axis: no pin reaches it at all, which
+            # is an ANSWER to the question the marker asks and must not
+            # look like a marker that was forgotten.
+            self.create_text(x1 - 6, y1 - 4, anchor=tk.SE, fill="#c0504d",
+                             font=font,
+                             text=f">= {self._threshold}: out of reach "
+                                  f"(no curve passes {vmax})")
         for i, s in enumerate(self._series):
             colour = OVERLAY_COLOURS[i % len(OVERLAY_COLOURS)]
             pts = []

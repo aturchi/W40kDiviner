@@ -17,6 +17,7 @@ import tkinter as tk
 from tkinter import ttk
 
 import allocation
+import ui_utils as ui
 
 # The '#' column is the position in the order the PLAYER chose, which
 # is not the row order: the table is sorted by the order the damage
@@ -61,7 +62,7 @@ class AllocationDialog(tk.Toplevel):
         self.plan = None
 
         t = allocation.totals(self.events)
-        ttk.Label(self, font=("TkDefaultFont", 10, "bold"), text=(
+        ttk.Label(self, font=ui.bold_font(), text=(
             f"{t['events']} damaging attacks, {t['damage']} damage to "
             f"allocate onto {defender_name}")).pack(anchor=tk.W, padx=8,
                                                     pady=(8, 0))
@@ -91,8 +92,7 @@ class AllocationDialog(tk.Toplevel):
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.tree.bind("<Double-1>", self._edit_cell)
 
-        self.summary_lbl = ttk.Label(self, font=("TkDefaultFont", 10,
-                                                 "bold"))
+        self.summary_lbl = ttk.Label(self, font=ui.bold_font())
         self.summary_lbl.pack(anchor=tk.W, padx=8, pady=(4, 0))
         ttk.Label(self, foreground="#666666", wraplength=600,
                   justify=tk.LEFT, text=(
