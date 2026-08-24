@@ -39,6 +39,17 @@ class PickerDialog(tk.Toplevel):
         entry = ttk.Entry(self, textvariable=self.filter_var)
         entry.pack(fill=tk.X, padx=6, pady=4)
         entry.focus_set()
+        # The OK/Cancel row goes in FIRST, against the bottom: pack()
+        # satisfies requested sizes in packing order, so an expanding
+        # tree on a short window would leave it a few pixels tall and
+        # its buttons captionless.
+        row = ttk.Frame(self)
+        row.pack(side=tk.BOTTOM, pady=4)
+        ttk.Button(row, text="OK", command=self.cmd_ok).pack(side=tk.LEFT,
+                                                             padx=4)
+        ttk.Button(row, text="Cancel",
+                   command=self.destroy).pack(side=tk.LEFT)
+
         frame = ttk.Frame(self)
         frame.pack(fill=tk.BOTH, expand=True, padx=6)
         self.tree = ttk.Treeview(frame, columns=("label",), show="",
@@ -56,12 +67,6 @@ class PickerDialog(tk.Toplevel):
         # named fonts and a copy is not one of them.
         self.tree.tag_configure(SUGGESTED_TAG, font=ui.bold_font())
         self.tree.bind("<Double-Button-1>", lambda e: self.cmd_ok())
-        row = ttk.Frame(self)
-        row.pack(pady=4)
-        ttk.Button(row, text="OK", command=self.cmd_ok).pack(side=tk.LEFT,
-                                                             padx=4)
-        ttk.Button(row, text="Cancel",
-                   command=self.destroy).pack(side=tk.LEFT)
         self.refresh()
         self.grab_set()
 

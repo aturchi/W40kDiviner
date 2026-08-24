@@ -853,8 +853,16 @@ class AnalyzerApp(tk.Tk):
                        "used, not a re-derivation: if a flag is still "
                        "ticked from an earlier run, it shows up here."
                   ).pack(anchor=tk.W, padx=6, pady=(0, 4))
+        # Bar and horizontal scrollbar go in FIRST, against the bottom,
+        # and therefore in reverse order: pack() satisfies requested
+        # sizes in packing order, and a 24-line Text asks for more than
+        # a short window has - packed last, these two were squeezed to
+        # nothing and the buttons lost their captions.
+        row = ttk.Frame(win)
+        row.pack(side=tk.BOTTOM, fill=tk.X, padx=6, pady=6)
+        ttk.Button(row, text="Close",
+                   command=win.destroy).pack(side=tk.RIGHT)
         frame = ttk.Frame(win)
-        frame.pack(fill=tk.BOTH, expand=True, padx=6)
         text = tk.Text(frame, wrap=tk.NONE, height=24,
                        font=("TkFixedFont",))
         bar_y = ttk.Scrollbar(frame, orient=tk.VERTICAL,
@@ -862,18 +870,15 @@ class AnalyzerApp(tk.Tk):
         bar_x = ttk.Scrollbar(win, orient=tk.HORIZONTAL,
                               command=text.xview)
         text.configure(yscrollcommand=bar_y.set, xscrollcommand=bar_x.set)
+        bar_x.pack(side=tk.BOTTOM, fill=tk.X, padx=6)
+        frame.pack(fill=tk.BOTH, expand=True, padx=6)
         bar_y.pack(side=tk.RIGHT, fill=tk.Y)
         text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        bar_x.pack(fill=tk.X, padx=6)
         body = audit.report(results) or "No weapon in this analysis."
         text.insert("1.0", body)
         text.configure(state=tk.DISABLED)
-        row = ttk.Frame(win)
-        row.pack(fill=tk.X, padx=6, pady=6)
         ttk.Button(row, text="Copy to clipboard",
                    command=lambda: self._copy(body)).pack(side=tk.LEFT)
-        ttk.Button(row, text="Close",
-                   command=win.destroy).pack(side=tk.RIGHT)
 
     def _export_table(self, title, results, stats=None):
         """The table exactly as shown, as CSV - the statistics on show
@@ -957,6 +962,29 @@ class ComparisonWindow(tk.Toplevel):
         self._build()
 
     def _build(self):
+        # The control row goes in FIRST, against the bottom: pack()
+        # satisfies requested sizes in packing order, and between a
+        # 16-row tree and an expanding chart there is nothing left for a
+        # row packed last - its buttons then come out as captionless
+        # slivers.
+        row = ttk.Frame(self)
+        row.pack(side=tk.BOTTOM, fill=tk.X, padx=6, pady=4)
+        ttk.Label(row, text="Curves:").pack(side=tk.LEFT)
+        for key, text in self.PMF_CHOICES:
+            ttk.Radiobutton(row, text=text, value=key,
+                            variable=self._which,
+                            command=self._refresh).pack(side=tk.LEFT,
+                                                        padx=(2, 8))
+        ttk.Button(row, text="Close", command=self.destroy).pack(
+            side=tk.RIGHT, padx=3)
+        ttk.Button(row, text="Clear pins",
+                   command=self._clear).pack(side=tk.RIGHT, padx=3)
+        ttk.Button(row, text="Export CSV...",
+                   command=self._export).pack(side=tk.RIGHT, padx=3)
+        self.canvas = dist_view.OverlayCanvas(self, height=200)
+        self.canvas.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True,
+                         padx=6, pady=(0, 6))
+
         ttk.Label(self, text="Every column past the first shows its "
                              "difference against the first one.",
                   foreground="#666666").pack(anchor=tk.W, padx=6, pady=(6, 2))
@@ -978,24 +1006,6 @@ class ComparisonWindow(tk.Toplevel):
         for label, cells in comparison.matrix(self.pins):
             tree.insert("", tk.END, text=label, values=cells)
         tree.pack(fill=tk.BOTH, expand=True, padx=6)
-
-        row = ttk.Frame(self)
-        row.pack(fill=tk.X, padx=6, pady=4)
-        ttk.Label(row, text="Curves:").pack(side=tk.LEFT)
-        for key, text in self.PMF_CHOICES:
-            ttk.Radiobutton(row, text=text, value=key,
-                            variable=self._which,
-                            command=self._refresh).pack(side=tk.LEFT,
-                                                        padx=(2, 8))
-        ttk.Button(row, text="Close", command=self.destroy).pack(
-            side=tk.RIGHT, padx=3)
-        ttk.Button(row, text="Clear pins",
-                   command=self._clear).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(row, text="Export CSV...",
-                   command=self._export).pack(side=tk.RIGHT, padx=3)
-
-        self.canvas = dist_view.OverlayCanvas(self, height=200)
-        self.canvas.pack(fill=tk.BOTH, expand=True, padx=6, pady=(0, 6))
         self._refresh()
 
     def _refresh(self):

@@ -72,6 +72,41 @@ class AllocationDialog(tk.Toplevel):
                                   wraplength=600, justify=tk.LEFT)
         self.hint_lbl.pack(anchor=tk.W, padx=8, pady=(4, 4))
 
+        # Everything below the tree is packed BEFORE it, against the
+        # bottom, and therefore in reverse: pack() satisfies requested
+        # sizes in packing order, so a tree with expand=True on a short
+        # window would otherwise eat the space these three need - and
+        # the buttons, packed last, would come out as captionless
+        # slivers. side=BOTTOM reserves their height first.
+        bar = ttk.Frame(self)
+        bar.pack(side=tk.BOTTOM, fill=tk.X, padx=8, pady=8)
+        ttk.Button(bar, text="Move up",
+                   command=lambda: self._move(-1)).pack(side=tk.LEFT)
+        ttk.Button(bar, text="Move down",
+                   command=lambda: self._move(1)).pack(side=tk.LEFT, padx=3)
+        ttk.Button(bar, text="Allow character",
+                   command=self._toggle_allowed).pack(side=tk.LEFT,
+                                                      padx=3)
+        ttk.Button(bar, text="Recompute",
+                   command=self._reset).pack(side=tk.LEFT, padx=3)
+        ttk.Button(bar, text="Cancel",
+                   command=self.destroy).pack(side=tk.RIGHT)
+        ttk.Button(bar, text="Apply",
+                   command=self._apply).pack(side=tk.RIGHT, padx=3)
+
+        ttk.Label(self, foreground="#666666", wraplength=600,
+                  justify=tk.LEFT, text=(
+                      "Rows are in the order the damage lands. '#' is "
+                      "the order you chose, which Move up/down changes: "
+                      "the rules can still put a wounded model first. "
+                      "Double-click 'Left' to type a number yourself; "
+                      "'Allow character' lets a PRECISION attack reach "
+                      "an attached character.")).pack(side=tk.BOTTOM,
+                                                      anchor=tk.W, padx=8)
+        self.summary_lbl = ttk.Label(self, font=ui.bold_font())
+        self.summary_lbl.pack(side=tk.BOTTOM, anchor=tk.W, padx=8,
+                              pady=(4, 0))
+
         frame = ttk.Frame(self)
         frame.pack(fill=tk.BOTH, expand=True, padx=8)
         self.tree = ttk.Treeview(frame, columns=[c[0] for c in COLUMNS],
@@ -91,33 +126,6 @@ class AllocationDialog(tk.Toplevel):
         sb.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.tree.bind("<Double-1>", self._edit_cell)
-
-        self.summary_lbl = ttk.Label(self, font=ui.bold_font())
-        self.summary_lbl.pack(anchor=tk.W, padx=8, pady=(4, 0))
-        ttk.Label(self, foreground="#666666", wraplength=600,
-                  justify=tk.LEFT, text=(
-                      "Rows are in the order the damage lands. '#' is "
-                      "the order you chose, which Move up/down changes: "
-                      "the rules can still put a wounded model first. "
-                      "Double-click 'Left' to type a number yourself; "
-                      "'Allow character' lets a PRECISION attack reach "
-                      "an attached character.")).pack(anchor=tk.W, padx=8)
-
-        bar = ttk.Frame(self)
-        bar.pack(fill=tk.X, padx=8, pady=8)
-        ttk.Button(bar, text="Move up",
-                   command=lambda: self._move(-1)).pack(side=tk.LEFT)
-        ttk.Button(bar, text="Move down",
-                   command=lambda: self._move(1)).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Allow character",
-                   command=self._toggle_allowed).pack(side=tk.LEFT,
-                                                      padx=3)
-        ttk.Button(bar, text="Recompute",
-                   command=self._reset).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Cancel",
-                   command=self.destroy).pack(side=tk.RIGHT)
-        ttk.Button(bar, text="Apply",
-                   command=self._apply).pack(side=tk.RIGHT, padx=3)
 
         self._recompute()
 

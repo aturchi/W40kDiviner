@@ -31,18 +31,27 @@ def open_inspect(parent, unit_obj):
     win = tk.Toplevel(parent)
     win.title(f"Inspect - {unit_obj.name}")
 
-    txt = tk.Text(win, wrap=tk.WORD, width=86, height=22)
-    txt.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
-    txt.insert(tk.END, lc.unit_inspect_text(unit_obj))
-    txt.configure(state=tk.DISABLED)
-
+    # The bar goes in FIRST, against the bottom: pack() satisfies
+    # requested sizes in packing order, and a 22-line Text asks for more
+    # than a short window has - packed last, the bar is squeezed to a
+    # few pixels and its buttons lose their captions.
     # The printable version of what is above: the unit as the program
     # will play it, leader included and disabled abilities marked.
     bar = ttk.Frame(win)
-    bar.pack(fill=tk.X, padx=6, pady=(0, 6))
+    bar.pack(side=tk.BOTTOM, fill=tk.X, padx=6, pady=(0, 6))
     ttk.Button(bar, text="Save cheat sheet...",
                command=lambda: _save_sheet(win, unit_obj)).pack(side=tk.LEFT)
     ttk.Button(bar, text="Close", command=win.destroy).pack(side=tk.RIGHT)
+
+    body = ttk.Frame(win)
+    body.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+    txt = tk.Text(body, wrap=tk.WORD, width=86, height=22)
+    scroll = ttk.Scrollbar(body, orient=tk.VERTICAL, command=txt.yview)
+    txt.configure(yscrollcommand=scroll.set)
+    scroll.pack(side=tk.RIGHT, fill=tk.Y)
+    txt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    txt.insert(tk.END, lc.unit_inspect_text(unit_obj))
+    txt.configure(state=tk.DISABLED)
     return win
 
 

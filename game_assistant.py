@@ -844,8 +844,23 @@ class GameAssistantApp(tk.Tk):
         win = tk.Toplevel(self)
         win.title(f"{attacker.name}  vs  {defender.name}")
         win.geometry("560x440")
-        txt = tk.Text(win, wrap=tk.WORD)
-        txt.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        # The bar is packed FIRST, against the bottom. pack() hands out
+        # requested sizes in packing order and only shares the leftover
+        # afterwards, and a tk.Text asks for 24 lines - 420 px at a 17 px
+        # linespace, in a 440 px window. Packed last, the bar was left
+        # with 20 px and its buttons came out as captionless slivers.
+        bar = ttk.Frame(win)
+        bar.pack(side=tk.BOTTOM, fill=tk.X, padx=6, pady=(0, 6))
+        body = ttk.Frame(win)
+        body.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
+        txt = tk.Text(body, wrap=tk.WORD, height=12)
+        # The window height is fixed and the report is not: without a
+        # scrollbar the weapons past the fold could be reached only by
+        # a wheel gesture over a widget that gave no sign of scrolling.
+        scroll = ttk.Scrollbar(body, orient=tk.VERTICAL, command=txt.yview)
+        txt.configure(yscrollcommand=scroll.set)
+        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        txt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         txt.tag_configure("h", font=ui.bold_font())
         txt.tag_configure("mw", foreground="#a00000")
         inv = f" inv{ref['invuln']}+" if ref.get("invuln") else ""
@@ -886,8 +901,6 @@ class GameAssistantApp(tk.Tk):
             txt.insert(tk.END, "\nNot modelled: " + "; ".join(
                 sorted(warnings)), "mw")
         txt.configure(state=tk.DISABLED)
-        bar = ttk.Frame(win)
-        bar.pack(fill=tk.X, padx=6, pady=(0, 6))
         ttk.Button(bar, text="Close",
                    command=win.destroy).pack(side=tk.RIGHT)
         if d_side is not None and n_ev:
