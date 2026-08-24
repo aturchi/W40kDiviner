@@ -17,7 +17,6 @@ carries the flags and modifiers that produced it and the matrix marks
 the ones that differ from the first pin.
 """
 
-import dist_stats as ds
 
 # key, label, how to read it out of a pin
 METRICS = (
@@ -186,7 +185,12 @@ def to_csv(pins) -> str:
 
 
 def overlay_series(pins, key: str = "inflicted") -> list:
-    """The same PMF from every pin, ready to be drawn on one chart."""
-    return [{"name": p["name"], "pmf": p["pmfs"].get(key) or [],
-             "stats": ds.stats(p["pmfs"].get(key) or [1.0])}
+    """The same PMF from every pin, ready to be drawn on one chart.
+
+    The PMF and nothing else: OverlayCanvas draws survival curves and
+    reads no summary statistic, so computing one here would be work
+    thrown away - and a field nobody reads is a field nobody keeps
+    right. A caller that wants the numbers has dist_stats.stats().
+    """
+    return [{"name": p["name"], "pmf": p["pmfs"].get(key) or []}
             for p in pins]

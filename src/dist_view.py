@@ -1,12 +1,21 @@
-"""Damage distribution view: a Tk canvas histogram plus the dialog that
-wraps it with percentiles and a "P(damage >= N)" readout.
+"""Distribution views: a Tk canvas histogram, the panel that wraps it
+with a statistics table and a "P(v >= N)" readout, and a survival-curve
+canvas for comparing pinned analyses.
 
-No new dependency: the bars are drawn on a plain tk.Canvas from the PMF
-the analyzer already computed (see dist_stats for the maths). The canvas
-redraws itself on <Configure>, so the window can be resized.
+No new dependency: everything is drawn on a plain tk.Canvas from the
+PMFs the analyzer already computed (see dist_stats for the maths). Both
+canvases redraw on <Configure>, so a window can be resized.
 
-Entry point for callers:
-    open_distribution(parent, title, net_pmf, gross_pmf=..., threshold=N)
+Entry points for callers:
+    result_series(net_pmf, gross_pmf=..., kills_pmf=..., ...)
+        -> the list of series for one analysis result, which is what
+           both of the following take.
+    open_distribution(parent, title, series, note="")
+        -> a standalone window.
+    DistributionFrame(parent, series, note="")
+        -> the same thing embedded in a page.
+    OverlayCanvas(parent, series, threshold=N)
+        -> one survival curve per pinned analysis, see comparison.py.
 """
 
 import tkinter as tk
@@ -23,6 +32,7 @@ AXIS = "#888888"
 GRID = "#e2e2e2"
 CUM_LINE = "#4f8a3d"
 TEXT = "#333333"
+HINT = "#999999"              # a series that carries no law at all
 
 # _PAD_T is a FLOOR, not the value used: the annotations above the frame
 # ("tail above N", "P(>= v)") are drawn with a bottom anchor on its top
@@ -251,26 +261,49 @@ class HistogramCanvas(tk.Canvas):
                              text=str(lo) if lo == hi else f"{lo}-{hi}")
 
     def _threshold_marker(self, bins, thr, x0, y0, y1, bw, font):
-        """Vertical line at the first bar that reaches the threshold."""
+        """Vertical line where the threshold value starts.
+
+        Interpolated INSIDE the bar when several values share one: a bar
+        labelled '10-14' spans five values, and putting the marker on
+        its left edge drew ">= 12" at the position of 10. With one value
+        per bar this reduces to the left edge, as before.
+
+        The bar itself is coloured whenever it CAN reach the threshold,
+        so a bar the marker cuts through is partly below it. Splitting
+        the rectangle at the marker would be worse, not better: it would
+        claim the mass inside the bar is spread evenly across its
+        values, and it is not.
+        """
         idx = next((i for i, (_lo, hi, _p) in enumerate(bins) if hi >= thr),
                    None)
         if idx is None:
             return
-        x = x0 + idx * bw
+        lo, hi, _p = bins[idx]
+        x = x0 + (idx + max(0, thr - lo) / (hi - lo + 1)) * bw
         self.create_line(x, y0, x, y1, fill=BAR_OVER, dash=(3, 2))
         self.create_text(x + 3, y0, anchor=tk.NW, fill=BAR_OVER, font=font,
                          text=f">= {thr}")
 
     def _cum_curve(self, bins, x0, y0, y1, bw, font):
-        """P(X >= v) on a right-hand 0-100% scale, sampled at the left
-        edge of every bar."""
+        """P(X >= v) on a right-hand 0-100% scale.
+
+        Sampled at the left edge of every bar, which is where the value
+        that bar starts at sits, and closed with one more point at the
+        right edge of the last one - P(X >= hi + 1). Without that last
+        point the curve stopped a whole bar short of the scale it is
+        read against, which is a quarter of the width when the axis is
+        down to four bars.
+        """
         pts = []
         for i, (lo, _hi, _p) in enumerate(bins):
             q = ds.tail_prob(self._pmf, lo)
             pts += [x0 + i * bw, y1 - q * (y1 - y0)]
+        x1 = x0 + len(bins) * bw
+        if bins:
+            q = ds.tail_prob(self._pmf, bins[-1][1] + 1)
+            pts += [x1, y1 - q * (y1 - y0)]
         if len(pts) >= 4:
             self.create_line(*pts, fill=CUM_LINE, width=2, smooth=False)
-        x1 = x0 + len(bins) * bw
         for k in range(5):
             y = y1 - k * (y1 - y0) / 4
             self.create_text(x1 + _GAP, y, anchor=tk.W, fill=CUM_LINE,
@@ -297,14 +330,13 @@ class DistributionFrame(ttk.Frame):
     noun used in the readout ("damage", "models killed").
 
     The two ends of the X axis are offered under the threshold, and
-    deliberately
-    does NOT follow the same rule: a threshold is a QUESTION ("what are
-    my odds of at least N") and is worth carrying back and forth, while
-    an axis length is a view of one particular distribution and means
-    nothing on another - 10 is the whole support of "models killed" and
-    the first sixth of "gross damage". Switching series therefore resets
-    it to that series' automatic cut, and switching back resets it
-    again.
+    deliberately do NOT follow the same rule: a threshold is a QUESTION
+    ("what are my odds of at least N") and is worth carrying back and
+    forth, while an axis window is a view of one particular distribution
+    and means nothing on another - 10 is the whole support of "models
+    killed" and the first sixth of "gross damage". Switching series
+    therefore resets the axis to that series' automatic cut, and
+    switching back resets it again.
 
     Used both as the body of open_distribution()'s own window and
     embedded straight into the analyzer's result page, which is why it is
@@ -316,6 +348,12 @@ class DistributionFrame(ttk.Frame):
 
     def __init__(self, parent, series, note="", note_wrap=680):
         super().__init__(parent)
+        if not series:
+            # Every caller goes through result_series(), which always
+            # returns at least the inflicted-wounds series, so an empty
+            # list means the caller is broken. Say which caller, rather
+            # than an IndexError three lines down.
+            raise ValueError("DistributionFrame needs at least one series")
         self._note_wrap = note_wrap
         self._series = {s["key"]: s for s in series}
         self._order = [s["key"] for s in series]
@@ -455,12 +493,18 @@ class DistributionFrame(ttk.Frame):
     def _reset_xmax(self):
         """Put both ends of the axis back to what the drawing would have
         chosen on its own for the current series, and bound the Spinboxes
-        to that series' support."""
+        to that series' support.
+
+        The upper end is floored at 1, matching the Spinbox's own
+        from_=1 and _xmax_value()'s clamp: default_xmax() returns 0 for
+        a law with a single value, which would have written a number
+        outside the range the widget declares.
+        """
         pmf = self._series[self._which.get()]["pmf"]
         top = max(1, len(pmf) - 1)
         self.xmax_spin.configure(to=top)
         self.xmin_spin.configure(to=top)
-        self._xmax.set(str(ds.default_xmax(pmf)))
+        self._xmax.set(str(max(1, ds.default_xmax(pmf))))
         self._xmin.set("0")
 
     def _xmax_value(self, pmf):
@@ -505,19 +549,31 @@ class DistributionFrame(ttk.Frame):
 
 
 def result_series(net_pmf, gross_pmf=None, kills_pmf=None, unit_wounds=None,
-                  models=None, attacks_pmf=None, effective_pmf=None):
+                  models=None, attacks_pmf=None, effective_pmf=None,
+                  self_pmf=None):
     """The series shown for one analysis result, in the order they are
     offered: the wounds actually inflicted first (the figure that
     decides whether the target dies), then the models killed, then the
-    gross damage rolled - which includes what was wasted - and last the
-    two counts upstream of all of it.
+    gross damage rolled - which includes what was wasted - then the two
+    counts upstream of all of it, and last what the shooting cost the
+    attacker.
 
-    Attacks and effective attacks come last because they answer a
-    different question ("did the dice show up") from the three above
-    them ("did the target die"), but they are here so that the window
-    holds EVERY statistic of the weapon: with them the table beside the
-    chart is the whole row of the result table, distributions and all.
-    Neither has a natural threshold, so the P(...) field starts empty.
+    Attacks and effective attacks come next to last because they answer
+    a different question ("did the dice show up") from the three above
+    them ("did the target die"). Neither has a natural threshold, so the
+    P(...) field starts empty for them.
+
+    Self-inflicted damage is last because it answers a third question
+    ("what did it cost me") and, like them, has no threshold here - the
+    attacker's own wound total is not among the numbers this function is
+    given. It appears only for a HAZARDOUS weapon, exactly as the
+    Self-dmg column does, and it is the series that most needs a
+    distribution: two hazardous weapons average 1.33 self-inflicted
+    damage while the likeliest outcome is none at all, so the mean
+    describes an outcome that does not happen.
+
+    With it the table beside the chart is the whole row of the result
+    table, distributions and all.
     """
     out = [{"key": "net", "label": "wounds inflicted",
             "pmf": list(net_pmf), "unit": "wounds",
@@ -537,6 +593,10 @@ def result_series(net_pmf, gross_pmf=None, kills_pmf=None, unit_wounds=None,
     if effective_pmf is not None:
         out.append({"key": "eff", "label": "effective attacks",
                     "pmf": list(effective_pmf), "unit": "effective attacks",
+                    "threshold": None})
+    if self_pmf is not None:
+        out.append({"key": "self", "label": "self-inflicted damage",
+                    "pmf": list(self_pmf), "unit": "self-inflicted damage",
                     "threshold": None})
     return out
 
@@ -643,14 +703,22 @@ class OverlayCanvas(tk.Canvas):
                                   f"(no curve passes {vmax})")
         for i, s in enumerate(self._series):
             colour = OVERLAY_COLOURS[i % len(OVERLAY_COLOURS)]
-            pts = []
-            for v in range(vmax + 1):
-                q = ds.tail_prob(s["pmf"], v)
-                pts += [x0 + (x1 - x0) * (v / vmax),
-                        y1 - q * (y1 - y0)]
+            label, pts = s["name"][:42], []
+            if s["pmf"]:
+                for v in range(vmax + 1):
+                    q = ds.tail_prob(s["pmf"], v)
+                    pts += [x0 + (x1 - x0) * (v / vmax),
+                            y1 - q * (y1 - y0)]
+            else:
+                # No law at all - the analysis this pin came from never
+                # ran the kill chain, say. Drawing tail_prob([], v) would
+                # lay a flat 0% line along the axis, which reads as "this
+                # loadout achieves nothing" instead of "this was not
+                # computed". Say the second, in grey, and draw nothing.
+                colour, label = HINT, label + " - not computed"
             if len(pts) >= 4:
                 self.create_line(*pts, fill=colour, width=2)
             self.create_text(x1 - 6, y0 + 2 + i * (font.metrics("linespace")
                                                    + 2),
                              anchor=tk.NE, fill=colour, font=font,
-                             text=s["name"][:42])
+                             text=label)

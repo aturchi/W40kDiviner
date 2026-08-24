@@ -31,7 +31,17 @@ THE ONE CASE IT DOES NOT COVER. The criterion is whether the tkinter
 PACKAGE imports, not whether a display exists. On a machine that has
 tkinter but no X/Wayland session, ``import tkinter`` succeeds and
 ``Tk()`` then raises TclError - a different failure, deliberately left
-visible rather than hidden behind the stub.
+visible rather than hidden behind the stub. A test that needs a real
+window (test_hist_canvas) therefore tries ``Tk()`` itself and calls
+:func:`install` on failure, saying so on stdout.
+
+READING BACK WHAT WAS DRAWN. Canvas records its items and exposes them
+through Tk's OWN accessors - find_all / type / coords / itemcget /
+bbox - and the font module keeps a real named-font registry with Tk's
+delete-on-collect behaviour. Both exist so that a test can be written
+against the real API and run unchanged on either toolkit. Reaching for
+a stub attribute instead is how a test once passed headless and failed
+on a machine with a display.
 """
 import sys
 import types
@@ -334,33 +344,126 @@ class Scrollbar(Widget):
 
 
 class Canvas(Widget):
+    """Records what was drawn, and lets it be read back through the REAL
+    Tk API - find_all / type / coords / itemcget / bbox.
+
+    That is the whole point of the read side. A test that reaches for a
+    stub attribute (``canvas._items``) passes here and proves nothing
+    about the toolkit; one written against find_all() runs unchanged on
+    both, so the same assertions can be checked against real Tk on a
+    machine that has a display.
+
+    Sizes are settable (``set_size``) because the geometry under test is
+    a function of them and a real widget only gets a size once mapped.
+    """
+
     def __init__(self, master=None, **kw):
         Widget.__init__(self, master, **kw)
         self._items = []
+        # What a real Canvas reports before it is mapped. Deliberately
+        # useless: a test that forgets set_size() then fails HERE, the
+        # way it would on a machine with a display, instead of drawing
+        # against a convenient default and failing only there.
+        self._size = (1, 1)
+        self._opts.setdefault("highlightthickness", 0)
+        self._opts.setdefault("borderwidth", 0)
 
+    # -- writing
     def create_rectangle(self, *a, **k):
-        self._items.append(("rect", a, k))
+        self._items.append(("rectangle", list(a), dict(k)))
         return len(self._items)
 
     def create_line(self, *a, **k):
-        self._items.append(("line", a, k))
+        self._items.append(("line", list(a), dict(k)))
         return len(self._items)
 
     def create_text(self, *a, **k):
-        self._items.append(("text", a, k))
+        self._items.append(("text", list(a), dict(k)))
         return len(self._items)
 
     create_oval = create_polygon = create_rectangle
 
     def create_window(self, *a, **k):
-        self._items.append(("window", a, k))
+        self._items.append(("window", list(a), dict(k)))
         return len(self._items)
 
     def delete(self, *a):
         self._items = []
 
+    # -- reading, with Tk's own names and Tk's own defaults
+    #: What Tk reports for an option that was never set. Only the ones
+    #: this project reads are listed; anything else comes back "".
+    _ITEM_DEFAULTS = {"anchor": "center", "fill": "black", "text": "",
+                      "dash": "", "width": "1.0", "outline": "black"}
+
+    def find_all(self):
+        return tuple(range(1, len(self._items) + 1))
+
+    def type(self, item):
+        return self._items[item - 1][0]
+
+    def coords(self, item, *a):
+        if a:
+            self._items[item - 1][1] = list(a)
+        return [float(v) for v in self._items[item - 1][1]]
+
+    def itemcget(self, item, option):
+        opts = self._items[item - 1][2]
+        if option in opts:
+            v = opts[option]
+            return " ".join(str(x) for x in v) if isinstance(v, tuple) \
+                else str(v)
+        return self._ITEM_DEFAULTS.get(option, "")
+
+    def itemconfigure(self, item, **kw):
+        self._items[item - 1][2].update(kw)
+
+    itemconfig = itemconfigure
+
     def bbox(self, *a):
-        return (0, 0, 10, 10)
+        """Bounding box of an item, or of everything when given none.
+
+        Text is measured through the font module so that a test can ask
+        'did this label fall off the canvas' the same way on either
+        toolkit. Not pixel-exact - real Tk reports one past the last
+        pixel - which is why callers must not compare it to the arithmetic
+        that produced the coordinates.
+        """
+        if not a:
+            boxes = [self.bbox(i) for i in self.find_all()]
+            boxes = [b for b in boxes if b]
+            if not boxes:
+                return None
+            return (min(b[0] for b in boxes), min(b[1] for b in boxes),
+                    max(b[2] for b in boxes), max(b[3] for b in boxes))
+        item = a[0]
+        kind, co, kw = self._items[item - 1]
+        if kind != "text":
+            xs, ys = co[0::2], co[1::2]
+            return (min(xs), min(ys), max(xs), max(ys))
+        fnt = sys.modules["tkinter.font"]
+        f = kw.get("font")
+        f = fnt.nametofont(f) if isinstance(f, str) else (f or fnt.Font())
+        w, h = f.measure(str(kw.get("text", ""))), f.metrics("linespace")
+        anchor = str(kw.get("anchor", "center"))
+        x, y = co[0], co[1]
+        x0 = x - w if anchor.endswith("e") else (
+            x if anchor.endswith("w") else x - w / 2)
+        y0 = y - h if anchor.startswith("s") else (
+            y if anchor.startswith("n") else y - h / 2)
+        return (int(x0), int(y0), int(x0 + w), int(y0 + h))
+
+    # -- size
+    def set_size(self, width, height):
+        """What winfo_width/height will report. A real Canvas only gets
+        a size when it is mapped, so a headless test has to say."""
+        self._size = (width, height)
+
+    def winfo_width(self):
+        return self._size[0]
+
+    def winfo_height(self):
+        return self._size[1]
 
     def configure(self, cnf=None, **kw):
         return Widget.configure(self, cnf, **kw)
@@ -809,26 +912,80 @@ def install():
     fnt = types.ModuleType("tkinter.font")
 
     class _Font:
-        def __init__(self, *a, **k):
-            pass
+        """A named font with Tk's own bookkeeping.
+
+        The REGISTRY holds option DICTS, not wrappers, exactly as Tcl
+        holds the fonts while tkinter holds a separate Python object.
+        That separation is the point: a registry of wrappers would keep
+        them alive and __del__ would never fire, hiding the mistake it
+        exists to expose - a font created and not held is destroyed
+        again, silently, because Tk then reads the name as a family and
+        falls back to the default.
+
+        Sizes are reconfigurable and metrics/measure follow from them,
+        so a test can sweep the font scale and see the labels grow with
+        it - which is what the layout code is measured against.
+        """
+
+        #: name -> option dict, as Tk's "font names" list.
+        REGISTRY = {}
+        ASPECT = 0.55                 # character width, in linespaces
+
+        def __init__(self, root=None, font=None, name=None, exists=False,
+                     **options):
+            self.name = name or ("font%d" % id(self))
+            self.delete_font = not exists
+            if exists:
+                if self.name not in _Font.REGISTRY:
+                    raise TclError("named font %s does not already exist"
+                                   % self.name)
+                self._opts = _Font.REGISTRY[self.name]
+                self._opts.update(options)
+                return
+            self._opts = {"family": "TkDefaultFont", "size": 10,
+                          "weight": "normal"}
+            self._opts.update(options)
+            if name:
+                _Font.REGISTRY[self.name] = self._opts
+
+        def __del__(self):
+            try:
+                if self.delete_font:
+                    _Font.REGISTRY.pop(self.name, None)
+            except Exception:
+                pass
 
         def measure(self, s):
-            return 7 * len(s)
+            return int(round(len(str(s)) * self.metrics() * self.ASPECT))
 
         def metrics(self, *a):
-            return 14
+            return int(round(abs(self._opts["size"]) * 1.7)) or 1
 
         def actual(self, *a):
-            return {"family": "TkDefaultFont", "size": 10}
+            return dict(self._opts)
 
         def cget(self, k):
-            return 10
+            return self._opts.get(k)
 
         def configure(self, **k):
-            pass
+            self._opts.update(k)
+
+        config = configure
+
+    def _nametofont(name):
+        return _Font(name=name, exists=True)
+
+    for _n, _sz in (("TkDefaultFont", 10), ("TkTextFont", 10),
+                    ("TkFixedFont", 10), ("TkMenuFont", 10),
+                    ("TkHeadingFont", 10), ("TkCaptionFont", 10),
+                    ("TkSmallCaptionFont", 9), ("TkIconFont", 10),
+                    ("TkTooltipFont", 9)):
+        _Font.REGISTRY[_n] = {"family": "TkDefaultFont", "size": _sz,
+                              "weight": "normal"}
 
     fnt.Font = _Font
-    fnt.nametofont = lambda n: _Font()
+    fnt.nametofont = _nametofont
+    fnt.names = lambda *a: sorted(_Font.REGISTRY)
     fnt.families = lambda *a: ["TkDefaultFont"]
     tk.font = fnt
 

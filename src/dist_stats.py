@@ -30,15 +30,6 @@ def total_mass(pmf) -> float:
     return sum(pmf)
 
 
-def cdf(pmf) -> list:
-    """Cumulative distribution: out[v] = P(X <= v)."""
-    out, acc = [], 0.0
-    for p in pmf:
-        acc += p
-        out.append(acc)
-    return out
-
-
 def percentile(pmf, q: float) -> int:
     """Smallest value v with P(X <= v) >= q (discrete quantile).
 
@@ -162,12 +153,3 @@ def histogram(pmf, max_bars: int = 40, keep: float = 0.999,
     return {"bins": bins, "width": width,
             "cut": cut if cut_mass > 0 else None, "cut_mass": cut_mass,
             "low": low if low_mass > 0 else None, "low_mass": low_mass}
-
-
-def summary_line(pmf, unit: str = "damage") -> str:
-    """One-line textual summary, shared by the dialog and the exports."""
-    s = stats(pmf)
-    lo, hi = SPREAD_LABELS
-    return (f"mean {s['mean']:.2f}  sd {s['sd']:.2f}  |  "
-            f"{lo} {s['lo']}  median {s['median']}  {hi} {s['hi']}  "
-            f"({unit})")

@@ -11,6 +11,7 @@ import json
 import testpaths                      # sets up sys.path to the engine src/
 import analyzer_core as ac
 import comparison as cmp
+import dist_stats as ds
 import unit_model as um
 
 
@@ -104,6 +105,9 @@ assert "(" not in csv.replace("(unit", "")
 # ---- overlay series ---------------------------------------------------
 ser = cmp.overlay_series([pin_a, pin_b], "kills")
 assert [s["name"] for s in ser] == ["plain", "in cover"]
-assert ser[0]["stats"]["mean"] > ser[1]["stats"]["mean"]
+# The series carry the PMF and nothing else - the canvas draws survival
+# curves and needs no summary - so the statistic is computed here.
+assert set(ser[0]) == {"name", "pmf"}, sorted(ser[0])
+assert ds.stats(ser[0]["pmf"])["mean"] > ds.stats(ser[1]["pmf"])["mean"]
 
 print("comparison: OK")

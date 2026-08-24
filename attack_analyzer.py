@@ -721,7 +721,8 @@ class AnalyzerApp(tk.Tk):
                            r["damage_pmf"], r.get("kills_pmf"), unit_w,
                            ref.get("models"),
                            attacks_pmf=r.get("attacks_pmf"),
-                           effective_pmf=r.get("wounds_pmf")),
+                           effective_pmf=r.get("wounds_pmf"),
+                           self_pmf=r.get("self_damage_pmf")),
                        f"{note}\nThis weapon alone, against a target "
                        f"unit at full strength.")
                  for iid, r in pmfs.items()}
@@ -799,7 +800,8 @@ class AnalyzerApp(tk.Tk):
                                        t.get("kills_pmf"), unit_w,
                                        t.get("models"),
                                        attacks_pmf=t.get("attacks_pmf"),
-                                       effective_pmf=t.get("wounds_pmf"))
+                                       effective_pmf=t.get("wounds_pmf"),
+                                       self_pmf=t.get("self_damage_pmf"))
 
     @staticmethod
     def _heading_help(tree, event, cols):
