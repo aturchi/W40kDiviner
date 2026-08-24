@@ -1993,6 +1993,29 @@ def hazardous_damage_per_fail(keywords) -> int:
 
 def hazardous_self_damage_mean(count: int, dmg_per_fail: int = 1) -> float:
     """Mean self-damage (11th ed.): per weapon copy, a d6 roll of 1-2
-    fails the Hazardous test and deals dmg_per_fail damage. The median
-    is 0 and is intentionally not reported."""
+    fails the Hazardous test and deals dmg_per_fail damage."""
     return max(1, count) * (2.0 / 6.0) * dmg_per_fail
+
+
+def hazardous_self_damage_pmf(count: int, dmg_per_fail: int = 1) -> list:
+    """Full law of the self-damage, not just its mean.
+
+    Each copy tests once and fails on a 1 or a 2, so the number of
+    failures is Binomial(count, 1/3) and each failure costs
+    dmg_per_fail. The mean is exactly hazardous_self_damage_mean(); the
+    PMF exists because the mean alone hides the shape - two hazardous
+    weapons average 1.33 damage but their MOST LIKELY outcome is none
+    at all, and a table that can be read as a median has to be able to
+    say so.
+    """
+    n, q = max(1, int(count)), 2.0 / 6.0
+    step = max(1, int(dmg_per_fail))
+    binom = [1.0] + [0.0] * n
+    for _copy in range(n):             # one Bernoulli test per copy
+        for k in range(n, 0, -1):
+            binom[k] = binom[k] * (1.0 - q) + binom[k - 1] * q
+        binom[0] *= (1.0 - q)
+    out = [0.0] * (n * step + 1)
+    for k, pk in enumerate(binom):
+        out[k * step] = pk
+    return out

@@ -4,31 +4,103 @@ Kept apart from the widget on purpose: no tkinter here, so the way the
 numbers are turned into a table can be tested headless - and the same
 rows can later be written to a CSV without going through the interface.
 
-The one rule worth stating loudly is in totals_row(): only MEANS may be
-summed down a column. A median is not additive (the median of a sum is
-not the sum of the medians), and neither are the inflicted wounds or
-the models killed, which depend on the weapons being chained into the
-same target unit. Those are read off the totals distributions instead.
+Two things are properties of the ANALYSIS rather than constants, and
+both are threaded through every row builder instead of being decided
+again inside each one:
 
-Which columns exist is a property of the ANALYSIS, not a constant: see
-columns(). Every row builder therefore takes the key list it is being
-projected onto instead of deciding again for itself - a row that
-disagreed with the headings above it would put the right numbers in the
-wrong columns, which is worse than showing nothing at all.
+  * WHICH columns exist - see columns();
+  * WHICH STATISTIC each column is showing. Every column backed by a
+    distribution can be read as a mean, a median or a percentile, and
+    the heading says which. A row that disagreed with the headings
+    above it would put the right numbers in the wrong columns, which is
+    worse than showing nothing at all.
+
+The old rule about the totals row survives in a stronger form. It used
+to be "only means may be summed down a column"; now nothing is summed
+at all except the weapon COUNT. Every statistic of the totals is read
+off the unit's own distribution, which analyzer_core convolves - and
+for a mean that gives exactly what summing the column gave, while for a
+median or a percentile it gives the only correct answer.
 """
+import dist_stats as ds
 
-# key, heading, column width in pixels
+# The statistics a column can be read as, in the order a click on the
+# heading cycles through them.
+STATS = ("mean", "median", "lo", "hi")
+STAT_LABEL = dict(zip(("lo", "hi"), ds.SPREAD_LABELS),
+                  **{"mean": "\u03bc", "median": "med"})
+# Which fraction each statistic reads off the distribution. dist_stats
+# owns the spread pair, so changing it there changes the headings, the
+# chart readout and this cycle together.
+STAT_Q = {"median": 0.5, "lo": ds.SPREAD[0], "hi": ds.SPREAD[1]}
+
+# key, heading title, column width in pixels
 ALL_COLUMNS = (("count", "xN", 44),
-               ("att_m", "Attacks \u03bc", 74),
-               ("eff_m", "Effective \u03bc", 84),
-               ("d_mean", "Damage \u03bc", 76),
-               ("d_med", "Damage med", 84),
-               ("infl", "Inflicted \u03bc", 80),
-               ("kills", "Kills \u03bc", 66),
-               ("self", "Self-dmg \u03bc", 84),
+               ("att_m", "Attacks", 74),
+               ("eff_m", "Effective", 84),
+               ("dmg", "Damage", 80),
+               ("infl", "Inflicted", 80),
+               ("kills", "Kills", 66),
+               ("self", "Self-dmg", 84),
                ("per100", "per 100pts", 80))
 
 ALL_KEYS = tuple(k for k, _h, _w in ALL_COLUMNS)
+TITLES = {k: t for k, t, _w in ALL_COLUMNS}
+
+# Which distribution each statistic column is read from. The keys are
+# the same on a weapon row and on the totals, so one lookup serves both
+# - the difference between "this weapon alone" and "the whole unit" is
+# in how analyzer_core built the PMF, not in how the table reads it.
+# A tuple is a fallback chain: 'removed_pmf' is absent when the
+# allocation chain did not run, and the net damage is the estimate.
+STAT_PMF = {"att_m": ("attacks_pmf",),
+            "eff_m": ("wounds_pmf",),
+            "dmg": ("damage_pmf",),
+            "infl": ("removed_pmf", "damage_net_pmf"),
+            "kills": ("kills_pmf",),
+            "self": ("self_damage_pmf",)}
+
+# 'xN' is a count, not a sample, and 'per 100pts' is an efficiency that
+# is only meaningful as a mean: a percentile of a ratio of two
+# percentiles is not a percentile of anything.
+FIXED_KEYS = tuple(k for k in ALL_KEYS if k not in STAT_PMF)
+
+
+def next_stat(stat: str) -> str:
+    """The statistic a click on the heading moves to."""
+    return STATS[(STATS.index(stat) + 1) % len(STATS)] \
+        if stat in STATS else STATS[0]
+
+
+def heading(key: str, stat: str = "mean") -> str:
+    """The heading text for a column under the statistic on show. The
+    marker is not decoration: without it a median is indistinguishable
+    from a mean, and the two differ by more than a rounding on any
+    skewed distribution."""
+    title = TITLES.get(key, key)
+    return f"{title} {STAT_LABEL[stat]}" if key in STAT_PMF else title
+
+
+def _pmf(src: dict, key: str):
+    """The distribution behind a statistic column, following the
+    fallback chain."""
+    for name in STAT_PMF.get(key, ()):
+        pmf = src.get(name)
+        if pmf:
+            return pmf
+    return None
+
+
+def _stat(pmf, stat: str) -> str:
+    """One statistic of a PMF, formatted. Means keep two decimals;
+    a median and a percentile are VALUES the dice can actually produce,
+    so they are printed as the integers they are."""
+    if not pmf:
+        return ""
+    if stat == "mean":
+        return _f(sum(v * p for v, p in enumerate(pmf)))
+    return str(ds.percentile(pmf, STAT_Q[stat]))
+
 
 # What each heading means. The text lives here rather than in the window
 # because it belongs to the column definition: a column that changed
@@ -50,27 +122,19 @@ COLUMN_HELP = {
               "Set in the unit tree (masking a weapon takes it to 0, "
               "and the count can be typed by hand). On the TOTAL it is "
               "the sum over the weapons that fired."),
-    "att_m": ("Mean number of attack ROLLS made: the Attacks "
-              "characteristic times the count, a dice expression "
-              "averaged, plus whatever an ability adds.\n\n"
-              "Additive, so the TOTAL really is the sum of the rows."),
-    "eff_m": ("Mean number of attacks that ended up dealing damage - "
-              "past the hit roll, the wound roll, the save or "
-              "invulnerable save AND Feel No Pain.\n\n"
+    "att_m": ("Attack ROLLS made: the Attacks characteristic times the "
+              "count, plus whatever an ability adds.\n\n"
+              "Click the heading to read this column as a median or a "
+              "percentile instead of a mean - useful wherever Attacks "
+              "is a dice expression."),
+    "eff_m": ("Attacks that ended up dealing damage - past the hit "
+              "roll, the wound roll, the save or invulnerable save AND "
+              "Feel No Pain.\n\n"
               "NOT the number of successful wound rolls: an attack that "
-              "wounds and is then saved never becomes effective. "
-              "Additive."),
-    "d_mean": ("Mean GROSS damage rolled, before any of it is wasted: "
-               "an attack of 6 damage on a 2-wound model counts 6 "
-               "here.\n\n"
-               "Compare it with Inflicted to see the overkill. Additive "
-               "as a mean, which is why the TOTAL agrees with the sum "
-               "of the rows."),
-    "d_med": ("Median gross damage: the value the roll falls below half "
-              "the time.\n\n"
-              "NOT additive - the median of a sum is not the sum of the "
-              "medians - so the TOTAL shows the median of the combined "
-              "distribution, not a column sum."),
+              "wounds and is then saved never becomes effective."),
+    "dmg": ("GROSS damage rolled, before any of it is wasted: an "
+            "attack of 6 damage on a 2-wound model counts 6 here.\n\n"
+            "Compare it with Inflicted to see the overkill."),
     "infl": ("Wounds actually taken off the unit, waste on a destroyed "
              "model deducted.\n\n"
              "On a weapon row this is that weapon ALONE against a unit "
@@ -82,16 +146,20 @@ COLUMN_HELP = {
               "at full strength, so the weapon rows do NOT add up to "
               "the total - and two weapons that each average half a "
               "model kill a whole one when they are fired together."),
-    "self": ("Mean damage the firing unit does to ITSELF with its "
-             "HAZARDOUS weapons: one D6 per copy, a 1 or a 2 failing "
-             "the test.\n\n"
-             "The median is 0 and is deliberately not shown. The column "
+    "self": ("Damage the firing unit does to ITSELF with its HAZARDOUS "
+             "weapons: one D6 per copy, a 1 or a 2 failing the "
+             "test.\n\n"
+             "Worth a click on the heading: two hazardous weapons "
+             "average 1.33 damage but their most likely outcome is "
+             "none at all, which only the median shows. The column "
              "appears only when a HAZARDOUS weapon is in the list."),
-    "per100": ("Wounds inflicted per 100 points of the ATTACKING "
+    "per100": ("Mean wounds inflicted per 100 points of the ATTACKING "
                "unit.\n\n"
                "On the TOTAL row only: the points bought the whole "
                "unit, so no single weapon can be charged with a share "
-               "of them."),
+               "of them. Always a mean, whatever Inflicted is showing - "
+               "a ratio of two percentiles is not a percentile of the "
+               "ratio."),
 }
 
 
@@ -117,33 +185,32 @@ def _f(x, nd=2):
     return "" if x is None else f"{x:.{nd}f}"
 
 
-def _mean(pmf):
-    return sum(v * p for v, p in enumerate(pmf)) if pmf else None
-
-
 def _project(cells: dict, cols) -> tuple:
     """A row in the order of 'cols'. A key the builder did not fill is
     blank rather than missing, so a row is always as wide as the table."""
     return tuple(cells.get(k, "") for k in cols)
 
 
-def weapon_row(r: dict, cols=ALL_KEYS) -> tuple:
+def _stat_cells(src: dict, cols, stats) -> dict:
+    """Every statistic column of one row, read off its own PMF. Shared
+    by the weapon rows and the totals, which differ only in the two
+    columns that are not statistics."""
+    stats = stats or {}
+    return {k: _stat(_pmf(src, k), stats.get(k, "mean"))
+            for k in cols if k in STAT_PMF}
+
+
+def weapon_row(r: dict, cols=ALL_KEYS, stats=None) -> tuple:
     """One weapon. 'Inflicted' and 'Kills' are this weapon ALONE against
     a full-strength unit, so they do not add up to the totals; the
     efficiency column is left to the totals row, because the points
     belong to the unit and not to any one weapon."""
-    infl = r.get("removed") or r.get("damage_net")
-    return _project({"count": r["count"],
-                     "att_m": _f(r["attacks"]["mean"]),
-                     "eff_m": _f(r["wounds"]["mean"]),
-                     "d_mean": _f(r["damage"]["mean"]),
-                     "d_med": str(r["damage"]["median"]),
-                     "infl": _f(infl["mean"] if infl else None),
-                     "kills": _f(_mean(r.get("kills_pmf"))),
-                     "self": _f(r.get("self_damage_mean"))}, cols)
+    cells = _stat_cells(r, cols, stats)
+    cells["count"] = r["count"]
+    return _project(cells, cols)
 
 
-def skipped_row(r: dict, cols=ALL_KEYS) -> tuple:
+def skipped_row(r: dict, cols=ALL_KEYS, stats=None) -> tuple:
     """A weapon the attack setup excluded: the reason replaces the
     numbers, so the table still accounts for the whole unit. Positional
     on purpose - the reason is a sentence and runs across whichever
@@ -157,44 +224,52 @@ def totals_label(results: dict) -> str:
     return f"TOTAL ({n} weapons" + (f", {pts} pts)" if pts else ")")
 
 
-def totals_row(results: dict, cols=ALL_KEYS) -> tuple:
-    """The closing row. Sums only what may be summed."""
+def totals_row(results: dict, cols=ALL_KEYS, stats=None) -> tuple:
+    """The closing row, read off the unit's own distributions.
+
+    Nothing is summed down a column here except the weapon count. For a
+    mean that makes no difference - a mean is additive - but a median
+    or a percentile of the unit is not a function of the weapons'
+    medians at all, and reading it off the convolved law is the only
+    way to get it right.
+    """
     t, rows = results["totals"], results["weapons"]
-    infl = t.get("removed") or t.get("damage_net")
+    cells = _stat_cells(t, cols, stats)
+    cells["count"] = sum(r["count"] for r in rows)
     pts = t.get("points") or 0
-    self_sum = sum(r["self_damage_mean"] or 0.0 for r in rows)
-    return _project(
-        {"count": sum(r["count"] for r in rows),
-         "att_m": _f(sum(r["attacks"]["mean"] for r in rows)),
-         "eff_m": _f(sum(r["wounds"]["mean"] for r in rows)),
-         "d_mean": _f(t["damage"]["mean"]),
-         "d_med": str(t["damage"]["median"]),
-         "infl": _f(infl["mean"] if infl else None),
-         "kills": _f(t["kills"]["mean"] if t.get("kills") else None),
-         "self": _f(self_sum) if self_sum else "",
-         "per100": _f(infl["mean"] / pts * 100) if (pts and infl) else ""},
-        cols)
+    infl = _pmf(t, "infl")
+    # Efficiency stays a MEAN whatever the Inflicted column is showing:
+    # a ratio of two percentiles is not a percentile of the ratio.
+    if pts and infl:
+        cells["per100"] = _f(sum(v * p for v, p in enumerate(infl))
+                             / pts * 100)
+    return _project(cells, cols)
 
 
-def table(results: dict) -> list:
+def table(results: dict, stats=None) -> list:
     """The whole table as [(name, values)], totals row included."""
     cols = keys(results)
-    out = [(r["name"], weapon_row(r, cols)) for r in results["weapons"]]
-    out += [(r["name"], skipped_row(r, cols))
+    out = [(r["name"], weapon_row(r, cols, stats))
+           for r in results["weapons"]]
+    out += [(r["name"], skipped_row(r, cols, stats))
             for r in results.get("skipped", [])]
-    out.append((totals_label(results), totals_row(results, cols)))
+    out.append((totals_label(results), totals_row(results, cols, stats)))
     return out
 
 
-def to_csv(results: dict) -> str:
-    """The same table as CSV text (no file I/O, no quoting surprises:
-    weapon names are the only free text and commas in them are quoted)."""
+def to_csv(results: dict, stats=None) -> str:
+    """The same table as CSV text, headings included - so the export
+    carries WHICH statistic each column was showing and cannot be
+    mistaken for a table of means (no file I/O, and weapon names are
+    the only free text: commas in them are quoted)."""
     def cell(v):
         v = str(v)
         return '"' + v.replace('"', '""') + '"' if ("," in v or '"' in v) \
             else v
 
-    lines = [",".join(["Weapon"] + [h for _k, h, _w in columns(results)])]
-    for name, vals in table(results):
+    stats = stats or {}
+    lines = [",".join(["Weapon"] + [heading(k, stats.get(k, "mean"))
+                                    for k, _t, _w in columns(results)])]
+    for name, vals in table(results, stats):
         lines.append(",".join(cell(v) for v in (name,) + tuple(vals)))
     return "\n".join(lines) + "\n"

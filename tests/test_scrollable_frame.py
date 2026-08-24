@@ -60,11 +60,15 @@ assert sf.canvas.master is sf
 label = ttk.Label(sf.body, text="x")
 listbox = tk.Listbox(sf.body)
 sf.bind_wheel()
+# Misc.bind() with no arguments reports the sequences bound on the
+# widget - the real API, so this reads the same under tkstub and under
+# the toolkit itself.
+bound, own = set(label.bind()), set(listbox.bind())
 for seq in ui.ScrollableFrame._WHEEL_EVENTS:
-    assert seq in label._binds, seq
+    assert seq in bound, (seq, bound)
     # ...except on a widget that scrolls itself: the wheel over a list is
     # the list's.
-    assert seq not in listbox._binds, seq
+    assert seq not in own, (seq, own)
 
 # Handling the wheel must stop there, so a ttk Spinbox under the pointer
 # does not ALSO increment its value.
@@ -108,23 +112,39 @@ def help_for(event):
 
 
 tip = ui.Tooltip(target, help_for)
-# tkstub runs after() immediately, so scheduling and showing collapse
-# into one step here; on the real toolkit they are DELAY_MS apart.
+
+
+def pending(t):
+    """Whether a tip is due or already up.
+
+    The two states cannot be told apart portably: the real toolkit
+    honours the DELAY_MS and leaves a scheduled job, tkstub runs after()
+    at once and goes straight to a window. What the test cares about is
+    neither - it is whether the pointer position produced a tip at all.
+    """
+    return t._job is not None or t._win is not None
+
+
 tip._on_motion(MotionEvent(x=10))
-assert tip._win is not None, "no tip over a heading with help"
-# Moving WITHIN the same heading must not rebuild it: a Motion event
+assert pending(tip), "no tip over a heading with help"
+# Moving WITHIN the same heading must not restart it: a Motion event
 # arrives per pixel and rescheduling on each would mean the tip never
 # becomes due.
-window, calls = tip._win, len(asked)
+state, calls = (tip._job, tip._win), len(asked)
 tip._on_motion(MotionEvent(x=11))
-assert tip._win is window and len(asked) == calls + 1
+assert (tip._job, tip._win) == state and len(asked) == calls + 1
 # Moving onto something with no help takes it away.
 tip._on_motion(MotionEvent(x=200))
-assert tip._win is None
+assert not pending(tip)
 # ...and so does leaving the widget, from any state.
 tip._on_motion(MotionEvent(x=10))
 tip._hide()
-assert tip._win is None and tip._text is None
+assert not pending(tip) and tip._text is None
+# The window itself is built on demand and destroyed with the tip.
+tip._show("a heading means this", 0, 0)
+assert tip._win is not None
+tip._hide()
+assert tip._win is None
 
 
 # ---------------- 3. the setup panel builds into the body -------------

@@ -168,8 +168,14 @@ class Misc:
         return m
 
     # -- events
-    def bind(self, seq, func=None, add=None):
+    def bind(self, seq=None, func=None, add=None):
+        """Bind, or - called bare - report what is bound, which is what
+        the real Misc.bind does and the only way a test can ask the
+        question without reaching into this stub."""
+        if seq is None:
+            return tuple(self._binds)
         self._binds.setdefault(seq, []).append(func)
+        return "stub-funcid"
 
     bind_all = bind_class = bind
 

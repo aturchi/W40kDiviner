@@ -14,6 +14,7 @@ from tkinter import ttk
 from tkinter import font as tkfont
 
 import dist_stats as ds
+import ui_utils as ui
 
 BAR_FILL = "#5b8ec4"
 BAR_OVER = "#c0504d"          # bars at or above the threshold
@@ -35,13 +36,14 @@ class HistogramCanvas(tk.Canvas):
     """Bar chart of a PMF, with an optional cumulative P(X >= v) overlay
     and a threshold marker. Values are integers (damage points).
 
-    'xmax' is the last value plotted: None lets dist_stats cut the thin
-    upper tail by itself, a number forces the length of the X axis. The
-    mass left out is annotated on the chart in both cases - the axis is a
-    view of the distribution, never a filter on it."""
+    'xmin' and 'xmax' are the first and last values plotted: None lets
+    dist_stats choose (from zero, up to its own cut of the thin upper
+    tail), a number forces that end of the axis. The mass left outside
+    the window is annotated on the chart at whichever end it fell - the
+    axis is a view of the distribution, never a filter on it."""
 
     def __init__(self, parent, pmf=None, threshold=None, cumulative=True,
-                 xmax=None, **kw):
+                 xmax=None, xmin=None, **kw):
         kw.setdefault("background", "white")
         kw.setdefault("highlightthickness", 1)
         kw.setdefault("highlightbackground", "#cccccc")
@@ -50,14 +52,16 @@ class HistogramCanvas(tk.Canvas):
         self._threshold = threshold
         self._cumulative = cumulative
         self._xmax = xmax          # None = the automatic tail cut
+        self._xmin = xmin          # None = from zero
         self.bind("<Configure>", lambda _e: self._draw())
 
     # ---------- public ----------
 
-    def set_data(self, pmf=None, threshold=-1, cumulative=None, xmax=-1):
-        """Update the drawing. threshold=-1 and xmax=-1 mean "leave
-        unchanged"; None is a meaningful value for both (no marker, and
-        an automatically chosen axis length)."""
+    def set_data(self, pmf=None, threshold=-1, cumulative=None, xmax=-1,
+                 xmin=-1):
+        """Update the drawing. threshold=-1, xmax=-1 and xmin=-1 mean
+        "leave unchanged"; None is a meaningful value for all three (no
+        marker, and an automatically chosen end of the axis)."""
         if pmf is not None:
             self._pmf = list(pmf) or [1.0]
         if threshold != -1:
@@ -66,6 +70,8 @@ class HistogramCanvas(tk.Canvas):
             self._cumulative = bool(cumulative)
         if xmax != -1:
             self._xmax = xmax
+        if xmin != -1:
+            self._xmin = xmin
         self._draw()
 
     # ---------- drawing ----------
@@ -79,7 +85,8 @@ class HistogramCanvas(tk.Canvas):
         x0, x1 = _PAD_L, w - _PAD_R
         y0, y1 = max(_PAD_T, font.metrics("linespace") + 4), h - _PAD_B
         max_bars = max(4, (x1 - x0) // _MIN_BAR_PX)
-        hist = ds.histogram(self._pmf, max_bars=max_bars, cut=self._xmax)
+        hist = ds.histogram(self._pmf, max_bars=max_bars, cut=self._xmax,
+                            low=self._xmin)
         bins = hist["bins"]
         peak = max((p for _lo, _hi, p in bins), default=0.0) or 1.0
         # Round the top of the axis up to a tidy percentage.
@@ -102,11 +109,18 @@ class HistogramCanvas(tk.Canvas):
             self._threshold_marker(bins, thr, x0, y0, y1, bw, font)
         if self._cumulative:
             self._cum_curve(bins, x0, y0, y1, bw, font)
+        # The mass outside the window, annotated at the end it fell off:
+        # a narrowed axis must never look like a smaller distribution.
         if hist["cut"] is not None:
             self.create_text(
                 x1, y0 - 2, anchor=tk.SE, fill=TEXT, font=font,
                 text=f"tail above {hist['cut']}: "
                      f"{hist['cut_mass'] * 100:.2f}% (not plotted)")
+        if hist["low"] is not None:
+            self.create_text(
+                x0, y0 - 2, anchor=tk.SW, fill=TEXT, font=font,
+                text=f"below {hist['low']}: "
+                     f"{hist['low_mass'] * 100:.2f}% (not plotted)")
 
     def _axes(self, x0, y0, x1, y1, top, font):
         """Frame, horizontal grid and the left (probability) scale."""
@@ -176,7 +190,8 @@ class DistributionFrame(ttk.Frame):
     series = [{'key','label','pmf','unit','threshold'}]; 'unit' is the
     noun used in the readout ("damage", "models killed").
 
-    The X-axis length is offered beside the threshold, and deliberately
+    The two ends of the X axis are offered under the threshold, and
+    deliberately
     does NOT follow the same rule: a threshold is a QUESTION ("what are
     my odds of at least N") and is worth carrying back and forth, while
     an axis length is a view of one particular distribution and means
@@ -205,6 +220,7 @@ class DistributionFrame(ttk.Frame):
         self._cum = tk.BooleanVar(value=True)
         self._entry = tk.StringVar(value=self._thr[self._order[0]])
         self._xmax = tk.StringVar()
+        self._xmin = tk.StringVar()
         self._build(note)
         self._reset_xmax()
         self._refresh()
@@ -230,12 +246,18 @@ class DistributionFrame(ttk.Frame):
         self.canvas = HistogramCanvas(self, height=300)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=6, pady=4)
 
-        self.stat_lbl = ttk.Label(self, text="",
-                                  font=("TkDefaultFont", 10, "bold"))
-        self.stat_lbl.pack(anchor=tk.W, padx=6)
+        # The statistics table is narrow and the space to its right was
+        # empty, so the controls sit beside it rather than under it: the
+        # window gets shorter by two rows, which is what a page already
+        # too tall for a 768-line screen needed.
+        bottom = ttk.Frame(self)
+        bottom.pack(fill=tk.X, padx=6, pady=(2, 6))
+        self._build_stat_table(bottom)
+        side = ttk.Frame(bottom)
+        side.pack(side=tk.LEFT, anchor=tk.N, padx=(24, 0))
 
-        row = ttk.Frame(self)
-        row.pack(fill=tk.X, padx=6, pady=(2, 6))
+        row = ttk.Frame(side)
+        row.pack(anchor=tk.W)
         self.tail_prefix = ttk.Label(row, text="P(")
         self.tail_prefix.pack(side=tk.LEFT)
         ent = ttk.Entry(row, textvariable=self._entry, width=6)
@@ -245,15 +267,68 @@ class DistributionFrame(ttk.Frame):
                                   font=("TkDefaultFont", 10, "bold"))
         self.tail_lbl.pack(side=tk.LEFT, padx=4)
         ent.bind("<KeyRelease>", lambda _e: self._refresh())
-        # X-axis length. A Spinbox rather than a plain field because the
-        # useful range is known (1 .. the top of the support) and a value
-        # outside it is not a question anyone is asking.
-        ttk.Label(row, text="X axis up to").pack(side=tk.LEFT, padx=(16, 2))
-        self.xmax_spin = ttk.Spinbox(row, from_=1, to=1, width=6,
+
+        # The two ends of the X axis. Spinboxes rather than plain fields
+        # because the useful range is known (0 .. the top of the
+        # support) and a value outside it is not a question anyone is
+        # asking.
+        axis = ttk.Frame(side)
+        axis.pack(anchor=tk.W, pady=(4, 0))
+        ttk.Label(axis, text="X axis").pack(side=tk.LEFT, padx=(0, 4))
+        self.xmin_spin = ttk.Spinbox(axis, from_=0, to=1, width=6,
+                                     textvariable=self._xmin,
+                                     command=self._refresh)
+        self.xmin_spin.pack(side=tk.LEFT)
+        ttk.Label(axis, text="to").pack(side=tk.LEFT, padx=4)
+        self.xmax_spin = ttk.Spinbox(axis, from_=1, to=1, width=6,
                                      textvariable=self._xmax,
                                      command=self._refresh)
         self.xmax_spin.pack(side=tk.LEFT)
-        self.xmax_spin.bind("<KeyRelease>", lambda _e: self._refresh())
+        for spin in (self.xmin_spin, self.xmax_spin):
+            spin.bind("<KeyRelease>", lambda _e: self._refresh())
+
+    #: statistic key -> heading, in the order the table shows them.
+    STAT_COLUMNS = (("mean", "\u03bc"), ("sd", "sd"), ("lo", None),
+                    ("median", "median"), ("hi", None), ("mode", "mode"),
+                    ("max", "max"))
+
+    def _build_stat_table(self, parent=None):
+        """Every statistic of EVERY series, not just the one on the
+        chart: the numbers do not depend on which radio is selected, and
+        reading them off a table beats clicking through five charts to
+        collect them. The selected row is shown in bold, so the chart
+        and the table cannot be read as unrelated."""
+        grid = ttk.Frame(parent if parent is not None else self)
+        grid.pack(side=tk.LEFT, anchor=tk.N)
+        lo_lab, hi_lab = ds.SPREAD_LABELS
+        heads = [h if h is not None else (lo_lab if k == "lo" else hi_lab)
+                 for k, h in self.STAT_COLUMNS]
+        for col, head in enumerate([""] + heads):
+            ttk.Label(grid, text=head, foreground=ui.HINT_COLOR).grid(
+                row=0, column=col, sticky=tk.E, padx=(0, 8))
+        self._stat_rows = {}
+        for line, key in enumerate(self._order, start=1):
+            cur = self._series[key]
+            st = ds.stats(cur["pmf"])
+            cells = [ttk.Label(grid, text=cur["label"])]
+            cells[0].grid(row=line, column=0, sticky=tk.W, padx=(0, 8))
+            for col, (stat, _h) in enumerate(self.STAT_COLUMNS, start=1):
+                value = st[stat]
+                text = (f"{value:.2f}" if stat in ("mean", "sd")
+                        else str(value))
+                cell = ttk.Label(grid, text=text)
+                cell.grid(row=line, column=col, sticky=tk.E, padx=(0, 8))
+                cells.append(cell)
+            self._stat_rows[key] = cells
+        self._highlight()
+
+    def _highlight(self):
+        """Bold the row of the series currently on the chart."""
+        for key, cells in self._stat_rows.items():
+            font = ("TkDefaultFont", 10,
+                    "bold" if key == self._which.get() else "normal")
+            for cell in cells:
+                cell.configure(font=font)
 
     # ---------- state ----------
 
@@ -263,27 +338,39 @@ class DistributionFrame(ttk.Frame):
         axis, which is not carried across series at all."""
         self._entry.set(self._thr.get(self._which.get(), ""))
         self._reset_xmax()
+        self._highlight()
         self._refresh()
 
     def _reset_xmax(self):
-        """Put the axis back to what the drawing would have chosen on its
-        own for the current series, and bound the Spinbox to that
-        series' support."""
+        """Put both ends of the axis back to what the drawing would have
+        chosen on its own for the current series, and bound the Spinboxes
+        to that series' support."""
         pmf = self._series[self._which.get()]["pmf"]
         top = max(1, len(pmf) - 1)
         self.xmax_spin.configure(to=top)
+        self.xmin_spin.configure(to=top)
         self._xmax.set(str(ds.default_xmax(pmf)))
+        self._xmin.set("0")
 
     def _xmax_value(self, pmf):
-        """The axis length to draw with, or None for the automatic one.
-        The field is clamped on READ and never rewritten: correcting it
-        under the cursor would fight whoever is halfway through typing
-        a two-digit number."""
+        """The top of the axis to draw with, or None for the automatic
+        one. The field is clamped on READ and never rewritten:
+        correcting it under the cursor would fight whoever is halfway
+        through typing a two-digit number."""
         try:
             value = int(self._xmax.get())
         except (TypeError, ValueError):
             return None
         return max(1, min(max(0, len(pmf) - 1), value))
+
+    def _xmin_value(self, pmf):
+        """The bottom of the axis, or None for zero. Clamped on read the
+        same way, and dist_stats keeps it from crossing the top."""
+        try:
+            value = int(self._xmin.get())
+        except (TypeError, ValueError):
+            return None
+        return max(0, min(max(0, len(pmf) - 1), value)) or None
 
     def _threshold(self):
         try:
@@ -298,8 +385,8 @@ class DistributionFrame(ttk.Frame):
         self._thr[key] = self._entry.get()
         self.canvas.set_data(pmf=pmf, threshold=thr,
                              cumulative=self._cum.get(),
-                             xmax=self._xmax_value(pmf))
-        self.stat_lbl.config(text=ds.summary_line(pmf, cur["unit"]))
+                             xmax=self._xmax_value(pmf),
+                             xmin=self._xmin_value(pmf))
         self.tail_prefix.config(text=f"P({cur['unit']} >= ")
         self.tail_lbl.config(
             text="-" if thr is None
@@ -307,11 +394,20 @@ class DistributionFrame(ttk.Frame):
 
 
 def result_series(net_pmf, gross_pmf=None, kills_pmf=None, unit_wounds=None,
-                  models=None):
+                  models=None, attacks_pmf=None, effective_pmf=None):
     """The series shown for one analysis result, in the order they are
     offered: the wounds actually inflicted first (the figure that
     decides whether the target dies), then the models killed, then the
-    gross damage rolled - which includes what was wasted."""
+    gross damage rolled - which includes what was wasted - and last the
+    two counts upstream of all of it.
+
+    Attacks and effective attacks come last because they answer a
+    different question ("did the dice show up") from the three above
+    them ("did the target die"), but they are here so that the window
+    holds EVERY statistic of the weapon: with them the table beside the
+    chart is the whole row of the result table, distributions and all.
+    Neither has a natural threshold, so the P(...) field starts empty.
+    """
     out = [{"key": "net", "label": "wounds inflicted",
             "pmf": list(net_pmf), "unit": "wounds",
             "threshold": unit_wounds}]
@@ -323,6 +419,14 @@ def result_series(net_pmf, gross_pmf=None, kills_pmf=None, unit_wounds=None,
         out.append({"key": "gross", "label": "gross damage",
                     "pmf": list(gross_pmf), "unit": "damage",
                     "threshold": unit_wounds})
+    if attacks_pmf is not None:
+        out.append({"key": "attacks", "label": "attacks",
+                    "pmf": list(attacks_pmf), "unit": "attacks",
+                    "threshold": None})
+    if effective_pmf is not None:
+        out.append({"key": "eff", "label": "effective attacks",
+                    "pmf": list(effective_pmf), "unit": "effective attacks",
+                    "threshold": None})
     return out
 
 
@@ -332,7 +436,7 @@ def open_distribution(parent, title, series, note=""):
     opened from."""
     win = tk.Toplevel(parent)
     win.title(title)
-    win.geometry("820x560")
+    win.geometry("880x680")
     ttk.Label(win, text=title, font=("TkDefaultFont", 10, "bold")).pack(
         anchor=tk.W, padx=6, pady=(6, 0))
     frame = DistributionFrame(win, series, note=note)

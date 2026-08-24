@@ -149,8 +149,15 @@ ref = ac.reference_options(dview)[0][1]
 results = ac.run_analysis(aview, dview, ref, {}, "ranged", None, {})
 rows = list(csv_module.reader(io.StringIO(result_rows.to_csv(results))))
 table = result_rows.table(results)
-assert rows[0] == ["Weapon"] + [h for _k, h, _w in
+# The heading carries the STATISTIC on show, so a file exported while a
+# column was reading a percentile cannot be read as a table of means.
+assert rows[0] == ["Weapon"] + [result_rows.heading(k)
+                                for k, _t, _w in
                                 result_rows.columns(results)]
+import dist_stats as _ds                                    # noqa: E402
+hi_label = _ds.SPREAD_LABELS[1]
+upper = result_rows.to_csv(results, {"dmg": "hi"}).splitlines()[0]
+assert f"Damage {hi_label}" in upper and "Damage \u03bc" not in upper, upper
 assert len(rows) == len(table) + 1, (len(rows), len(table))
 for csv_row, (name, values) in zip(rows[1:], table):
     assert csv_row == [name] + [str(v) for v in values], (csv_row, name)

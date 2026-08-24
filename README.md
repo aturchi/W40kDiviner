@@ -385,13 +385,36 @@ i.e. that got past the save / invulnerable save **and** Feel No Pain.
 model deducted) and **Kills** the models destroyed — both computed by the exact
 allocation chain (`src/kill_chain.py`). The **totals row does not sum its columns**:
 only means are additive (`src/result_rows.py` owns that distinction).
+**Click a heading to change the statistic** it shows: μ → median → p25 → p75 →
+μ. 
+**Self-dmg** column appears only when a HAZARDOUS weapon is in the list.
 
 **In a result popup**
 
-- **Distribution…** — the full damage distribution as a histogram with the
-  cumulative curve `P(X ≥ v)` on top, p10 / median / p90, and an editable
-  threshold `N` (default: the target's total wounds). Double-click a weapon row
-  for that weapon alone.
+- **Distributions** — double-click any row for its distribution: a weapon row
+  for that weapon alone, the **TOTAL** row for the whole unit combined. One
+  gesture for both. The chart is a histogram with the cumulative curve
+  `P(X ≥ v)` on top, the **Show** selector (wounds inflicted / models killed /
+  gross damage, attacks, effective attacks) and an editable threshold `N`
+  (default: the target's total wounds), plus the **X axis** controls described
+  below — both sit to the right of the statistics table. Beside the chart sits a table with **every statistic of every
+  series** — μ, sd, p25, median, p75, mode, max — so the window holds the whole
+  result row, distributions and all; the row on the chart is shown in bold.
+  Every unmasked weapon is summed into the TOTAL, mutually exclusive profiles
+  (plasma standard *and* overcharge, alternative wargear) included: masking the
+  ones you are not firing is deliberately left to the user, and the chart says
+  so under it.
+- **X axis _n_ to _m_** — the window the chart plots, both ends adjustable. It
+  starts at 0 and the automatic cut (the 99.9th percentile); narrow it to spread
+  the body of the distribution out, or raise the top to see the tail. Bars are
+  hidden, never probability: the mass left out is annotated at the end it fell
+  off (*below n* on the left, *tail above m* on the right) and the statistics
+  keep describing the whole distribution. Unlike the threshold, neither end is
+  remembered when you switch series — an axis that fits *models killed* says
+  nothing about *gross damage* — so both reset to that series' own default each
+  time. A floor above the ceiling collapses to it rather than drawing nothing.
+- The result page **scrolls** when the window is too short for it, so it stays
+  usable on a low-resolution screen.
 - **Audit…** — what the engine *actually* used, in words: the hit and save
   numbers with every modifier that moved them, and an **Abilities in play**
   list. This is where you find the flag left on three analyses ago.
@@ -672,3 +695,7 @@ trademarks of **Games Workshop Ltd.** This is an **unofficial, non-commercial
 fan tool** and is not endorsed by or affiliated with Games Workshop. Roster data
 scraped from third-party sites is the property of its respective owners; use it
 in accordance with those sites’ terms.
+
+---
+
+Claude Opus 5.0 (Anthropic) was used extensively in the writing of this code.

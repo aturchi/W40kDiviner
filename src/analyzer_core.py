@@ -514,6 +514,8 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
                           + list(exclusive_group_notes(aview)))
     allocs = []                     # per-weapon allocation laws, in order
     gross, net = am.delta(0), am.delta(0)
+    att_tot, eff_tot = am.delta(0), am.delta(0)
+    self_tot, any_self = am.delta(0), False
     kept, skipped = select_weapons_split(aview, mode, melee_name,
                                          bool(flags.get("indirect")))
     abilities = ability_selection(flags)
@@ -526,6 +528,8 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
             skipped.append((w, why))
             continue
         label = w.name
+        selfpmf = (am.hazardous_self_damage_pmf(w.count, haz_damage)
+                   if mech.hazardous else None)
         selfdmg = (am.hazardous_self_damage_mean(w.count, haz_damage)
                    if mech.hazardous else None)
         if optimise:
@@ -549,6 +553,14 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
                      "damage_net": res["damage_net"],
                      "damage_pmf": res["damage_pmf"],
                      "damage_net_pmf": res["damage_net_pmf"],
+                     # Kept so the table can be re-read as a median or
+                     # a percentile and not only as a mean: a mean is
+                     # the one statistic that can be recovered from a
+                     # column of means, and every other one needs the
+                     # distribution it came from.
+                     "attacks_pmf": res["attacks_pmf"],
+                     "wounds_pmf": res["wounds_pmf"],
+                     "self_damage_pmf": selfpmf,
                      # This weapon ALONE against a fresh target unit -
                      # the totals below chain the weapons in table
                      # order instead, so the two do not add up.
@@ -565,9 +577,21 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
         warnings += [f"{label}: {x}" for x in res["warnings"]]
         gross = am.convolve(gross, res["damage_pmf"])
         net = am.convolve(net, res["damage_net_pmf"])
+        # The weapons roll their own dice, so the unit's attack count
+        # and its effective-attack count are the convolutions of the
+        # weapons'. Their MEANS are unchanged by this (a mean is
+        # additive either way); what the convolution adds is everything
+        # else - a median, a percentile - which cannot be read off a
+        # column of per-weapon values at all.
+        att_tot = am.convolve(att_tot, res["attacks_pmf"])
+        eff_tot = am.convolve(eff_tot, res["wounds_pmf"])
+        if selfpmf:
+            self_tot, any_self = am.convolve(self_tot, selfpmf), True
     totals = {"damage": am.pmf_stats(gross),
               "damage_net": am.pmf_stats(net),
               "damage_pmf": gross, "damage_net_pmf": net,
+              "attacks_pmf": att_tot, "wounds_pmf": eff_tot,
+              "self_damage_pmf": self_tot if any_self else None,
               # Points of the WHOLE attacking unit (a joined unit sums
               # its leader in): the efficiency figure divides by this,
               # which is why it only makes sense on the totals line -

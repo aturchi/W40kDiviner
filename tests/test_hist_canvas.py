@@ -86,17 +86,34 @@ class _Font:
 
 font = types.ModuleType("tkinter.font")
 font.nametofont = lambda _name: _Font()
+# dist_view reaches ui_utils for the shared hint colour, and ui_utils
+# imports these two at module level. They are never called here: the
+# stub exists so that importing the drawing code does not need a
+# display, not so that dialogs can be opened without one.
+filedialog = types.ModuleType("tkinter.filedialog")
+messagebox = types.ModuleType("tkinter.messagebox")
+for _n in ("askopenfilename", "asksaveasfilename", "askdirectory"):
+    setattr(filedialog, _n, lambda *_a, **_kw: "")
+for _n in ("showerror", "showinfo", "showwarning", "askyesno"):
+    setattr(messagebox, _n, lambda *_a, **_kw: None)
+ttk.Separator = ttk.Scrollbar = ttk.Treeview = ttk.Combobox = _Widget
+ttk.Style = _Widget
+tk.Listbox = tk.Text = tk.Label = tk.IntVar = _Widget
+tk.SOLID = "solid"
 tk.ttk, tk.font = ttk, font
 sys.modules["tkinter"] = tk
 sys.modules["tkinter.ttk"] = ttk
 sys.modules["tkinter.font"] = font
+sys.modules["tkinter.filedialog"] = filedialog
+sys.modules["tkinter.messagebox"] = messagebox
 
 import dist_stats as ds               # noqa: E402
 import dist_view as dv                # noqa: E402
 
 
-def canvas(pmf, threshold=None, cumulative=True, w=700, h=300, xmax=None):
-    c = dv.HistogramCanvas(None, pmf, threshold, cumulative, xmax)
+def canvas(pmf, threshold=None, cumulative=True, w=700, h=300, xmax=None,
+           xmin=None):
+    c = dv.HistogramCanvas(None, pmf, threshold, cumulative, xmax, xmin)
     c._w, c._h = w, h
     c._draw()
     return c
@@ -186,6 +203,26 @@ frame._xmax.set("999")
 assert frame._xmax_value(d6) == 6
 frame._refresh()
 
+# The FLOOR follows the same rules as the ceiling, and is reset by a
+# switch just as the ceiling is: an axis window is a view of one
+# distribution and means nothing on another.
+assert frame._xmin.get() == "0"
+frame._xmin.set("3")
+assert frame._xmin_value(d6) == 3
+frame._which.set("kills")
+frame._switch()
+assert frame._xmin.get() == "0", "the floor must not survive a switch"
+frame._which.set("net")
+frame._switch()
+assert frame._xmin.get() == "0"
+frame._xmin.set("")
+assert frame._xmin_value(d6) is None       # halfway through typing
+frame._xmin.set("0")
+assert frame._xmin_value(d6) is None       # zero IS the automatic floor
+frame._xmin.set("999")
+assert frame._xmin_value(d6) == 6
+frame._refresh()
+
 # A non-numeric threshold must not raise, it just switches the readout
 # off (the user is halfway through typing).
 frame._entry.set("")
@@ -256,5 +293,28 @@ assert abs(bars[-1][1][2] - (700 - dv._PAD_R)) < 2, bars[-1][1]
 # exactly what the automatic axis would have.
 assert len([s for s in canvas(d6, xmax=999).shapes if s[0] == "rect"]) == \
     len([s for s in canvas(d6).shapes if s[0] == "rect"])
+
+# ---- a forced FLOOR ---------------------------------------------------
+
+# Raising the bottom of the axis drops the bars below it and says how
+# much probability went with them, at the end it fell off: a narrowed
+# window must never read as a smaller distribution.
+floored = canvas(d6, xmin=3)
+labels = [s[2]["text"] for s in floored.shapes if s[0] == "text"]
+assert not any(lab in ("1", "2") for lab in labels), labels
+assert any(str(lab).startswith("below 3") for lab in labels), labels
+# The note sits on the LEFT, opposite the upper-tail one, so the two can
+# be shown together without overlapping.
+notes = {str(s[2]["text"]).split(":")[0]: (s[1], s[2].get("anchor"))
+         for s in floored.shapes if s[0] == "text"
+         and str(s[2]["text"]).startswith(("below", "tail above"))}
+assert notes["below 3"][1] == "sw", notes
+both = canvas(d6, xmin=2, xmax=4)
+sides = {str(s[2]["text"]).split(":")[0]: s[2].get("anchor")
+         for s in both.shapes if s[0] == "text"
+         and str(s[2]["text"]).startswith(("below", "tail above"))}
+assert sides == {"below 2": "sw", "tail above 4": "se"}, sides
+# A floor above the ceiling collapses to it rather than drawing nothing.
+assert [s for s in canvas(d6, xmin=9, xmax=4).shapes if s[0] == "rect"]
 
 print("histogram canvas: OK (%d shapes)" % len(canvas(d6).shapes))

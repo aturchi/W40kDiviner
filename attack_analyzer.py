@@ -648,22 +648,36 @@ class AnalyzerApp(tk.Tk):
         # shows up when a HAZARDOUS weapon is in the list), so the key
         # list is read once here and every row is projected onto it.
         cols = result_rows.keys(results)
+        # Which statistic each column is showing. Per window, not per
+        # session: it is a way of LOOKING at one analysis, and carrying
+        # it into the next one would mean opening a table whose headings
+        # were set by a question asked half an hour ago.
+        stats = {}
         tree = ttk.Treeview(parent, columns=cols,
                             show="tree headings", height=11)
         tree.heading("#0", text="Weapon")
         tree.column("#0", width=230)
-        for key, head, width in result_rows.columns(results):
-            tree.heading(key, text=head)
+        for key, _title, width in result_rows.columns(results):
+            # A heading carries its own command, so there is no need to
+            # guess from a click position which column was hit.
+            tree.heading(key, text=result_rows.heading(key),
+                         command=(lambda k=key: cycle(k))
+                         if key in result_rows.STAT_PMF else "")
             tree.column(key, width=width, anchor=tk.E)
         # Help on every heading: which column is additive and whether a
         # weapon row means the same thing as the totals row is exactly
         # where this table gets misread.
         ui.Tooltip(tree, lambda e: self._heading_help(tree, e, cols))
         pmfs = {}                      # tree row -> that weapon's result
+        # Every row remembers how to rebuild itself, so switching a
+        # column's statistic is a redraw and never a re-analysis.
+        redraw = []
         for r in results["weapons"]:
             iid = tree.insert("", tk.END, text=r["name"],
                               values=result_rows.weapon_row(r, cols))
             pmfs[iid] = r
+            redraw.append((iid, lambda st, r=r:
+                           result_rows.weapon_row(r, cols, st)))
         # Weapons excluded by the attack setup (indirect fire) are shown
         # greyed out with the reason instead of disappearing.
         tree.tag_configure("skipped", foreground="#888888")
@@ -678,13 +692,25 @@ class AnalyzerApp(tk.Tk):
                                  text=result_rows.totals_label(results),
                                  values=result_rows.totals_row(results,
                                                                cols))
+        redraw.append((totals_iid, lambda st:
+                       result_rows.totals_row(results, cols, st)))
+
+        def cycle(key):
+            """Read one column as the next statistic along."""
+            stats[key] = result_rows.next_stat(stats.get(key, "mean"))
+            tree.heading(key, text=result_rows.heading(key, stats[key]))
+            for row_id, build in redraw:
+                tree.item(row_id, values=build(stats))
+
         tree.pack(fill=tk.BOTH, expand=True, padx=6)
 
-        note = (f"Target: {ref.get('models')} model(s) x W{ref.get('W')} "
-                f"= {unit_w} wounds on this profile. Models killed assume "
-                f"standard allocation.")
+        # The defensive profile and the target it describes are one
+        # fact, not two: on separate lines they read as if the second
+        # qualified something other than the first.
+        note = (f"{label}  |  Target: {ref.get('models')} model(s) x "
+                f"W{ref.get('W')} = {unit_w} wounds on this profile.")
         series = self._totals_block(parent, t, unit_w, heading, label,
-                                    results, context)
+                                    results, context, stats)
         # Every double-clickable row, weapons and the TOTAL alike: one
         # gesture, one table, so a row either has a chart or it has not
         # (a skipped weapon carries no PMF and is simply absent).
@@ -692,13 +718,15 @@ class AnalyzerApp(tk.Tk):
                        dist_view.result_series(
                            r.get("removed_pmf") or r["damage_net_pmf"],
                            r["damage_pmf"], r.get("kills_pmf"), unit_w,
-                           ref.get("models")),
-                       f"{label}\n{note}\nThis weapon alone, against a "
-                       f"target unit at full strength.")
+                           ref.get("models"),
+                           attacks_pmf=r.get("attacks_pmf"),
+                           effective_pmf=r.get("wounds_pmf")),
+                       f"{note}\nThis weapon alone, against a target "
+                       f"unit at full strength.")
                  for iid, r in pmfs.items()}
         dists[totals_iid] = (f"{heading} - all weapons", series,
-                             f"{label}\n{note}\nEvery unmasked weapon is "
-                             f"summed here.")
+                             f"{note}\nEvery unmasked weapon is summed "
+                             f"here: mask the ones not firing.")
         tree.bind("<Double-1>",
                   lambda e: self._open_row_dist(e, tree, dists))
         if results["warnings"]:
@@ -721,15 +749,14 @@ class AnalyzerApp(tk.Tk):
         ttk.Label(head, text="All weapons combined",
                   font=("TkDefaultFont", 10, "bold")).pack(side=tk.LEFT)
         ttk.Label(head, foreground="#666666",
-                  text="  - every unmasked weapon is summed here, "
-                       "mutually exclusive profiles included: mask the "
-                       "ones you are not firing").pack(side=tk.LEFT)
+                  text="  - every unmasked weapon is summed here: mask "
+                       "the ones not firing").pack(side=tk.LEFT)
         dist_view.DistributionFrame(parent, series, note=note,
                                     note_wrap=940).pack(
             fill=tk.BOTH, expand=True, padx=6, pady=(0, 6))
 
     def _totals_block(self, parent, t, unit_w, heading, label,
-                      results=None, context=""):
+                      results=None, context="", stats=None):
         """What the totals row cannot hold: the spread of the wounds
         inflicted, the odds of wiping the unit out, and the way in.
         Returns the series of the whole unit's output, which the caller
@@ -739,15 +766,16 @@ class AnalyzerApp(tk.Tk):
         row = ttk.Frame(parent)
         row.pack(fill=tk.X, padx=6, pady=(4, 2))
         ttk.Label(row, font=("TkDefaultFont", 10, "bold"), text=(
-            f"Wounds inflicted  p10 {st['p10']}  |  median "
-            f"{st['median']}  |  p90 {st['p90']}      "
+            f"Wounds inflicted  {dist_stats.SPREAD_LABELS[0]} "
+            f"{st['lo']}  |  median {st['median']}  |  "
+            f"{dist_stats.SPREAD_LABELS[1]} {st['hi']}      "
             f"P(>= {unit_w}, the whole unit) = "
             f"{dist_stats.tail_prob(eff, unit_w) * 100:.1f}%")).pack(
             side=tk.LEFT)
         if results is not None:
             ttk.Button(row, text="Export CSV...",
                        command=lambda: self._export_table(
-                           f"{heading} - {label}", results)).pack(
+                           f"{heading} - {label}", results, stats)).pack(
                 side=tk.RIGHT, padx=6)
             ttk.Button(row, text="Audit...",
                        command=lambda: self._open_audit(
@@ -768,7 +796,9 @@ class AnalyzerApp(tk.Tk):
             self._order_hint(parent, t)
         return dist_view.result_series(eff, t["damage_pmf"],
                                        t.get("kills_pmf"), unit_w,
-                                       t.get("models"))
+                                       t.get("models"),
+                                       attacks_pmf=t.get("attacks_pmf"),
+                                       effective_pmf=t.get("wounds_pmf"))
 
     @staticmethod
     def _heading_help(tree, event, cols):
@@ -842,13 +872,16 @@ class AnalyzerApp(tk.Tk):
         ttk.Button(row, text="Close",
                    command=win.destroy).pack(side=tk.RIGHT)
 
-    def _export_table(self, title, results):
-        """The table exactly as shown, as CSV. result_rows owns what a
-        row contains and what the totals row may sum, so the file and
-        the window cannot disagree."""
+    def _export_table(self, title, results, stats=None):
+        """The table exactly as shown, as CSV - the statistics on show
+        included, so a file exported while Damage was reading p75 says
+        so in its heading. result_rows owns what a row contains and
+        what the totals row may sum, so the file and the window cannot
+        disagree."""
         name = "".join(ch if (ch.isalnum() or ch in "-_") else "_"
                        for ch in title).strip("_") or "analysis"
-        save_text(self, result_rows.to_csv(results), title="Export table",
+        save_text(self, result_rows.to_csv(results, stats),
+                  title="Export table",
                   filetypes=[("CSV", "*.csv"), ("All files", "*.*")],
                   initialfile=name[:80] + ".csv")
 
