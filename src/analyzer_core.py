@@ -471,6 +471,119 @@ def _mechanics_for(weapon, dview, attack_type, manual, abilities=None,
     return mech
 
 
+def _event_damage_mean(alloc: dict) -> float:
+    """Average size of one damage event of a weapon. Same figure
+    kill_chain sorts on internally; recomputed here from the public
+    'event_damage' field so that suggesting an order for the game
+    assistant needs no change at all inside kill_chain."""
+    dmg = (alloc or {}).get("event_damage") or [1.0]
+    return sum(v * p for v, p in enumerate(dmg))
+
+
+def _counts_models(mech) -> bool:
+    """True for a weapon whose attacks scale with how many models the
+    target still has - the reason to fire it early."""
+    return any(am.x_active(getattr(mech, name, 0))
+               for name in ("blast", "cleave"))
+
+
+def _pmf_mean(pmf) -> float:
+    return sum(k * p for k, p in enumerate(pmf or [1.0]))
+
+
+def _order_score(order, pairs, ref: dict, ctx: dict, w_target: int,
+                 models: int):
+    """(models destroyed, wounds taken off) for one firing order, with
+    each weapon analysed at the model count it would actually MEET.
+
+    TWO figures, because neither alone sees both effects.
+
+    Re-analysing at the running count is what makes BLAST visible at
+    all: kill_chain chains allocations that were each worked out once,
+    at a fixed model count, so handed the same allocations in any order
+    it returns the same number and a blast weapon carries its
+    full-strength attack count into a position where the unit is half
+    gone.
+
+    And the kill count alone cannot see WASTE. The chain's state is the
+    unit's total remaining wounds, and an event never spills past the
+    model it lands on, so the number of models destroyed comes out the
+    same whatever the order - measurably so: 3 attacks at D4 plus 6 at
+    D1 into five 3-wound models give 2.44991 kills either way, while
+    the wounds actually removed go 8.33 firing heavy first against 7.44
+    firing it last. The waste the heavy-first rule of thumb is about
+    lives in 'removed', so that is the tie-break.
+    """
+    left, allocs, res = float(models), [], None
+    for i in order:
+        here = dict(ref)
+        here["models"] = max(1, int(round(left)))
+        allocs.append(am.analyze_weapon(pairs[i][0], here, ctx,
+                                        pairs[i][1].copy(),
+                                        alloc=True)["alloc"])
+        res = kc.resolve(allocs, w_target, models)
+        left = models - _pmf_mean(res["kills"])
+    if res is None:
+        return (0.0, 0.0)
+    return (_pmf_mean(res["kills"]), _pmf_mean(res["removed"]))
+
+
+def _better(a, b) -> bool:
+    """Kills first, wounds removed to break the tie."""
+    if a[0] > b[0] + 1e-9:
+        return True
+    if b[0] > a[0] + 1e-9:
+        return False
+    return a[1] > b[1] + 1e-9
+
+
+def suggested_firing_order(pairs, ref: dict, ctx: dict = None):
+    """A firing order for the game assistant: [(weapon, mech), ...] in,
+    a list of indices out.
+
+    Order matters twice over. A big damage event wastes its excess on a
+    model that was already wounded, so the rule of thumb is heavy first;
+    and BLAST and CLEAVE count the models still standing when they fire,
+    so a blast weapon is worth more while the unit is intact. The two
+    pull against each other and neither is a theorem, so three candidate
+    orders - heavy first, its reverse, and blast first - are scored
+    against the order given and the best is returned. See _order_score
+    for what "best" means: models killed, then wounds not wasted.
+
+    'ref' is the target as the chain has to see it: a single (W, models)
+    profile, so the FIRST allocation group is the honest choice, being
+    the one that will absorb the damage. The approximation touches the
+    SUGGESTION only. It never reaches a die: the order is a starting
+    point the player may change, before the sequence and between one
+    weapon and the next.
+
+    Costs a handful of analytic runs per candidate. run_analysis is not
+    involved and not modified.
+    """
+    if len(pairs) < 2:
+        return list(range(len(pairs)))
+    ctx = dict(ctx or {})
+    models = max(1, int(ref.get("models") or 1))
+    w_target = max(1, int(ref.get("W") or 1))
+    given = list(range(len(pairs)))
+    base = [am.analyze_weapon(w, ref, ctx, m.copy(), alloc=True)["alloc"]
+            for w, m in pairs]
+    heavy = sorted(given, key=lambda i: -_event_damage_mean(base[i]))
+    # sorted() is stable, so this keeps the heavy order inside each half.
+    blast_first = sorted(heavy,
+                         key=lambda i: 0 if _counts_models(pairs[i][1])
+                         else 1)
+    best, best_score, seen = given, None, []
+    for cand in (given, heavy, list(reversed(heavy)), blast_first):
+        if cand in seen:
+            continue
+        seen.append(list(cand))
+        score = _order_score(cand, pairs, ref, ctx, w_target, models)
+        if best_score is None or _better(score, best_score):
+            best, best_score = list(cand), score
+    return best
+
+
 def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
                  melee_name: str = None, manual: dict = None,
                  kills: bool = True) -> dict:

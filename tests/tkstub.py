@@ -961,8 +961,15 @@ def install():
         def metrics(self, *a):
             return int(round(abs(self._opts["size"]) * 1.7)) or 1
 
-        def actual(self, *a):
-            return dict(self._opts)
+        def actual(self, option=None, *_a):
+            """Tk returns ONE value when an option is named, and the
+            whole dict only when none is. Returning the dict either way
+            let setup_panel.apply_font_scale() blow up on abs() here
+            while working on the real toolkit - a stub that hides the
+            code it is standing in for is worse than no stub."""
+            if option is None:
+                return dict(self._opts)
+            return self._opts.get(str(option).lstrip("-"))
 
         def cget(self, k):
             return self._opts.get(k)

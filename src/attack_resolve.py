@@ -188,17 +188,35 @@ def _save_made(rng, ref, ap_eff, mech) -> bool:
 
 def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                    mech: am.WeaponMechanics, rng: random.Random,
-                   haz_damage: int = 1) -> dict:
+                   haz_damage: int = 1, defer_save: bool = False) -> dict:
     """Resolve every attack of one weapon (all its copies). Returns
     {'attacks': n, 'events': [{'kind': 'damage'|'mortal',
-    'amount': k}, ...], 'self_damage': int, 'warnings': [...]}.
-    Events with amount 0 after FNP are dropped.
+    'amount': k}, ...], 'pending': [...], 'self_damage': int,
+    'warnings': [...]}. Events with amount 0 after FNP are dropped.
 
     A HAZARDOUS weapon is resolved exactly as the roster lists it and
     rolls one Hazardous test per copy (11th ed.: a 1-2 deals haz_damage
     self-damage). It does NOT get a boosted profile: datasheets list the
     supercharged version as its own weapon, and that is the one carrying
-    the keyword."""
+    the keyword.
+
+    DEFER_SAVE splits the sequence in two. The save, the damage roll and
+    Feel No Pain are the only steps that depend on WHICH model the
+    attack was allocated to, and 11th ed. settles that between the wound
+    roll and the save (Core Rules 05.03: create the allocation groups,
+    declare their order, then make one save roll per wounding attack).
+    With defer_save the resolver therefore stops at the scored wound and
+    reports what is still owed in 'pending'; 'events' comes back empty
+    and :func:`resolve_saves` finishes the job against an
+    :class:`alloc_groups.Allocation`. Everything up to that point - the
+    number of attacks, the hit stage, the wound stage - is a property of
+    the target UNIT and is unaffected.
+
+    Without defer_save (the default) nothing changes: the whole sequence
+    is resolved against 'defender_ref' as before, and 'pending' is
+    empty. That is the path the exact-vs-dice parity sweep drives, so it
+    must stay identical roll for roll.
+    """
     half = bool(ctx.get("half_range"))
 
     # number of attacks. X may be a dice expression (11th ed.), so every
@@ -309,6 +327,16 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
     fnp = defender_ref.get("fnp")
 
     events = []
+    # What the sequence still owes when the saves are deferred, in ROLL
+    # order: resolve_saves walks it in the same order, so the damage
+    # rolls - and the one re-roll some abilities grant for the whole
+    # activation - are spent on exactly the dice they would have been.
+    pending = []
+
+    def pend_mortal(spec, spills):
+        pending.append({"kind": "mortal", "value": spec.get("value"),
+                        "match": bool(spec.get("match")),
+                        "spills": bool(spills)})
 
     fails = {"hit": False, "wound": False}
     # ONE Damage re-roll for the whole activation, if an ability grants
@@ -350,17 +378,26 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         mortal-wound branch, the save, the damage."""
         ap_eff, go_on = ap, True
         if wound_crit and crit_mw:
-            raw = (_roll_damage(rng, weapon.D, mech, half, dmg_budget)
-                   if crit_mw["match"] else (crit_mw["value"] or 1))
-            kept = _fnp_keep(rng, _mw_save_keep(rng, raw, mech), fnp,
-                             mech, mw=True)
-            if kept > 0:
-                events.append({"kind": "mortal", "amount": kept,
-                               "spills": mw_spills})
+            if defer_save:
+                pend_mortal(crit_mw, mw_spills)
+            else:
+                raw = (_roll_damage(rng, weapon.D, mech, half, dmg_budget)
+                       if crit_mw["match"] else (crit_mw["value"] or 1))
+                kept = _fnp_keep(rng, _mw_save_keep(rng, raw, mech), fnp,
+                                 mech, mw=True)
+                if kept > 0:
+                    events.append({"kind": "mortal", "amount": kept,
+                                   "spills": mw_spills})
             go_on = not crit_mw["end"]
         if wound_crit and (mech.crit_ap_delta or mech.crit_ap_set is not None):
             ap_eff = am._crit_ap(weapon.AP.value() or 0, mech)
         if not go_on:
+            return
+        if defer_save:
+            # The AP is settled here (the critical branch may have
+            # sharpened it) but the Sv it is compared against is not
+            # known until the allocation order has been declared.
+            pending.append({"kind": "wound", "ap": ap_eff})
             return
         if _save_made(rng, defender_ref, ap_eff, mech):
             return
@@ -397,6 +434,12 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                             or (r > 1 and r < thr and r + hit_mod >= tgt))
             r = _roll_success(rng, ok, reroll_hit)
             if r >= thr:
+                if defer_save:
+                    # A hit-roll mortal wound is a plain mortal wound:
+                    # it spills unless the ability says otherwise.
+                    pend_mortal(mech.hitroll_mw,
+                                mech.hitroll_mw.get("spill", True))
+                    return
                 raw = (_roll_damage(rng, weapon.D, mech, half,
                                     dmg_budget)
                        if mech.hitroll_mw["match"]
@@ -445,5 +488,112 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         for _ in range(max(1, weapon.count)):
             if _d6(rng) <= 2:
                 self_damage += haz_damage
-    return {"attacks": n_att, "events": events,
+    return {"attacks": n_att, "events": events, "pending": pending,
             "self_damage": self_damage, "warnings": list(mech.warnings)}
+
+
+# ---------------- deferred save stage ----------------
+
+
+def resolve_saves(pending, weapon, mech, rng: random.Random, alloc,
+                  ctx: dict = None) -> dict:
+    """Second half of a deferred sequence: allocate every wound that was
+    scored, roll the save of the MODEL it lands on, roll the damage and
+    take it off.
+
+    'pending' comes from resolve_weapon(..., defer_save=True) and is
+    walked in roll order. 'alloc' is an alloc_groups.Allocation whose
+    order has already been declared - the rules settle it before any
+    save is rolled, and a save made against a 3+ cannot be moved onto a
+    2+ model afterwards.
+
+    Three things follow the model rather than the unit, and this is the
+    whole reason the split exists: the Save (and the invulnerable it is
+    weighed against), Feel No Pain, and the wounds the damage is capped
+    by. The rest - Toughness, the target's keywords, how many models it
+    has - belongs to the unit and was settled in the first half.
+
+    Order of resolution, as 06.02 and [DEVASTATING WOUNDS] require:
+    normal damage and the mortal wounds that do NOT spill land in roll
+    order, one model at a time; the spilling ones are pooled and applied
+    LAST, one point at a time, each point picking its own model - and so
+    each shrugged with THAT model's Feel No Pain.
+
+    Returns {'events', 'saves_made', 'shrugged', 'no_target'}, where an
+    event carries the amount that got through and the (model key,
+    wounds removed) pairs it came off.
+    """
+    half = bool((ctx or {}).get("half_range"))
+    # ONE Damage re-roll for the whole activation (Aquilon Optics): the
+    # first half rolled no damage at all, so the budget starts here and
+    # is spent in the same order it would have been.
+    budget = [am.damage_reroll_range(weapon.D)
+              if mech.single_reroll == "damage" else None]
+    events, spill_pool = [], 0
+    saves_made = shrugged = no_target = 0
+
+    def record(kind, amount, spills, hits):
+        events.append({"kind": kind, "amount": amount, "spills": spills,
+                       "hits": [(alloc.models[i].get("key"), n)
+                                for i, n in hits]})
+
+    for item in pending:
+        if item["kind"] == "mortal":
+            raw = (_roll_damage(rng, weapon.D, mech, half, budget)
+                   if item["match"] else (item["value"] or 1))
+            # The invulnerable that applies to mortal wounds is a
+            # property of the ATTACK's target unit, not of the model,
+            # so it is rolled here either way.
+            kept = _mw_save_keep(rng, raw, mech)
+            if item["spills"]:
+                spill_pool += kept
+                continue
+            # DEVASTATING WOUNDS: a mortal wound for every rule that
+            # keys on it, but allocated like ordinary damage - one
+            # model, no spill, the excess wasted.
+            i = alloc.current_model()
+            if i is None:
+                no_target += 1
+                continue
+            got = _fnp_keep(rng, kept, alloc.ref_of(i).get("fnp"), mech,
+                            mw=True)
+            shrugged += kept - got
+            if got > 0:
+                record("mortal", got, False,
+                       alloc.allocate(got, target=i))
+            continue
+        i = alloc.current_model()
+        if i is None:
+            # The unit is gone: the attacks still owed have nowhere to
+            # be allocated and are simply lost.
+            no_target += 1
+            continue
+        ref = alloc.ref_of(i)
+        if _save_made(rng, ref, item["ap"], mech):
+            saves_made += 1
+            continue
+        raw = _roll_damage(rng, weapon.D, mech, half, budget)
+        kept = _fnp_keep(rng, raw, ref.get("fnp"), mech, mw=False)
+        shrugged += raw - kept
+        if kept > 0:
+            # 'i' was picked BEFORE the save was rolled, which is the
+            # order the rules prescribe; the damage has to land on that
+            # same model and not be looked up a second time.
+            record("damage", kept, False, alloc.allocate(kept, target=i))
+    # The spilling mortal wounds, last and one point at a time (06.02).
+    # The model is named once and passed on, so the Feel No Pain rolled
+    # for the point and the model that loses it cannot be two different
+    # models.
+    for _ in range(spill_pool):
+        i = alloc.mortal_model()
+        if i is None:
+            no_target += 1
+            continue
+        if _fnp_keep(rng, 1, alloc.ref_of(i).get("fnp"), mech,
+                     mw=True) <= 0:
+            shrugged += 1
+            continue
+        record("mortal", 1, True,
+               alloc.allocate(1, spill=True, target=i))
+    return {"events": events, "saves_made": saves_made,
+            "shrugged": shrugged, "no_target": no_target}

@@ -28,8 +28,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
 import native_format          # noqa: E402
 import analyzer_core          # noqa: E402
 import attack_math            # noqa: E402
-import attack_resolve         # noqa: E402
-from editor_widgets import PickerDialog       # noqa: E402
 import ability_ids                            # noqa: E402
 import leader_core as lc                      # noqa: E402
 import tree_ids                               # noqa: E402
@@ -38,8 +36,12 @@ import session_io                             # noqa: E402
 import attack_log                             # noqa: E402
 import log_view                               # noqa: E402
 import undo_stack                             # noqa: E402
-import allocation                             # noqa: E402
-import alloc_dialog                           # noqa: E402
+import alloc_groups                            # noqa: E402
+import attack_session                          # noqa: E402
+import attack_session_view                     # noqa: E402
+import defender_models                         # noqa: E402
+import hazard_close                            # noqa: E402
+import hazard_view                             # noqa: E402
 from search_widget import attach_search       # noqa: E402
 from ui_utils import scrollable_listbox, multi_select_hint  # noqa: E402
 import ui_utils as ui                          # noqa: E402
@@ -387,7 +389,7 @@ class GameAssistantApp(tk.Tk):
         The whole selection is ONE undo step: masking five models is one
         gesture, and unwinding it row by row would be five Ctrl-Z for
         something the player did once."""
-        changes, masked = [], 0
+        changes, masked, touched = [], 0, []
         for side in ("A", "B"):
             for iid in self.trees[side].selection():
                 if tree_ids.is_separator(iid):
@@ -397,9 +399,18 @@ class GameAssistantApp(tk.Tk):
                                                  not new, new))
                 self._set_cell(side, iid, "masked", new)
                 masked += 1 if new else 0
+                ui = self._parse_iid(iid)[0]
+                if new and ui is not None and (side, ui) not in touched:
+                    touched.append((side, ui))
         if not changes:
             return
         verb = "mask" if masked * 2 >= len(changes) else "unmask"
+        # Masking the last copy by hand is masking the unit, and it
+        # belongs to the same gesture: one Ctrl-Z, not two. Only masking
+        # is followed up - unmasking a copy of a dead unit is the
+        # player putting a model back, and they say so themselves.
+        for side, ui in touched:
+            changes.extend(self._apply_derived_masks(side, ui))
         self.undo.push_changes(undo_stack.rows_label(verb, len(changes)),
                                changes)
         self._refresh_undo()
@@ -519,9 +530,19 @@ class GameAssistantApp(tk.Tk):
             if val == old:
                 return
             self._set_cell(side, iid, "wounds", val)
+            changes = [undo_stack.change(side, iid, "wounds", old, val)]
+            # Typing 0 into a model copy's wounds is how a player
+            # removes a model without going to the mask command, and
+            # until now the model went on shooting. The mask rides in
+            # the same undo action as the edit that implied it.
+            #
+            # Not gated on the row being a model copy: _derived_masks is
+            # the one place that decides which rows the rule looks at,
+            # and a second guard here would be a duplicate of that
+            # decision - one that could disagree with it later.
+            changes.extend(self._apply_derived_masks(side, ui))
             self.undo.push_changes(
-                f"edit {tree.item(iid, 'text')}",
-                [undo_stack.change(side, iid, "wounds", old, val)])
+                f"edit {tree.item(iid, 'text')}", changes)
             self._refresh_undo()
         entry.bind("<Return>", commit)
         entry.bind("<FocusOut>", commit)
@@ -648,6 +669,81 @@ class GameAssistantApp(tk.Tk):
             return None
         return tree_ids.entry_index(sel[0])
 
+    # ---------- masks that follow from the table ----------
+
+    def _copy_is_gone(self, side, iid) -> bool:
+        """A model copy whose wounds cell says it is destroyed.
+
+        The cell holds FREE TEXT for model copies - a player may write
+        "fled" or "-" in it - so only a cell that reads as a number is
+        judged. Anything else is left alone: guessing that "gone?" means
+        zero would remove a model the player still has on the board.
+        """
+        try:
+            return int(self.trees[side].set(iid, "wounds")) <= 0
+        except ValueError:
+            return False
+
+    def _derived_masks(self, side, ui) -> list:
+        """The masks that FOLLOW from the table rather than from a
+        gesture, as undo changes the caller appends to its own action.
+
+        Two rules, and both are one-way:
+
+          * a model copy at zero wounds is a model that has been
+            removed, and until now it went on shooting - _masks_for
+            reads the mask, not the wounds cell, so a squad wiped out by
+            hand kept its full firepower;
+          * a unit with no model copy left standing is a unit that is
+            gone, and its own row is masked so that cmd_attack refuses
+            to let it fight.
+
+        NOT symmetric, by decision: raising the wounds above zero again
+        does not bring the model back. Undoing the edit does, because
+        the derived change rides in the SAME undo action as the edit
+        that caused it - which is also why this cannot live in
+        _set_cell, the one path undo itself replays.
+
+        "No model left" is evaluated the way _masks_for evaluates it: a
+        masked model GROUP takes all of its copies with it, so a squad
+        masked at group level counts as destroyed here too.
+        """
+        tree = self.trees[side]
+        unit_iid = tree_ids.unit_iid(ui)
+        if not tree.exists(unit_iid):
+            return []
+        changes, standing, copies_seen = [], 0, 0
+        for mid in tree.get_children(unit_iid):
+            _u, mi, _w, _c = self._parse_iid(mid)
+            if mi is None:
+                continue
+            group_masked = self._is_masked(side, mid)
+            for cid in tree.get_children(mid):
+                if self._parse_iid(cid)[3] is None:
+                    continue                # a weapon or an ability row
+                copies_seen += 1
+                if group_masked or self._is_masked(side, cid):
+                    continue
+                if self._copy_is_gone(side, cid):
+                    changes.append(undo_stack.change(
+                        side, cid, "masked", False, True))
+                else:
+                    standing += 1
+        if copies_seen and not standing and not self._is_masked(
+                side, unit_iid):
+            changes.append(undo_stack.change(side, unit_iid, "masked",
+                                             False, True))
+        return changes
+
+    def _apply_derived_masks(self, side, ui) -> list:
+        """_derived_masks, applied. The changes come back so the caller
+        can put them in the same push_changes as whatever caused
+        them."""
+        changes = self._derived_masks(side, ui)
+        for ch in changes:
+            self._set_cell(side, ch["iid"], "masked", True)
+        return changes
+
     def _masks_for(self, side, ui):
         """Table state for one unit: (masked_copies {mi: n},
         masked_weapons {(mi, wi)}, weapon_counts {(mi, wi): n}).
@@ -738,23 +834,34 @@ class GameAssistantApp(tk.Tk):
 
         aview, dview = analyzer_core.build_views(attacker, defender,
                                                  flags, mods)
-        opts = analyzer_core.reference_options(dview)
-        if len(opts) > 1:
-            # Only UNMASKED models reach this point (the defender is built
-            # by _build_unit, which drops masked copies and never attaches
-            # a fully masked leader/support). The profile the rules fix for
-            # the wound roll - highest Toughness among the bodyguard models
-            # - is shown in bold, but any profile can be chosen.
-            sugg = analyzer_core.suggested_references(dview, opts)
-            dlg = PickerDialog(self, f"Reference model in {defender.name}"
-                               " (bold = rules default for the wound roll)",
-                               opts, bold=[opts[i][1] for i in sugg])
-            self.wait_window(dlg)
-            if dlg.choice is None:
-                return
-            ref = dlg.choice
-        else:
-            ref = opts[0][1]
+        # No reference model is chosen any more. Toughness is what the
+        # UNIT fixes and the rules fix it for us (highest among the
+        # bodyguard models); the Save, the invulnerable and Feel No Pain
+        # belong to the model each attack is allocated to, and are read
+        # off that model when its save is rolled. The popup that used to
+        # ask for one profile asked the wrong question.
+        unit_ref = defender_models.unit_reference(dview)
+        rows, unreadable = self._unit_rows(d_side, d_ui)
+        if not rows:
+            messagebox.showinfo("Attack", "No defending model left to "
+                                "allocate to (every model row is "
+                                "masked, or their wounds cells hold "
+                                "free text).")
+            return
+        if unreadable:
+            messagebox.showinfo(
+                "Attack",
+                f"{unreadable} model rows hold free text instead of a "
+                "number and are left out of the attack - allocate "
+                "those by hand.")
+        records, join = defender_models.records(
+            rows, self.rosters[d_side][d_ui], dview)
+        if join:
+            messagebox.showwarning(
+                "Attack", "The table and the combat view do not line "
+                f"up ({join}). The defending profiles are taken from "
+                "the datasheet, so any combat modifier on the defender "
+                "is NOT applied.")
 
         weapons, skipped = analyzer_core.select_weapons_split(
             aview, mode, melee_name, bool(flags.get("indirect")))
@@ -775,7 +882,7 @@ class GameAssistantApp(tk.Tk):
             and analyzer_core.close_quarters_attacker(aview))
         attack_type = "Melee" if mode == "melee" else "Ranged"
         haz_damage = attack_math.hazardous_damage_per_fail(attacker.keywords)
-        results = []
+        pairs, skipped = [], list(skipped)
         for w in weapons:
             mech = analyzer_core.mechanics_for_attack(w, dview, attack_type,
                                                       mods, flags, aview)
@@ -784,20 +891,154 @@ class GameAssistantApp(tk.Tk):
             # datasheet or from an ability, so it is checked here).
             why = analyzer_core.hunter_skip_reason(mech, dview)
             if why:
-                skipped = list(skipped) + [(w, why)]
+                skipped.append((w, why))
                 continue
-            # No question to ask any more: the datasheet lists the
-            # supercharged profile as its own weapon and that is the one
-            # carrying HAZARDOUS, so the choice was already made when
-            # the weapon was picked. The keyword only means the
-            # Hazardous test is rolled.
-            res = attack_resolve.resolve_weapon(w, ref, ctx, mech,
-                                                self.rng, haz_damage)
-            results.append((w, mech.hazardous, res))
-        entry = self._record_attack(attacker, defender, ref, results,
-                                    skipped, mode, melee_name, flags)
-        self._show_results(attacker, defender, ref, results, skipped,
-                           d_side, d_ui, entry.get("seq"))
+            pairs.append((w, mech))
+        if not pairs:
+            messagebox.showinfo("Attack", "Every weapon was ruled out "
+                                "by the attack setup.")
+            return
+        session = attack_session.AttackSession(
+            [{"weapon": w, "mech": m} for w, m in pairs], unit_ref, ctx,
+            records, self.rng, haz_damage,
+            order=self._firing_order(pairs, unit_ref, records, ctx))
+        attack_session_view.AttackSessionWindow(
+            self, session, defender.name,
+            lambda applied, hazardous: self._finish_attack(
+                d_side, d_ui, session, applied, hazardous, attacker,
+                defender, unit_ref, records, skipped, mode, melee_name,
+                flags, (a_side, a_ui, aview)),
+            skipped=[(f"{w.name} x{w.count}", why) for w, why in skipped],
+            attacker_name=attacker.name)
+
+    def _firing_order(self, pairs, unit_ref, records, ctx):
+        """The order the weapons are offered in, best first.
+
+        The chain behind the suggestion works on ONE (W, models) target,
+        so it is given the first allocation group: the one that will
+        actually absorb the damage. A suggestion only - the player
+        reorders the queue, before the attack and between weapons - so
+        the approximation never reaches a die. Falls back to the roster
+        order if the analytic run fails: a worse order is a nuisance, a
+        crashed attack is not.
+        """
+        try:
+            groups = alloc_groups.build_groups(records)
+            order = alloc_groups.default_order(groups, records)
+            ref = dict(unit_ref)
+            if groups:
+                ref.update(groups[order[0]]["ref"])
+            ref["models"] = sum(1 for r in records
+                                if int(r.get("wounds") or 0) > 0)
+            return analyzer_core.suggested_firing_order(pairs, ref, ctx)
+        except Exception:                        # noqa: BLE001
+            return list(range(len(pairs)))
+
+    def _finish_attack(self, side, ui, session, applied, hazardous,
+                       attacker, defender, unit_ref, records, skipped,
+                       mode, melee_name, flags, source):
+        """Everything that happens once the player is done: the table,
+        the log, and what the attacking unit still owes."""
+        name = lc.entry_label(self.rosters[side][ui])
+        self._apply_allocation(side, ui, applied, name)
+        entry = self._record_attack(
+            attacker, defender, self._log_reference(unit_ref, records),
+            self._log_results(session), self._log_skipped(session, skipped),
+            mode, melee_name, flags)
+        if applied and self.log.set_allocation(
+                entry.get("seq"), attack_log.allocation_record(
+                    [dict(r, after=r["wounds"]) for r in applied])):
+            self._sync_log_window()
+        if hazardous:
+            self._close_hazardous(source, session, attacker,
+                                  entry.get("seq"))
+
+    def _close_hazardous(self, source, session, attacker, seq):
+        """The HAZARDOUS step, once the attack itself is settled.
+
+        Its own window and its own undo step, not a continuation of the
+        allocation: the wounds land on the OTHER unit, and the player
+        may reasonably accept the damage they dealt and still refuse -
+        or defer - the damage they took.
+        """
+        a_side, a_ui, aview = source
+        entry = self.rosters[a_side][a_ui]
+        rows, _unreadable = self._unit_rows(a_side, a_ui)
+        models, _join = defender_models.records(rows, entry, aview)
+        if not models:
+            messagebox.showinfo(
+                "Hazardous",
+                f"{attacker.name} owes {session.self_damage()} mortal "
+                "wounds from HAZARDOUS, but it has no model row left to "
+                "take them - allocate them by hand.")
+            return
+        surviving = []
+        for row in rows:
+            if row["mi"] not in surviving:
+                surviving.append(row["mi"])
+        by_index, _problem = defender_models.view_by_model_index(
+            surviving, entry, aview)
+        bearer_of, _lost = hazard_close.bearers(session.weapons, by_index)
+        items = hazard_close.owed(session.records(), session.weapons,
+                                  bearer_of, models)
+        name = lc.entry_label(entry)
+        hazard_view.HazardWindow(
+            self, items, models, name,
+            lambda hurt, record: self._apply_hazardous(
+                a_side, a_ui, hurt, record, name, seq))
+
+    def _apply_hazardous(self, side, ui, rows, record, name, seq):
+        """Write the closing step back, and log it either way.
+
+        'rows' is empty when the player skipped: the table is left
+        alone, but the log still says what the tests cost, because the
+        history is a record of the attack and not of what the player
+        chose to do about it.
+        """
+        if rows:
+            self._apply_allocation(side, ui, rows,
+                                   f"{name} (hazardous)")
+        if self.log.set_hazardous(seq, dict(record, applied=bool(rows))):
+            self._sync_log_window()
+
+    @staticmethod
+    def _log_results(session):
+        """The session's activations in the shape the log reads. The
+        records already carry what a resolve result carries, so nothing
+        is converted - only picked out."""
+        out = []
+        for rec in session.records():
+            entry = session.weapons[rec["index"]]
+            out.append((entry["weapon"], entry["hazardous"],
+                        {"attacks": rec["attacks"],
+                         "events": rec["events"],
+                         "self_damage": rec["self_damage"],
+                         "warnings": rec["warnings"]}))
+        return out
+
+    @staticmethod
+    def _log_skipped(session, skipped):
+        """The weapons the setup ruled out, plus the ones the player
+        simply never fired: a log that showed only the first would read
+        as though the whole unit had shot."""
+        out = list(skipped)
+        for index in session.queue():
+            out.append((session.weapons[index]["weapon"], "not fired"))
+        return out
+
+    @staticmethod
+    def _log_reference(unit_ref, records):
+        """What to record as the profile attacked. Toughness is exact -
+        the unit fixes it - but there is no single Save any more, so the
+        FIRST allocation group's is recorded: the profile most of the
+        attacks were resolved against. The per-model truth is in the
+        allocation rows."""
+        groups = alloc_groups.build_groups(records)
+        ref = dict(unit_ref)
+        if groups:
+            ref.update(groups[alloc_groups.default_order(
+                groups, records)[0]]["ref"])
+        return ref
 
     # ---------- attack log ----------
 
@@ -837,107 +1078,28 @@ class GameAssistantApp(tk.Tk):
                                          self._refresh_log_btn,
                                          self.log_win)
 
-    # ---------- results popup ----------
+    def _unit_rows(self, side, ui):
+        """The model copies of a unit still on the table, in table
+        order: ([{'key', 'mi', 'label', 'wounds'}], unreadable).
 
-    def _show_results(self, attacker, defender, ref, results, skipped=(),
-                      d_side=None, d_ui=None, log_seq=None):
-        win = tk.Toplevel(self)
-        win.title(f"{attacker.name}  vs  {defender.name}")
-        win.geometry("560x440")
-        # The bar is packed FIRST, against the bottom. pack() hands out
-        # requested sizes in packing order and only shares the leftover
-        # afterwards, and a tk.Text asks for 24 lines - 420 px at a 17 px
-        # linespace, in a 440 px window. Packed last, the bar was left
-        # with 20 px and its buttons came out as captionless slivers.
-        bar = ttk.Frame(win)
-        bar.pack(side=tk.BOTTOM, fill=tk.X, padx=6, pady=(0, 6))
-        body = ttk.Frame(win)
-        body.pack(fill=tk.BOTH, expand=True, padx=6, pady=6)
-        txt = tk.Text(body, wrap=tk.WORD, height=12)
-        # The window height is fixed and the report is not: without a
-        # scrollbar the weapons past the fold could be reached only by
-        # a wheel gesture over a widget that gave no sign of scrolling.
-        scroll = ttk.Scrollbar(body, orient=tk.VERTICAL, command=txt.yview)
-        txt.configure(yscrollcommand=scroll.set)
-        scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        txt.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        txt.tag_configure("h", font=ui.bold_font())
-        txt.tag_configure("mw", foreground="#a00000")
-        inv = f" inv{ref['invuln']}+" if ref.get("invuln") else ""
-        fnp = f" fnp{ref['fnp']}+" if ref.get("fnp") else ""
-        txt.insert(tk.END, f"Reference defender: T{ref['T']} "
-                           f"Sv{ref['Sv']}+ W{ref['W']}{inv}{fnp}\n\n")
-        txt.tag_configure("skip", foreground="#888888")
-        for w, why in skipped or ():
-            # Not fired under the current attack setup (indirect fire):
-            # listed anyway so the whole unit is accounted for.
-            txt.insert(tk.END, f"{w.name} x{w.count} - {why}\n", "skip")
-        if skipped:
-            txt.insert(tk.END, "\n")
-        warnings = set()
-        for w, hazardous, res in results:
-            label = w.name + (" [HAZARDOUS]" if hazardous else "")
-            txt.insert(tk.END, f"{label} x{w.count} - "
-                               f"{res['attacks']} attacks\n", "h")
-            if not res["events"]:
-                txt.insert(tk.END, "  no damage\n")
-            for e in res["events"]:
-                if e["kind"] == "mortal":
-                    txt.insert(tk.END,
-                               f"  MORTAL WOUNDS: {e['amount']}\n", "mw")
-                else:
-                    txt.insert(tk.END, f"  damage: {e['amount']}\n")
-            if hazardous:
-                txt.insert(tk.END, f"  Hazardous self-damage: "
-                                   f"{res['self_damage']}\n",
-                           "mw" if res["self_damage"] else None)
-            txt.insert(tk.END, "\n")
-            warnings |= set(res["warnings"])
-        tot = sum(e["amount"] for _w, _h, r in results for e in r["events"])
-        n_ev = sum(len(r["events"]) for _w, _h, r in results)
-        txt.insert(tk.END, f"TOTAL: {n_ev} damaging attacks, "
-                           f"{tot} damage to allocate\n", "h")
-        if warnings:
-            txt.insert(tk.END, "\nNot modelled: " + "; ".join(
-                sorted(warnings)), "mw")
-        txt.configure(state=tk.DISABLED)
-        ttk.Button(bar, text="Close",
-                   command=win.destroy).pack(side=tk.RIGHT)
-        if d_side is not None and n_ev:
-            # Writing the damage off by hand is the slow part of a turn.
-            # The button proposes the arithmetic; the dialog leaves the
-            # choices (which model, and anything the table decided) open.
-            btn = ttk.Button(bar, text="Apply to defender...")
-            btn.configure(command=lambda: self._open_allocation(
-                win, d_side, d_ui, results, btn, log_seq))
-            btn.pack(side=tk.LEFT)
+        Either side: the defender, whose models the attack is allocated
+        to, and the attacker, whose models the HAZARDOUS closing step
+        lands on. Nothing here was ever specific to the defender.
 
-    # ---------- assisted allocation ----------
-
-    def _defender_copies(self, side, ui):
-        """The defending models still on the table, in table order:
-        ([{'iid', 'label', 'wounds', 'max', 'protected'}], skipped).
-        Masked rows are models already removed, so they are left out; a
-        wounds cell holding free text cannot be allocated to and is
-        COUNTED, not silently dropped - otherwise the proposal would
-        quietly spread the damage over fewer models than the unit has.
-
-        'protected' marks the models of an attached leader or support:
-        the rules keep attacks off a CHARACTER while a bodyguard model
-        is standing, and without the flag the proposal would happily
-        kill the Captain with bolt rifles - worse, a WOUNDED character
-        would be picked FIRST by the wounded-first rule."""
+        'key' is the tree row id, which is what comes back when the
+        damage is written. Masked rows are models already removed and
+        are left out; a wounds cell holding free text cannot be
+        allocated to and is COUNTED, not silently dropped - otherwise
+        the attack would quietly spread over fewer models than the unit
+        has. What the profiles ARE is not decided here: that is the join
+        with the combat view, and it lives in defender_models.
+        """
         tree = self.trees[side]
         models = dict(lc.entry_models(self.rosters[side][ui]))
-        attached = lc.attached_model_indices(self.rosters[side][ui])
-        out, skipped = [], 0
+        out, unreadable = [], 0
         for mid in tree.get_children(tree_ids.unit_iid(ui)):
             _u, mi, _w, _c = self._parse_iid(mid)
-            if mi is None or self._is_masked(side, mid):
-                continue
-            try:
-                wmax = max(1, int(models[mi].get("W") or 1))
-            except (TypeError, ValueError, KeyError):
+            if mi is None or self._is_masked(side, mid) or mi not in models:
                 continue
             for child in tree.get_children(mid):
                 _u2, _m2, _wi, ci = self._parse_iid(child)
@@ -946,44 +1108,14 @@ class GameAssistantApp(tk.Tk):
                 try:
                     wounds = max(0, int(tree.set(child, "wounds")))
                 except ValueError:
-                    skipped += 1
+                    unreadable += 1
                     continue
-                out.append({"iid": child, "wounds": wounds, "max": wmax,
-                            "protected": mi in attached,
+                out.append({"key": child, "mi": mi, "wounds": wounds,
                             "label": f"{models[mi]['name']} - "
                                      f"{tree.item(child, 'text')}"})
-        return out, skipped
+        return out, unreadable
 
-    def _open_allocation(self, parent, side, ui, results, button=None,
-                         log_seq=None):
-        copies, skipped = self._defender_copies(side, ui)
-        events = allocation.events_from_results(results)
-        if not copies:
-            messagebox.showinfo("Apply damage",
-                                "No defending model left to allocate to "
-                                "(every model row is masked, or their "
-                                "wounds cells hold free text).",
-                                parent=parent)
-            return
-        if skipped:
-            messagebox.showinfo(
-                "Apply damage",
-                f"{skipped} model rows hold free text instead of a "
-                "number and are left out of the proposal - allocate "
-                "those by hand.", parent=parent)
-        name = lc.entry_label(self.rosters[side][ui])
-
-        def on_apply(rows):
-            self._apply_allocation(side, ui, rows, name, log_seq)
-            if button is not None:
-                # The dialog reads the table each time it opens, so a
-                # second Apply would take the same damage off twice.
-                button.configure(text="Applied", state=tk.DISABLED)
-
-        alloc_dialog.AllocationDialog(parent, name, copies, events,
-                                      on_apply)
-
-    def _apply_allocation(self, side, ui, rows, name, log_seq=None):
+    def _apply_allocation(self, side, ui, rows, name):
         """Write the accepted allocation into the table: the new wounds,
         and the mask that removes a destroyed model. One undo step for
         the lot - a misapplied attack is exactly what Ctrl-Z is for.
@@ -995,25 +1127,25 @@ class GameAssistantApp(tk.Tk):
         is a deliberate act (delete the attack in the log window)."""
         tree, changes = self.trees[side], []
         for r in rows:
-            iid = r.get("iid")
+            iid = r.get("key")
             if not iid or not tree.exists(iid):
                 continue
             old = str(tree.set(iid, "wounds"))
-            new = str(r["after"])
+            new = str(r["wounds"])
             if new != old:
                 changes.append(undo_stack.change(side, iid, "wounds",
                                                  old, new))
                 self._set_cell(side, iid, "wounds", new)
-            if r.get("dead") and not self._is_masked(side, iid):
-                changes.append(undo_stack.change(side, iid, "masked",
-                                                 False, True))
-                self._set_cell(side, iid, "masked", True)
+        # The rows carry 'dead', but the wounds just written say the
+        # same thing - a destroyed model is a model at zero - and the
+        # unit row is nobody's row at all: only the table as a whole
+        # says whether anything is left standing. So the masks are
+        # derived from the table once, here, rather than half from the
+        # rows and half from the table with two rules to keep in step.
+        changes.extend(self._apply_derived_masks(side, ui))
         if changes:
             self.undo.push_changes(f"apply damage to {name}", changes)
             self._refresh_undo()
-        if log_seq is not None and self.log.set_allocation(
-                log_seq, attack_log.allocation_record(rows)):
-            self._sync_log_window()
 
 
 if __name__ == "__main__":

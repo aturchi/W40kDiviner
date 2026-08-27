@@ -56,6 +56,7 @@ import testpaths                        # sets up sys.path to the engine src/
 import regress_probes as rp
 
 import analyzer_core as ac
+import attack_math as am
 import unit_model as um
 
 
@@ -117,15 +118,50 @@ def _damage_section(units, lines):
                 lines.append(f"  {mode}: (nothing to fire)")
                 continue
             for row in res["weapons"]:
+                # Self-damage was the one analyzer figure the digest did
+                # not see: mutating hazardous_damage_per_fail from 1 to 2
+                # left all three digests untouched. It is appended only
+                # when a weapon HAS it, so the non-hazardous lines - the
+                # overwhelming majority - do not change at all.
+                self_dmg = _num(row.get("self_damage_mean"))
+                # 'removed' is the EXACT wounds taken off the unit, which
+                # 'Dnet' only estimates by capping each event at W. It is
+                # what the firing-order decision is about, and like the
+                # self-damage it was outside the digest entirely: the
+                # order row could be changed from under it in silence.
+                # Present only when the kill chain ran (a target with no
+                # model count has no allocation), so lines without it are
+                # unchanged.
+                removed = row.get("removed")
                 lines.append(
                     f"  {mode}:{row['name']} | A {_fmt(row['attacks'])}"
                     f" | W {_fmt(row['wounds'])}"
                     f" | D {_fmt(row['damage'])}"
-                    f" | Dnet {_fmt(row['damage_net'])}")
+                    f" | Dnet {_fmt(row['damage_net'])}"
+                    + ("" if self_dmg is None else f" | S {self_dmg}")
+                    + ("" if not removed else f" | R {_fmt(removed)}"))
             tot = res["totals"]
+            self_tot = am.pmf_stats(tot["self_damage_pmf"]) \
+                if tot.get("self_damage_pmf") else None
             lines.append(f"  {mode}:TOTAL | D {_fmt(tot['damage'])}"
                          f" | Dnet {_fmt(tot['damage_net'])}"
-                         f" | warn={len(res['warnings'])}")
+                         + ("" if self_tot is None
+                            else f" | S {_fmt(self_tot)}")
+                         + ("" if not tot.get("removed")
+                            else f" | R {_fmt(tot['removed'])}"
+                                 f" | K {_fmt(tot['kills'])}"
+                                 f" | wipe {_num(tot.get('p_wipe'))}")
+                         + f" | warn={len(res['warnings'])}")
+            # The firing order the heuristic settled on, and what it
+            # claims to gain. Both were invisible to the digest, which
+            # is how kill_chain.best_order came to optimise a quantity
+            # that does not depend on the order at all without anything
+            # going red. The order is recorded by NAME: an index would
+            # move whenever a weapon is added, for no real change.
+            if tot.get("order"):
+                lines.append(f"  {mode}:ORDER | "
+                             + " > ".join(tot["order"])
+                             + f" | gain {_num(tot.get('order_gain'))}")
 
 
 # --- Section: defensive profiles ----------------------------------------

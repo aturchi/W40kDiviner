@@ -107,7 +107,7 @@ def skipped_record(weapon, reason) -> dict:
 def allocation_record(rows, stamp=None) -> dict:
     """What the player actually took off the table, as applied.
 
-    'rows' are the rows the allocation dialog hands back: only the
+    'rows' are the rows the attack window hands back: only the
     models whose wounds changed. Nothing derived is stored - not the
     number removed, not the models destroyed - because both follow from
     'before' and 'after' and a stored copy could drift away from them.
@@ -513,6 +513,22 @@ class AttackLog:
         for e in self.entries:
             if int(e.get("seq") or 0) == int(seq):
                 e["allocation"] = record
+                return True
+        return False
+
+    def set_hazardous(self, seq, record) -> bool:
+        """Attach the HAZARDOUS closing step to the entry numbered
+        'seq'.
+
+        Deliberately NOT folded into 'allocation': that field is what
+        allocation_totals sums as damage dealt to the DEFENDER, and
+        wounds the attacking unit inflicted on itself have no business
+        in that total. Same contract as set_allocation - False when the
+        attack has been deleted in the meantime.
+        """
+        for e in self.entries:
+            if int(e.get("seq") or 0) == int(seq):
+                e["hazardous_step"] = record
                 return True
         return False
 

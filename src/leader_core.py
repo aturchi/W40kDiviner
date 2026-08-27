@@ -258,7 +258,7 @@ def attached_model_indices(entry) -> set:
     Every model of a leader or a support part: the rules forbid
     allocating an attack to them while the unit still has a Bodyguard
     model standing, so the assisted allocation has to be able to tell
-    them apart from the unit's own models (see :mod:`allocation`).
+    them apart from the unit's own models (see :mod:`alloc_groups`).
     """
     out = set()
     for slot, _d, start, n in _segment_offsets(entry):
