@@ -19,9 +19,10 @@ The chain is exact under the allocation the rules prescribe:
     model, capped by its wounds, with no spill-over. They are counted
     on their own axis only because those same abilities can give them a
     different damage law from the ordinary events;
-  * mortal wounds that DO spill are pooled and applied at the END of
-    the whole activation, one point at a time, passing from a destroyed
-    model to the next.
+  * mortal wounds that DO spill are pooled and applied at the END OF
+    EACH WEAPON (11th ed. 4.3: "at the end of each group of identical
+    attacks", not at the end of the unit's shooting), one point at a
+    time, passing from a destroyed model to the next. See _spend_pool.
 
 What it does NOT model is the players' freedom: precision weapons
 picking out a character, models out of visibility, an opponent choosing
@@ -33,7 +34,8 @@ target unit is described by a single number T = wounds still standing:
 the front model has ((T-1) mod W) + 1 wounds left and n - ceil(T / W)
 models are already dead. The mortal pool M is carried alongside as the
 second half of the state, since it stays correlated with T through the
-attacks that produced both; it is spent only at the end.
+attacks that produced both; it is spent at the end of the weapon that
+built it, which is also what leaves M at zero between weapons.
 
 The per-attack laws come from attack_math.analyze_weapon(alloc=True);
 everything here works on plain dicts and lists, so the module carries
@@ -178,6 +180,31 @@ def apply_weapon(state: dict, alloc: dict, w: int, tmax: int) -> dict:
     return acc
 
 
+def _spend_pool(state: dict) -> dict:
+    """The spilling mortal pool spent, and the state left with none.
+
+    11th ed. 4.3 resolves mortal wounds as a batch at the END OF EACH
+    GROUP OF IDENTICAL ATTACKS - one weapon profile against one target -
+    and not at the very end of the unit's shooting, which is where the
+    10th edition put them. That is also what the dice resolver does:
+    attack_resolve.resolve_saves() spends its spill_pool before it
+    returns, so the next weapon meets the unit the mortals already went
+    through.
+
+    Spending is a plain subtraction: a spilling mortal wound passes from
+    a destroyed model to the next, so none of it is ever wasted and the
+    unit's remaining wounds simply go down by the size of the pool. What
+    the TIMING changes is the model the NEXT weapon's damage events land
+    on, and therefore how much of that damage is wasted - which is why
+    doing it here rather than at the readout is not cosmetic.
+    """
+    out = {}
+    for (t, pool), p in state.items():
+        key = (max(0, t - pool), 0)
+        out[key] = out.get(key, 0.0) + p
+    return out
+
+
 def _read_state(state: dict, w: int, n: int, tmax: int):
     """(kills, removed) laws of a chain state, normalised.
 
@@ -207,8 +234,8 @@ def resolve(allocs, wounds: int, models: int) -> dict:
     'allocs' are the per-weapon allocation dicts, IN FIRING ORDER: a
     weapon fires into the unit the previous ones left behind, which is
     what makes the wasted damage add up the way it does at the table.
-    The spilling mortal pool built up along the way is spent last, as
-    the rules require.
+    The spilling mortal pool a weapon builds up is spent before the next
+    one fires (4.3), so it is part of what that weapon leaves behind.
 
     Returns {'kills', 'removed', 'p_wipe', 'spent'}:
       kills    PMF of the number of models destroyed;
@@ -235,7 +262,10 @@ def resolve(allocs, wounds: int, models: int) -> dict:
         # still standing when its turn came.
         spent += 1.0 - _read_state(state, w, n, tmax)[0][-1]
         if alloc:
-            state = apply_weapon(state, alloc, w, tmax)
+            # ...and the mortal wounds this weapon spilled are spent
+            # before the next one fires (4.3), so the next weapon's
+            # events land on the model they left wounded.
+            state = _spend_pool(apply_weapon(state, alloc, w, tmax))
     kills, removed = _read_state(state, w, n, tmax)
     return {"kills": kills, "removed": removed, "spent": spent,
             "p_wipe": kills[-1] if kills else 0.0}

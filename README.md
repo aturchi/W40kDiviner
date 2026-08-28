@@ -389,6 +389,20 @@ only means are additive (`src/result_rows.py` owns that distinction).
 μ. 
 **Self-dmg** column appears only when a HAZARDOUS weapon is in the list.
 
+A weapon fires into the unit the previous ones left behind, so the **order the
+weapons fire in** changes how much damage is wasted and how soon the target
+falls. When reordering is worth something the popup says so:
+
+```
+Firing order: frees 0.77 weapons - fire Cyclone missile launcher – krak ->
+Assault cannon -> ...  (heuristic, not necessarily the best order)
+```
+
+The order is chosen to spend **fewer weapons** on the target — the ones still
+loaded when it falls can be pointed somewhere else — with the wounds actually
+removed breaking the ties. If that costs a fraction of a model killed the line
+says so too. It is a heuristic over three candidate orders, not the optimum.
+
 **In a result popup**
 
 - **Distributions** — double-click any row for its distribution: a weapon row
@@ -461,9 +475,8 @@ Resolves attacks with **real dice rolls** during a game.
 2. In the **Army setup** popup, pick the units of the two armies; running
    **points totals** are shown as you build each side.
 3. During play, select an **attacker** unit and a **defender** unit in the two
-   panels and press **Execute attack**. A popup lists every damaging attack and
-   the mortal wounds, so you can allocate the wounds to models — by hand, or
-   with **Apply to defender…** (below).
+   panels and press **Execute attack**. The attack window opens and takes you
+   through the sequence one weapon at a time (below).
 
 **Tracking aids**
 
@@ -472,7 +485,11 @@ Resolves attacks with **real dice rolls** during a game.
   attack resolution; a masked ability row switches that ability off
   (`enabled: false` on the roster entry, so it stays off until unmasked).
   This lets you reflect casualties, spent one-use weapons and abilities
-  already used or not in play.
+  already used or not in play. A model whose wounds reach **0** is masked for
+  you, and a unit with nothing left standing has its own row masked so it
+  cannot fight; both ride in the same undo step as the edit that caused them.
+  Putting a model back is a deliberate gesture — raising the wounds again does
+  not unmask it.
 - **Wounds boxes** — each model row has an editable wounds box (double-click),
   initialised to `W × model count`, so you can track remaining wounds as the
   game goes on.
@@ -485,19 +502,40 @@ Resolves attacks with **real dice rolls** during a game.
   masking uses a global model index and is split back to the correct part
   internally, so a joined unit tracks correctly.
 
-**Assisted allocation** — `Apply to defender…` in the results popup proposes,
-model by model, how the damage lands, and writes it into the table as a single
-undo step. The arithmetic follows the same rules the analyzer's estimate is
-built on: one event at a time capped by the wounds of the model it hits (three
-attacks of 2 damage are not one of 6), excess on a destroyed model wasted, the
-already-wounded model first, `DEVASTATING WOUNDS` allocated like normal damage,
-and spilling mortal wounds pooled and applied last, one point at a time.
+**The attack window** — one weapon at a time, in the order the rules describe.
+The left panel is the firing queue, the right one the defending unit split into
+the **allocation groups** of the Save Rolls step (11th ed. 05.03): models with
+the same profile together, attached CHARACTERs on their own.
 
-Everything that is a *choice* stays with the player: **Move up / Move down**
-sets the order models take damage in — there is no “champion” flag in the
-profiles, so the Shas'ui is kept alive by moving it down the list — and
-double-clicking the **Left** column types a result by hand. `PRECISION` damage
-is reported as freely allocatable rather than assigned for you.
+- **Fire** rolls that weapon's attacks, hits and wounds and stops there, with
+  the saves still to come. **Roll saves** resolves them against the model each
+  attack is allocated to. **Fire all** runs the queue until something needs
+  deciding, and says what.
+- **Move up / Move down** sets the order groups and models take damage in, at
+  any time before the saves are rolled. There is no “champion” flag in the
+  profiles, so the Shas'ui is kept alive by moving it down the list. The order
+  you set carries over to the next weapon.
+- The queue itself can be reordered: a weapon fires into the unit the previous
+  ones left behind, so the order changes how much damage is wasted.
+- **PRECISION** lets you send a weapon's attacks to an attached CHARACTER; the
+  window offers it and marks the group, the choice is yours.
+- **Undo** takes back a whole activation, **dice included** — it is not a way
+  to roll again until the dice fall better.
+- **End sequence** writes every model whose wounds changed into the table as a
+  single undo step, and records the attack in the log.
+
+The arithmetic follows the same rules the analyzer's estimate is built on: one
+event at a time capped by the wounds of the model it hits (three attacks of 2
+damage are not one of 6), excess on a destroyed model wasted, the
+already-wounded model first, and the pool resolved in order — ordinary wounds,
+then `DEVASTATING WOUNDS`, then spilling mortal wounds one point at a time.
+
+**HAZARDOUS** — the tests are rolled after the unit has resolved all of its
+attacks, so a closing window opens when the attacking unit owes anything. It
+shows which weapons failed and where the mortal wounds land; they spill across
+the whole unit like any other mortal wound, and you can point a weapon's wounds
+at a model of your choice. **Skip** leaves the table alone — the log records
+what was owed either way.
 
 **Attack log** — every resolved attack is recorded: who fired at whom, under
 which flags and modifiers, with what each weapon rolled event by event. The
@@ -506,7 +544,8 @@ running totals per defending unit when nothing is selected. `New turn` groups
 the entries, mis-clicked attacks can be deleted, and the whole log exports as
 text or CSV. It is saved with the session, so reopening a session mid-game does
 not lose it. The totals are damage **rolled**, not wounds removed: overkill on a
-destroyed model is not subtracted.
+destroyed model is not subtracted. Damage a unit did to itself with HAZARDOUS is
+recorded separately.
 
 ---
 
@@ -551,6 +590,10 @@ Both modes:
 
 - **Search** — list widgets across the GUIs support incremental search
   (`src/search_widget.py`).
+- **Selecting several entries** — most lists use `Ctrl+click` (`Cmd` on macOS)
+  and `Shift+click` for a range; the label under each says which. The army list
+  when a file holds more than one army is the exception: a click selects, a
+  second click deselects, so a subset can be picked with the mouse alone.
 - **Inspect** — full-profile view of a unit (`src/inspect_dialog.py`),
   read-only in both programs: abilities and weapon counts are switched off by
   masking a row of the program's own table (the unit tree in the Analyzer, the
@@ -620,7 +663,7 @@ display: leader/support attachment, masking, the damage pipeline, the allocation
 rules, the pure half of every new UI feature, and the dialog logic.
 
 ```bash
-cd tests && python3 run_all.py          # the whole suite (~85 s)
+cd tests && python3 run_all.py          # the whole suite (~2 min)
 python3 test_regress.py                 # digest against the saved baseline
 ```
 
@@ -668,8 +711,13 @@ W40kDiviner/
 │   ├── attack_log.py        #   game log of the attacks resolved (pure)
 │   ├── log_view.py          #   attack-log window
 │   ├── undo_stack.py        #   undo/redo history of the table edits (pure)
-│   ├── allocation.py        #   assisted wound allocation (pure)
-│   ├── alloc_dialog.py      #   the "Apply to defender" dialog
+│   ├── alloc_groups.py      #   Save Rolls allocation groups & order (pure)
+│   ├── attack_session.py    #   the weapon-by-weapon attack sequence (pure)
+│   ├── session_rows.py      #   what the attack window shows, as data (pure)
+│   ├── attack_session_view.py  # the attack window
+│   ├── defender_models.py   #   table rows ↔ combat view join (pure)
+│   ├── hazard_close.py      #   the HAZARDOUS closing step (pure)
+│   ├── hazard_view.py       #   the HAZARDOUS closing window
 │   ├── cheat_sheet.py       #   printable one-page unit sheet (text + HTML)
 │   ├── dist_view.py         #   histogram / survival-curve canvases
 │   ├── tree_ids.py          #   game assistant table row-id grammar (pure)

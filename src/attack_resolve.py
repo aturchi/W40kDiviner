@@ -429,11 +429,20 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         # +1 BS makes the target easier; a characteristic never beats 1+.
         tgt = skill_target
         if mech.hitroll_mw:
-            thr = mech.hitroll_mw["thr"]
-            ok = lambda r: (r >= thr
-                            or (r > 1 and r < thr and r + hit_mod >= tgt))
+            # The same three regions of the die as
+            # attack_math.hit_threshold_mw_probs: the unmodified floor
+            # gates both branches, faces thr..6 above it feed the mortal
+            # branch, and lower faces hit either on their modified value
+            # or because they are CRITICAL hits - which then trigger
+            # SUSTAINED / LETHAL like any other critical.
+            thr = max(2, mech.hitroll_mw["thr"])
+            mw_face = lambda r: r >= thr and r >= unmod_min
+            hit_face = lambda r: (r >= unmod_min and 1 < r < thr
+                                  and (r == 6 or r >= crit_hit_on
+                                       or r + hit_mod >= tgt))
+            ok = lambda r: mw_face(r) or hit_face(r)
             r = _roll_success(rng, ok, reroll_hit)
-            if r >= thr:
+            if mw_face(r):
                 if defer_save:
                     # A hit-roll mortal wound is a plain mortal wound:
                     # it spills unless the ability says otherwise.
@@ -453,15 +462,21 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
                         {"kind": "mortal", "amount": kept,
                          "spills": mech.hitroll_mw.get("spill", True)})
                 return
-            if not ok(r):
+            if not hit_face(r):
                 fails["hit"] = True
                 return
-            resolve_hit(False)
+            resolve_hit(r >= crit_hit_on)
             return
         if mech.hit_unmod_only:
+            # A floor on the die: nothing below it hits, and a critical
+            # threshold below the floor cannot rescue a result. The
+            # trailing "or r >= crit_hit_on" that used to sit here could
+            # never change the answer - the guard already required
+            # r >= x - so it is left out rather than written down as
+            # though it did the work. attack_math mirrors this by
+            # passing the floor as unmod_min.
             x = max(mech.hit_unmod_only, unmod_min)
-            ok = lambda r: r >= x and (r == 6 or r >= crit_hit_on
-                                       or r >= x)
+            ok = lambda r: r >= x
         else:
             ok = lambda r: (r >= unmod_min
                             and (r == 6 or r >= crit_hit_on

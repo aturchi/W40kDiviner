@@ -261,26 +261,54 @@ def roll_probs(target, mod: int, reroll: str = None, times: int = None,
     return min(P, 1.0), min(PC, 1.0)
 
 
-def hit_threshold_mw_probs(target, mod, reroll, thr):
+def hit_threshold_mw_probs(target, mod, reroll, thr, crit_on: int = 6,
+                           unmod_min: int = 1):
     """Hit roll with a 'on unmodified thr+: mortal wounds, sequence
-    ends' branch sharing the same die: returns (p_mw, p_hit). Faces
-    thr..6 trigger the MW branch (including the natural 6, so no
-    critical hits remain); lower faces hit normally. Re-rolls apply to
-    failed dice only and may land in the MW region."""
+    ends' branch sharing the same die: returns (p_mw, p_hit, p_crit),
+    where p_crit counts the CRITICAL hits among p_hit.
+
+    Three regions of the die, in this order of precedence:
+
+      * FLOOR. An unmodified result below 'unmod_min' does nothing at
+        all - not a hit, and not the mortal-wound branch either. The
+        floor comes from Snap Shooting ("each attack only hits on an
+        unmodified 6, irrespective of the weapon's BS characteristic or
+        any modifiers") and from indirect shooting, and it is the
+        stricter of the two thresholds that wins: an ability keyed on an
+        unmodified 5+ is a threshold on the same die, and a die that
+        never got past the floor never reached it. This is the same rule
+        the 'hits only on an unmodified X+' branch already applies.
+      * MORTAL WOUNDS. Faces max(2, thr)..6 that clear the floor,
+        including the natural 6 - which is why a weapon whose threshold
+        is 6+ scores no critical hits at all.
+      * HIT. Lower faces that clear the floor and either beat the target
+        on their modified value, or are CRITICAL hits, which are
+        automatically successful whatever the target says. A critical
+        threshold below 'thr' (CONVERSION, criticalThreshold) therefore
+        leaves a band of faces that are ordinary critical hits and go on
+        to trigger SUSTAINED HITS / LETHAL HITS in the usual way.
+
+    Re-rolls apply to failed dice only and may land in either region.
+    """
     times = rules_config.CAP_REROLLS
-    p_mw0 = (7 - max(2, thr)) / 6.0
-    p_hit0 = sum(1 for r in range(2, thr)
-                 if r + mod >= target) / 6.0
+    floor, top = max(1, unmod_min), max(2, thr)
+    mw = [r for r in range(1, 7) if r >= top and r >= floor]
+    hit = [r for r in range(1, 7)
+           if r >= floor and 1 < r < top
+           and (r == 6 or r >= crit_on or r + mod >= target)]
+    crit = [r for r in hit if r >= crit_on]
+    p_mw0, p_hit0, p_crit0 = len(mw) / 6.0, len(hit) / 6.0, len(crit) / 6.0
     p_fail0 = 1.0 - p_mw0 - p_hit0
     if reroll is None or times <= 0:
-        return p_mw0, p_hit0
-    P_mw = P_hit = 0.0
+        return p_mw0, p_hit0, p_crit0
+    P_mw = P_hit = P_crit = 0.0
     cont = 1.0
     for _ in range(times + 1):
         P_mw += cont * p_mw0
         P_hit += cont * p_hit0
+        P_crit += cont * p_crit0
         cont *= p_fail0 if reroll == "fails" else 1.0 / 6.0
-    return P_mw, P_hit
+    return P_mw, P_hit, P_crit
 
 
 def wound_target(s: int, t: int) -> int:
@@ -1459,16 +1487,34 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         if mech.hitroll_mw or mech.hit_unmod_only:
             warn("hit-roll mechanic combined with auto-hit: ignored")
     elif mech.hitroll_mw:
-        p_mw_hit, p_hit = hit_threshold_mw_probs(
-            skill_target, hit_mod, reroll_hit, mech.hitroll_mw["thr"])
-        p_crit_hit = 0.0                   # the natural 6 feeds the MW branch
-        if indirect:
-            warn("indirect fire combined with a hit-roll mortal-wound "
-                 "mechanic: the unmodified-roll floor is not applied")
+        # The threshold shares the die with the hit roll, so it takes
+        # the unmodified-roll floor (Snap Shooting, indirect shooting)
+        # and the critical threshold with it - see
+        # hit_threshold_mw_probs. p_crit_hit is no longer forced to
+        # zero: it IS zero whenever the threshold is 6+, because the
+        # natural 6 then feeds the mortal branch, but a lowered
+        # critical threshold leaves a band of ordinary critical hits
+        # below it.
+        p_mw_hit, p_hit, p_crit_hit = hit_threshold_mw_probs(
+            skill_target, hit_mod, reroll_hit, mech.hitroll_mw["thr"],
+            crit_on=crit_hit_on, unmod_min=unmod_min)
+        if mech.hit_unmod_only:
+            warn("two hit-roll threshold mechanics on one weapon: the "
+                 "mortal-wound one is resolved and 'hits only on an "
+                 "unmodified {}+' is ignored".format(mech.hit_unmod_only))
     elif mech.hit_unmod_only:
-        # hits only on an unmodified X+, irrespective of modifiers
-        p_hit, p_crit_hit = roll_probs(max(mech.hit_unmod_only, unmod_min),
-                                       0, reroll_hit, crit_on=crit_hit_on)
+        # Hits only on an unmodified X+, irrespective of modifiers. The
+        # threshold is a FLOOR ON THE DIE and not a target number, so it
+        # has to be passed as unmod_min as well: a critical hit is
+        # automatically successful, but only once the die has cleared
+        # the floor. Passing it as the target alone let a lowered
+        # critical threshold (CONVERSION, criticalThreshold) turn a
+        # result BELOW the floor into an automatic hit, which the dice
+        # resolver never did.
+        floor = max(mech.hit_unmod_only, unmod_min)
+        p_hit, p_crit_hit = roll_probs(floor, 0, reroll_hit,
+                                       crit_on=crit_hit_on,
+                                       unmod_min=floor)
     else:
         p_hit, p_crit_hit = roll_probs(skill_target, hit_mod, reroll_hit,
                                        crit_on=crit_hit_on,

@@ -125,7 +125,10 @@ below.
   Damage / Damage-net), `## profiles` (every distinct defensive profile),
   `## flags` (the context flags, one at a time), `## selection` (which weapons
   the attack setup keeps or greys out), `## attach` (leader/support attachment
-  and the damage it moves) and `## abilities` (per-ability damage delta).
+  and the damage it moves) and `## abilities` (per-ability damage delta). Each
+  weapon line also carries the wounds actually **R**emoved and, for a HAZARDOUS
+  weapon, the **S**elf-damage; each pair carries the firing **ORDER** the
+  heuristic chose and what it is worth.
   `--save` (re)writes the baseline; a mismatch prints a unified diff and exits
   non-zero. `-v` also prints the digest alongside the verdict. Run `--save`
   whenever an intended change alters the numbers, then commit the baseline.
@@ -280,10 +283,26 @@ enough to read.
 - `test_undo_stack.py` — undo/redo: ordering, the redo branch, the depth limit,
   the dropping of no-op changes, and that undoing a masked ability row switches
   the ability back **on** rather than merely un-greying the row.
-- `test_allocation.py` — assisted wound allocation. The strong check is that
-  the models it removes equal the models `kill_chain` counts from the same
-  events: a program that predicts four dead and then removes five would be
-  worse than one that predicts nothing.
+- `test_alloc_groups.py` — the Save Rolls allocation groups (05.03): how a
+  unit splits into them, which orders the rules allow, and that an order
+  declared by the player survives the groups being rebuilt at the next weapon.
+- `test_attack_session.py` — the weapon-by-weapon sequence: arming stops at
+  the wounds, undo takes back a whole activation *including its dice*, and the
+  groups and the BLAST model count are worked out again for every weapon.
+- `test_deferred_saves.py` — the dice engine split in two halves, cross-checked
+  against the closed-form maths by Monte Carlo. Also that the wound pool is
+  taken in phases — ordinary wounds, then mortal ones — and not attack by
+  attack.
+- `test_session_rows.py`, `test_attack_window.py` — what the attack window
+  shows, as data, and then the window over it.
+- `test_hazard_close.py`, `test_hazard_view.py` — the HAZARDOUS closing step:
+  which weapons owe what, where the wounds land, and the player's choice of
+  target.
+- `test_auto_mask.py` — the masks that follow from the table rather than from
+  a gesture: a model at zero wounds, a unit with nothing standing, and both
+  riding in the same undo step as the edit that implied them.
+- `test_defender_models.py` — the join between the assistant's table rows and
+  the combat view, checked by position **and** by name.
 - `test_cheat_sheet.py` — the printable unit sheet: dice characteristics
   printed in notation and never rolled, a disabled ability printed as `[OFF]`
   rather than dropped, HTML escaping, and the analyzer CSV export being row for
