@@ -12,15 +12,23 @@ fail, already applied by the resolver) -- and they spill like any other
 mortal wound: a point that outlives the model it landed on passes to the
 next by the 06.02 sequence rather than being lost.
 
-They land on the BEARER first, which is the whole reason this module
-exists. The unit-wide pool the session hands back has no bearer in it,
-so the weapon has to be traced back to the model group carrying it. The
-combat view keeps the very Weapon objects that hang off its models -
-analyzer_core.select_weapons_split appends them, it does not copy them -
-so the trace is an identity lookup and not a match on names. When it
-fails it is REPORTED, never guessed: an unattributed point is allocated
-from the top of the 06.02 sequence, which is a defensible answer, while
-a point put on the wrong model is not.
+They land wherever any other mortal wound would: the 06.02 sequence
+decides, and the wound spills across the WHOLE unit rather than stopping
+at the model that failed the test. The bearer has no special standing in
+the rules - it did in an earlier version of this module, which allocated
+from the bearer outwards, and that was wrong.
+
+The bearer is still worked out, because it is worth SHOWING: it says
+which model group the test came from, which is what a player weighing up
+where to put the wounds wants to know. The weapon is traced back to its
+group by identity - analyzer_core.select_weapons_split appends the very
+Weapon objects that hang off the view's models, it does not copy them -
+and when the trace fails it is REPORTED, never guessed.
+
+Where the wounds actually go is the PLAYER's to say. Each entry carries
+a 'target': None means the sequence decides, and a model index means the
+player has pointed that weapon's wounds at a model of their choosing.
+A wound larger than its target still spills on from there.
 
 Nothing here rolls a die: the tests were rolled inside the resolver and
 their outcome is already in the session's records. Nothing here draws
@@ -93,8 +101,11 @@ def owed(records, weapons, bearer_of, models):
                     "label": record.get("label")
                     or _weapon_name(weapons, index),
                     "damage": damage,
+                    # Shown, not obeyed: see the module docstring.
                     "bearer": None if mi is None
-                    else _first_alive(models, mi)})
+                    else _first_alive(models, mi),
+                    # The player's choice, once they have made one.
+                    "target": None})
     return out
 
 
@@ -102,6 +113,19 @@ def _weapon_name(weapons, index):
     if index is None or not (0 <= index < len(weapons)):
         return "?"
     return getattr(weapons[index].get("weapon"), "name", "?")
+
+
+def aim(items, index, target=None) -> list:
+    """A copy of 'items' with the entry at 'index' pointed at 'target'.
+
+    A copy rather than a mutation so the caller can recompute from the
+    original list every time and never accumulate a half-applied state:
+    the whole closing step is cheap to redo.
+    """
+    out = []
+    for n, item in enumerate(items):
+        out.append(dict(item, target=target) if n == index else dict(item))
+    return out
 
 
 def total(items) -> int:
@@ -124,11 +148,12 @@ def resolve(models, items):
     """
     alloc = ag.Allocation(models)
     for item in items:
-        # target names ONE model: a spilling wound that outlives the
-        # bearer carries on by the ordinary sequence, which is exactly
-        # what the rule says happens.
+        # No target unless the player set one: hazardous mortal wounds
+        # go where any other mortal wound goes. A target names ONE
+        # model and a wound that outlives it carries on by the ordinary
+        # sequence, so pointing it somewhere never loses a point.
         alloc.allocate(item.get("damage"), spill=True,
-                       target=item.get("bearer"))
+                       target=item.get("target"))
     return {"alloc": alloc, "rows": alloc.result(),
             "leftover": alloc.leftover}
 

@@ -40,14 +40,22 @@ class HazardWindow(tk.Toplevel):
         self.title(f"Hazardous - {name}")
         self.transient(master)
         self.on_apply = on_apply
+        self.records = models
         self.items = list(items)
-        self.result = hc.resolve(models, self.items)
-        self.entry = hc.log_entry(self.items, self.result["rows"])
+        self._recompute()
         self._done = False
         self.buttons = {}
         self._build(name)
         self.protocol("WM_DELETE_WINDOW", self._skip)
         self.grab_set()
+
+    def _recompute(self):
+        """Work the closing step out again from the items as they now
+        stand. Cheap enough to redo on every change, which is why aim()
+        hands back a copy instead of mutating: there is never a
+        half-applied state to get out of."""
+        self.result = hc.resolve(self.records, self.items)
+        self.entry = hc.log_entry(self.items, self.result["rows"])
 
     # ---------- layout ----------
 
@@ -70,6 +78,7 @@ class HazardWindow(tk.Toplevel):
         panes.pack(fill=tk.BOTH, expand=True, padx=8)
         panes.add(self._weapon_panel(panes), weight=1)
         panes.add(self._model_panel(panes), weight=1)
+        self._w_iid = {}
         self._fill()
         self._buttons()
 
@@ -96,6 +105,55 @@ class HazardWindow(tk.Toplevel):
         self.models.pack(fill=tk.BOTH, expand=True)
         return frame
 
+    def _refill(self):
+        """Redraw both panels from the current items.
+
+        The selection is put back: the row ids are stable across a
+        redraw, and losing them would mean the player had to pick the
+        weapon again to press Use the sequence after Send here.
+        """
+        keep = (self.weapons.selection(), self.models.selection())
+        self.weapons.delete(*self.weapons.get_children(""))
+        self.models.delete(*self.models.get_children(""))
+        self._w_iid = {}
+        self._fill()
+        for tree, sel in zip((self.weapons, self.models), keep):
+            back = [i for i in sel if tree.exists(i)]
+            if back:
+                tree.selection_set(*back)
+        killed = self.entry["killed"]
+        self.tally.configure(
+            text=f"{killed} model{'' if killed == 1 else 's'} of the "
+                 "attacking unit destroyed" if killed else "")
+
+    def _aim(self):
+        """Point the selected weapon's wounds at the selected model.
+
+        The rules put these wherever any mortal wound goes, so this is
+        a CHOICE and not a correction: the sequence stays the default
+        and Clear puts it back.
+        """
+        w = self._picked(self.weapons, self._w_iid)
+        m = self._picked(self.models, self._m_iid)
+        if w is None or m is None:
+            return
+        self.items = hc.aim(self.items, w, m)
+        self._recompute()
+        self._refill()
+
+    def _clear_aim(self):
+        w = self._picked(self.weapons, self._w_iid)
+        if w is None:
+            return
+        self.items = hc.aim(self.items, w, None)
+        self._recompute()
+        self._refill()
+
+    @staticmethod
+    def _picked(tree, table):
+        sel = tree.selection()
+        return table.get(sel[0]) if sel else None
+
     def _fill(self):
         rows = self.result["rows"]
         for item in self.items:
@@ -104,26 +162,53 @@ class HazardWindow(tk.Toplevel):
             # row per model in that same order, so it indexes the rows
             # too. None means the weapon could not be traced or its
             # whole group was already gone: the 06.02 sequence decides.
-            where = ("the unit" if bearer is None
-                     else rows[bearer]["label"])
-            self.weapons.insert("", tk.END, text=item["label"],
+            target = item.get("target")
+            if target is not None:
+                where = rows[target]["label"]
+            elif bearer is None:
+                where = "the unit"
+            else:
+                where = f"the unit  (from {rows[bearer]['label']})"
+            self.weapons.insert("", tk.END, iid=f"w{len(self._w_iid)}",
+                                text=item["label"],
                                 values=(item["damage"], where))
-        for row in rows:
-            if row["after"] == row["before"]:
-                continue
-            tags = (DEAD_TAG,) if row["dead"] else (HURT_TAG,)
-            self.models.insert(
-                "", tk.END, iid=str(row["key"]),
-                text=row["label"] + ("   (destroyed)" if row["dead"]
-                                     else ""),
+            self._w_iid[f"w{len(self._w_iid)}"] = len(self._w_iid)
+        # EVERY model, not only the ones that change: the player picks
+        # a target from this panel, so a model the sequence happens to
+        # miss still has to be there to be pointed at.
+        self._m_iid = {}
+        for n, row in enumerate(rows):
+            if row["dead"]:
+                tags, note = (DEAD_TAG,), "   (destroyed)"
+            elif row["after"] != row["before"]:
+                tags, note = (HURT_TAG,), ""
+            else:
+                tags, note = (), ""
+            iid = self.models.insert(
+                "", tk.END, iid=f"m{n}", text=row["label"] + note,
                 values=(f"{row['before']} -> {row['after']}",),
                 tags=tags)
+            if row["before"] > 0:
+                self._m_iid[iid] = n
         if self.result["leftover"]:
             self.models.insert(
                 "", tk.END, text=f"{self.result['leftover']} mortal "
                 "wounds with no model left to take them", values=("",))
 
     def _buttons(self):
+        aim = ttk.Frame(self)
+        aim.pack(fill=tk.X, padx=8, pady=(4, 0))
+        self.buttons["aim"] = ttk.Button(aim, text="Send here",
+                                         command=self._aim)
+        self.buttons["aim"].pack(side=tk.LEFT)
+        self.buttons["clear"] = ttk.Button(aim, text="Use the sequence",
+                                           command=self._clear_aim)
+        self.buttons["clear"].pack(side=tk.LEFT, padx=6)
+        ttk.Label(aim, foreground=DIM, wraplength=460, justify=tk.LEFT,
+                  text="Pick a weapon on the left and a model on the "
+                       "right to choose where its wounds start. Left "
+                       "alone they go where any mortal wound goes."
+                  ).pack(side=tk.LEFT, padx=6)
         bar = ttk.Frame(self)
         bar.pack(fill=tk.X, padx=8, pady=8)
         self.buttons["apply"] = ttk.Button(bar, text="Apply",
@@ -132,12 +217,12 @@ class HazardWindow(tk.Toplevel):
         self.buttons["skip"] = ttk.Button(bar, text="Skip",
                                           command=self._skip)
         self.buttons["skip"].pack(side=tk.RIGHT, padx=6)
+        self.tally = ttk.Label(bar, foreground=ALERT)
+        self.tally.pack(side=tk.LEFT)
         killed = self.entry["killed"]
-        if killed:
-            ttk.Label(bar, foreground=ALERT,
-                      text=f"{killed} model{'' if killed == 1 else 's'} "
-                           "of the attacking unit destroyed").pack(
-                side=tk.LEFT)
+        self.tally.configure(
+            text=f"{killed} model{'' if killed == 1 else 's'} of the "
+                 "attacking unit destroyed" if killed else "")
 
     # ---------- the two answers ----------
 

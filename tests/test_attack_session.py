@@ -262,4 +262,70 @@ assert all(v == snap[k] for k, v in vars(entry["mech"]).items()), \
     [k for k, v in vars(entry["mech"]).items() if v != snap[k]]
 print("the mechanics passed in come back untouched")
 
+
+# --- the declared order outlives the activation that set it -----------
+
+# The groups are rebuilt at every activation, so an order kept as a list
+# of group INDICES would come to mean something else the moment a group
+# emptied. The session keeps it in names instead (alloc_groups.
+# group_key, and for models the record index) and re-applies them, which
+# is what lets the order be settled once for the whole sequence.
+
+TWO = squad(3, cap=2, sv=3) + [body("cpt", wounds=4, cap=4, sv=2,
+                                    entry=1, character=True)]
+
+
+def two_group(dice=60):
+    return asx.AttackSession([pair("A"), pair("B")], UNIT_REF, CTX, TWO,
+                             Dice([6] * dice))
+
+
+# Reordering with nothing armed: there is no Allocation to act on, and
+# it still takes.
+s = two_group()
+assert len(s.preview().groups) == 2, s.preview().groups
+assert s.declared["groups"] == [] and s.declared["members"] == []
+assert s.reorder("member", 0, 1, group=0), \
+    "models may be reordered before anything is armed"
+wanted = s.preview().groups[0]["members"][0]
+assert s.declared["members"], s.declared
+assert s.declared["members"][0] == wanted
+
+# The group order likewise, and it comes back as names.
+assert s.reorder("group", 0, 1) or True     # may be refused by the rules
+assert all(isinstance(k, tuple) for k in s.declared["groups"]), \
+    s.declared["groups"]
+
+# Arming re-applies it to the groups it has just rebuilt.
+s.arm()
+assert s.alloc.groups[0]["members"][0] == wanted, \
+    "the declaration did not survive arm()"
+assert [ag.group_key(s.alloc.groups[i]) for i in s.alloc.order] \
+    == s.declared["groups"]
+s.apply()
+
+# ... and it is still there for the NEXT weapon, which is the point: it
+# used to be settled after Fire and forgotten at the following one.
+nxt = s.preview()
+assert (nxt.groups[0]["members"][0] == wanted
+        or nxt.left[wanted] <= 0), (nxt.groups[0]["members"], wanted)
+
+# A move made DURING an activation is remembered as well, and survives
+# the activation being discarded - the dice go, the decision stays.
+s2 = two_group()
+s2.arm()
+assert s2.reorder("member", 0, 1, group=0)
+kept = list(s2.declared["members"])
+s2.discard()
+assert s2.declared["members"] == kept, \
+    "a move made during an activation must outlive discarding it"
+assert s2.preview().groups[0]["members"][0] == kept[0]
+
+# An illegal move changes nothing, declaration included.
+s3 = two_group()
+snap = dict(s3.declared)
+assert not s3.reorder("group", 0, -1), "off the end must be refused"
+assert s3.declared == snap
+print("the declared order outlives the activation and the whole sequence")
+
 print("attack_session: all checks passed")

@@ -236,4 +236,59 @@ for _ in range(len(rr.STATS)):
 assert _seen[-1] == "mean" and set(_seen) == set(rr.STATS), _seen
 assert rr.next_stat("nonsense") == "mean"
 
+
+# ---- the firing-order suggestion -------------------------------------
+
+# The line is denominated in the two things the order is CHOSEN for -
+# weapons freed for another target, wounds not wasted - and reports the
+# models killed only as what the choice may cost. Denominated in models
+# killed, as it used to be, it stayed at 0.00 for every gain the
+# heuristic actually found and so never appeared at all.
+
+def note(**kw):
+    base = {"order": ["A", "B"], "spent_saved": 0.0, "removed_gain": 0.0,
+            "order_gain": 0.0}
+    base.update(kw)
+    return rr.order_note(base)
+
+
+# Nothing to suggest: no order, one weapon, or a gain below both bars.
+assert rr.order_note({}) == ""
+assert note(order=None, spent_saved=9.0) == ""
+assert note(order=["A"], spent_saved=9.0) == ""
+assert note(spent_saved=rr.ORDER_MIN_WEAPONS / 2) == ""
+assert note(removed_gain=rr.ORDER_MIN_WOUNDS / 2) == ""
+# A gain the wrong way round is not a suggestion either.
+assert note(spent_saved=-1.0, removed_gain=-3.0) == ""
+
+# Weapons freed, in weapons.
+n = note(spent_saved=0.77)
+assert "frees 0.77 weapons" in n, n
+assert "models" not in n, n
+assert n.endswith("(heuristic, not necessarily the best order)"), n
+assert "A -> B" in n, n
+
+# Wounds saved carry the line on their own, when the target survives and
+# no weapon is freed by any order.
+n = note(removed_gain=1.4)
+assert "wastes 1.4 fewer wounds" in n and "frees" not in n, n
+
+# Both, when both clear their bar.
+n = note(spent_saved=0.5, removed_gain=2.0)
+assert "frees 0.50 weapons and wastes 2.0 fewer wounds" in n, n
+
+# The cost is shown, not hidden: the two criteria can disagree and an
+# order that frees a weapon may kill slightly fewer models.
+n = note(spent_saved=0.5, order_gain=-0.02)
+assert "at 0.02 fewer models killed" in n, n
+# ... but only when there is one. A positive or negligible difference in
+# models killed is not a cost and must not be printed as one.
+assert "fewer models" not in note(spent_saved=0.5, order_gain=0.3)
+assert "fewer models" not in note(spent_saved=0.5, order_gain=-0.001)
+
+# Exactly at the bar counts as clearing it.
+assert note(spent_saved=rr.ORDER_MIN_WEAPONS) != ""
+assert note(removed_gain=rr.ORDER_MIN_WOUNDS) != ""
+
+print("firing-order note: OK")
 print("result table: OK (%d rows)" % len(tbl))

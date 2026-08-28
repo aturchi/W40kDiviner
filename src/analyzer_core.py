@@ -733,9 +733,27 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
         totals["removed_pmf"] = res_k["removed"]
         totals["removed"] = am.pmf_stats(res_k["removed"])
         totals["order"] = [names[i] for i in order]
+        # What the suggested order is worth, in the currency it is now
+        # chosen in: weapons freed. 'order_gain' keeps its old meaning -
+        # models killed - because it is still a real difference and can
+        # now be NEGATIVE, an order that frees a weapon at the cost of a
+        # fraction of a body. The caller decides which to show.
         totals["order_gain"] = (
             am.pmf_stats(res_k["kills"])["mean"]
             - am.pmf_stats(base["kills"])["mean"])
+        # Expected number of weapons the unit costs to destroy. The ones
+        # queued behind the shot that finishes it were not needed and
+        # could have been pointed at something else, which is what a
+        # firing order is chosen for.
+        totals["spent"] = res_k["spent"]
+        # What the suggested order is worth, each figure against the
+        # order the caller gave. 'spent_saved' is the one the order is
+        # chosen by; 'removed_gain' breaks its ties; 'order_gain' is the
+        # models killed, which is now what the choice may COST rather
+        # than what it buys, and can be negative.
+        totals["spent_saved"] = base["spent"] - res_k["spent"]
+        totals["removed_gain"] = (am.pmf_stats(res_k["removed"])["mean"]
+                                  - am.pmf_stats(base["removed"])["mean"])
     return {"weapons": rows,
             "skipped": [{"name": w.name, "count": w.count, "reason": why}
                         for w, why in skipped],

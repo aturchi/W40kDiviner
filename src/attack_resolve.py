@@ -537,7 +537,24 @@ def resolve_saves(pending, weapon, mech, rng: random.Random, alloc,
                        "hits": [(alloc.models[i].get("key"), n)
                                 for i, n in hits]})
 
-    for item in pending:
+    # 06.02 resolves the pool in three phases and not attack by attack:
+    # every ordinary wound first, then the mortal wounds that do not
+    # spill (DEVASTATING WOUNDS), then the ones that do. The queue is
+    # built in attack order, so a critical wound rolled on the second
+    # attack used to be allocated before the ordinary damage of the
+    # third - which changes nothing about the dice and everything about
+    # which model they land on, and so how much damage is wasted.
+    #
+    # TWO keys, not three: the spilling mortals are the third phase and
+    # already were, because they go into a pool that is spent after this
+    # loop whatever order they came out of it in. Sorting them apart as
+    # well would be a distinction with no effect on anything but which
+    # die is drawn when - so it is left out rather than written down as
+    # though it did the work.
+    #
+    # sorted() is stable, so within each phase the attack order survives
+    # exactly as it was.
+    for item in sorted(pending, key=lambda it: it["kind"] == "mortal"):
         if item["kind"] == "mortal":
             raw = (_roll_damage(rng, weapon.D, mech, half, budget)
                    if item["match"] else (item["value"] or 1))

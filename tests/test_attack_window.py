@@ -130,19 +130,25 @@ assert not enabled(win, "move_weapon_up"), "the queue is frozen"
 win.buttons["apply"].invoke()
 assert enabled(win, "undo") and enabled(win, "fire")
 assert not enabled(win, "apply")
-# The move bar of the target panel is OFF until a weapon is armed - the
-# order is declared in the Save Rolls step, after the wounds are rolled -
-# and its caption has to SAY so. Reported as a fault on the first real
-# display run: greyed buttons under a caption describing the move they
-# were refusing to make.
+# The move bar of the target panel is live from the start: the saves are
+# the last step of every activation, so the order can be settled at any
+# point before the one about to roll them. It used to be off until a
+# weapon was armed, which was reported as a fault on the first real
+# display run - the caption told the player to reorder and the buttons
+# refused.
 win2, _g2 = window([pair("A"), pair("B")], models=LED)
-tip_off = win2.tips["move"][0].cget("text")
-assert not enabled(win2, "move_up"), "not armed: the order is not open yet"
-assert "Fire" in tip_off, tip_off
-win2.buttons["fire"].invoke()
-assert enabled(win2, "move_up"), "armed: the order is open"
+assert enabled(win2, "move_up"), "the order is open before Fire"
 assert win2.tips["move"][0].cget("text") == win2.tips["move"][1], \
     "with the buttons live the caption must say what they do"
+win2.buttons["fire"].invoke()
+assert enabled(win2, "move_up"), "and it stays open once armed"
+# When there IS nothing to order the caption has to say why, rather
+# than describing the move the greyed buttons are refusing to make.
+win3, _g3 = window([pair("A")],
+                   models=[body("gone", wounds=0)])
+assert not enabled(win3, "move_up")
+assert "Nothing" in win3.tips["move"][0].cget("text"), \
+    win3.tips["move"][0].cget("text")
 print("every button reflects what the session allows at that moment")
 
 
@@ -308,6 +314,10 @@ win, got = window([pair("P", count=2, hazardous=True)], models=LED,
 win.buttons["fire"].invoke()
 win.buttons["apply"].invoke()
 assert "HAZARDOUS" in win.foot_lbl.cget("text")
+# It is damage the attacking unit has already taken, not advice, so it
+# is drawn in the alert colour and not the hint one.
+assert win.foot_lbl.cget("foreground") == asv.ALERT, \
+    win.foot_lbl.cget("foreground")
 win.buttons["write"].invoke()
 assert got["haz"] == 2, got
 print("hazardous self-damage reaches the caller, not just the label")

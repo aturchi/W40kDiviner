@@ -194,8 +194,30 @@ s = session([pair("A"), pair("B")])
 b = sr.buttons(s)
 assert b["fire"] and b["fire_all"] and b["move_weapon"]
 assert not b["apply"] and not b["discard"] and not b["undo"]
-# A preview allocation may not be reordered: it is thrown away.
-assert not b["move_model"] and not b["move_group"]
+# The order may be settled BEFORE anything is armed. The saves are the
+# last step of every activation, so there is no moment at which the
+# choice is closed except the roll itself - and the declaration is kept
+# on the session, so a move made on a preview is not thrown away with
+# it. This used to be off, which meant the order had to be picked after
+# Fire and was forgotten again at the next weapon.
+assert b["move_model"], b
+# move_group needs two groups to have anything to say; this squad is
+# one profile, so a LED unit is asked instead.
+assert not b["move_group"], "one group: nothing to reorder"
+assert sr.buttons(session(models=LED))["move_group"], \
+    "two groups and nothing armed: the order is still open"
+# The preview says it is a preview - the panel needs to know, because
+# a preview has no dice behind it and no PRECISION to offer.
+_alloc, _live = sr.allocation_of(session(models=LED))
+assert _live is False, "nothing armed: this is a preview"
+# ... and it carries the order the player has declared, not the default
+# one, or a move made before Fire would vanish the moment it was drawn.
+_s = session(models=LED)
+assert _s.reorder("member", 0, 1, group=0)
+_want = _s.declared["members"][0]
+_alloc, _live = sr.allocation_of(_s)
+assert _alloc.groups[0]["members"][0] == _want, \
+    "the preview ignored the declaration"
 
 s.arm()
 b = sr.buttons(s)

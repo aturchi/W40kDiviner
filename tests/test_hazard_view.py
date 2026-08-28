@@ -69,11 +69,15 @@ assert got == {}, "nothing is reported before the player answers"
 assert rows_of(win.weapons) == ["plasma gun"], rows_of(win.weapons)
 assert win.weapons.item(win.weapons.get_children("")[0],
                         "values")[0] == 1
-# One 2W model takes one mortal wound: one row, and it is not destroyed.
-hurt = win.models.get_children("")
-assert len(hurt) == 1, rows_of(win.models)
+# Every model is listed, because the player picks a target from this
+# panel and a model the sequence happens to miss still has to be there.
+assert len(win.models.get_children("")) == 4, rows_of(win.models)
+changed = [i for i in win.models.get_children("")
+           if win.models.item(i, "values")[0] != "2 -> 2"]
+assert len(changed) == 1, [win.models.item(i, "values") for i in
+                           win.models.get_children("")]
 assert "destroyed" not in rows_of(win.models)[0]
-assert win.models.item(hurt[0], "values")[0] == "2 -> 1"
+assert win.models.item(changed[0], "values")[0] == "2 -> 1"
 # The records themselves are untouched while the window is open.
 assert all(m["wounds"] == 2 for m in models), models
 print("the window draws the resolved step and touches nothing yet")
@@ -81,8 +85,12 @@ print("the window draws the resolved step and touches nothing yet")
 
 # --- 2. the panel names the model the test lands on -------------------
 
+# The bearer is NAMED but not obeyed: hazardous mortal wounds go where
+# any mortal wound goes, spilling across the whole unit, so the panel
+# says which group the test came from and the sequence decides.
 assert win.weapons.item(win.weapons.get_children("")[0],
-                        "values")[1] == "t0", "the bearer is named"
+                        "values")[1] == "the unit  (from t0)", \
+    win.weapons.item(win.weapons.get_children("")[0], "values")
 untraced = hc.owed([{"index": 9, "label": "mystery", "self_damage": 1}],
                    WEAPONS, {}, squad())
 w2 = hv.HazardWindow(ROOT, untraced, squad(), "Squad",
@@ -155,5 +163,59 @@ assert win.entry["killed"] == 2, win.entry
 assert sum(1 for i in win.models.get_children("")
            if "destroyed" in win.models.item(i, "text")) == 2
 print("the models the unit destroyed are marked in the panel")
+
+# --- 8. the player chooses where the wounds start ---------------------
+
+# The rules put hazardous mortal wounds where any mortal wound goes, so
+# the sequence is the DEFAULT and not the answer: picking a weapon and a
+# model sends that weapon's wounds there instead, and they still spill
+# on from it.
+win, got, models = window(1)
+w0 = win.weapons.get_children("")[0]
+rows = win.models.get_children("")
+# t0 is what the sequence would take; aim at the last model instead.
+assert win.models.item(rows[-1], "values")[0] == "2 -> 2"
+win.weapons.selection_set(w0)
+win.models.selection_set(rows[-1])
+win.buttons["aim"].invoke()
+assert win.models.item(rows[-1], "values")[0] == "2 -> 1", \
+    [win.models.item(i, "values") for i in win.models.get_children("")]
+assert win.models.item(rows[0], "values")[0] == "2 -> 2", \
+    "the sequence's pick must be left alone once a target is set"
+assert win.weapons.item(w0, "values")[1] == "t3", \
+    win.weapons.item(w0, "values")
+win.buttons["apply"].invoke()
+assert [r["key"] for r in got["rows"]] == ["t3"], got["rows"]
+
+# ... and it can be put back.
+win, got, models = window(1)
+win.weapons.selection_set(win.weapons.get_children("")[0])
+win.models.selection_set(win.models.get_children("")[-1])
+win.buttons["aim"].invoke()
+win.buttons["clear"].invoke()
+win.buttons["apply"].invoke()
+assert [r["key"] for r in got["rows"]] == ["t0"], got["rows"]
+
+# A choice with nothing selected changes nothing.
+win, got, models = window(1)
+win.buttons["aim"].invoke()
+win.buttons["clear"].invoke()
+win.buttons["apply"].invoke()
+assert [r["key"] for r in got["rows"]] == ["t0"], got["rows"]
+
+# Aiming a wound bigger than its target still spills off it.
+win, got, models = window(3)
+win.weapons.selection_set(win.weapons.get_children("")[0])
+win.models.selection_set(win.models.get_children("")[-1])
+win.buttons["aim"].invoke()
+win.buttons["apply"].invoke()
+assert sum(2 - r["wounds"] for r in got["rows"]) == 3, got["rows"]
+hit = {r["key"]: r for r in got["rows"]}
+assert hit["t3"]["dead"], got["rows"]
+# The point that outlived the target went on by the sequence, which is
+# what "spills across the whole unit" means - not back to the target's
+# neighbours, and not lost.
+assert "t0" in hit and hit["t0"]["wounds"] == 1, got["rows"]
+print("the player chooses where the wounds start, and they still spill")
 
 print("hazard window: all checks passed (against the Tk stub)")

@@ -246,6 +246,50 @@ def totals_row(results: dict, cols=ALL_KEYS, stats=None) -> tuple:
     return _project(cells, cols)
 
 
+# A suggestion has to be worth reading. Below these the reordering is
+# advice about a fraction of an outcome the player will never notice:
+# freeing a twentieth of a weapon means getting one back one game in
+# twenty, and half a wound is inside the spread of a single die.
+ORDER_MIN_WEAPONS = 0.05
+ORDER_MIN_WOUNDS = 0.5
+
+
+def order_note(results: dict) -> str:
+    """The firing-order suggestion as one line, or "" for no suggestion.
+
+    The order is chosen to spend FEWER WEAPONS on the target, because
+    the ones still loaded when it falls can be pointed elsewhere, and
+    the wounds actually taken off break the ties. Both are reported in
+    their own units - the line used to be denominated in models killed,
+    which is neither of the things the order is picked for and which
+    stayed at 0.00 for every gain the heuristic actually found, so the
+    suggestion never appeared at all.
+
+    The models killed are still reported, but as the COST: the two
+    criteria can disagree, and an order that frees half a weapon while
+    killing a hundredth of a model less is a trade the player is
+    entitled to see rather than one made quietly on their behalf.
+    """
+    order = results.get("order")
+    if not order or len(order) < 2:
+        return ""
+    weapons = float(results.get("spent_saved") or 0.0)
+    wounds = float(results.get("removed_gain") or 0.0)
+    gains = []
+    if weapons >= ORDER_MIN_WEAPONS:
+        gains.append(f"frees {weapons:.2f} weapons")
+    if wounds >= ORDER_MIN_WOUNDS:
+        gains.append(f"wastes {wounds:.1f} fewer wounds")
+    if not gains:
+        return ""
+    models = float(results.get("order_gain") or 0.0)
+    cost = (f", at {-models:.2f} fewer models killed"
+            if models <= -0.005 else "")
+    return (f"Firing order: {' and '.join(gains)}{cost} - fire "
+            + " -> ".join(order) + "  (heuristic, not necessarily the "
+            "best order)")
+
+
 def table(results: dict, stats=None) -> list:
     """The whole table as [(name, values)], totals row included."""
     cols = keys(results)

@@ -8027,7 +8027,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8071,7 +8071,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8131,7 +8131,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8175,7 +8175,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8236,7 +8236,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8280,7 +8280,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8341,7 +8341,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8385,7 +8385,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8445,7 +8445,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8489,7 +8489,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8549,7 +8549,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8593,7 +8593,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8653,7 +8653,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -8697,7 +8697,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -9552,7 +9552,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -9596,7 +9596,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -9656,7 +9656,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -9700,7 +9700,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -9760,7 +9760,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -9804,7 +9804,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -9865,7 +9865,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },
@@ -9909,7 +9909,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of any kind (hit OR wound)",
+              "title": "One roll of any kind (one in total)",
               "key": "exclusive"
              }
             },

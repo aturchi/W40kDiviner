@@ -162,6 +162,75 @@ def build_groups(models) -> list:
     return groups
 
 
+def group_key(group):
+    """A name for a group that survives the unit being rebuilt.
+
+    The groups are built again at every weapon activation, because a
+    model dying can empty one and a model being wounded can move
+    another, so a declared order kept as a list of GROUP INDICES would
+    silently come to mean something else. These keys do not move: a
+    CHARACTER is named by its own model, whose index into the record
+    list is fixed for the whole sequence, and any other group by the
+    profile it is built from - which is unique by construction, since
+    two groups sharing a profile would have been the same group.
+    """
+    if group["character"]:
+        return ("character", group["members"][0])
+    return ("profile",) + tuple(group["profile"])
+
+
+def model_key(models, i):
+    """A name for one model record. The index IS the name: the record
+    list is fixed for the whole sequence and only the wounds in it
+    change."""
+    return int(i)
+
+
+def prefer_order(groups, models, keys) -> list:
+    """A legal allocation order that honours 'keys' as far as it can.
+
+    'keys' is a declared order, from group_key, possibly made before
+    some of these groups existed and some others died. It is a
+    PREFERENCE, not an instruction: the blocks of _tier are the rules
+    and cannot be bent, so groups are sorted by their block first and
+    the declared order only breaks ties inside one. Sorting that way is
+    legal by construction - blocks come out in the order 0,1,2,3, which
+    is exactly what order_problem asks for - so there is no failure case
+    to fall back from.
+
+    Groups the declaration never named keep their default position
+    relative to each other, behind the ones it did.
+    """
+    rank = {}
+    for n, k in enumerate(keys or ()):
+        rank.setdefault(tuple(k), n)
+    default = {g: n for n, g in enumerate(default_order(groups, models))}
+    big = len(rank) + len(groups) + 1
+    return sorted(range(len(groups)),
+                  key=lambda i: (_tier(groups[i], models),
+                                 rank.get(group_key(groups[i]), big),
+                                 default[i]))
+
+
+def prefer_members(members, models, keys) -> list:
+    """The members of one group, honouring a declared model order.
+
+    Same shape as prefer_order one level down: a wounded model must
+    still be taken first - that is the rules, not a heuristic - and the
+    declaration only orders what is free. Models it never named fall
+    behind the ones it did, in the order _member_order would have given
+    them.
+    """
+    rank = {}
+    for n, i in enumerate(keys or ()):
+        rank.setdefault(int(i), n)
+    default = {i: n for n, i in enumerate(_member_order(members, models))}
+    big = len(rank) + len(members) + 1
+    return sorted(members,
+                  key=lambda i: (0 if _is_wounded(models[i]) else 1,
+                                 rank.get(int(i), big), default[i]))
+
+
 def _tier(group, models):
     """Which of the four blocks of the allocation order a group belongs
     to. The rules fix the blocks; the order INSIDE a block is free.
@@ -235,13 +304,27 @@ class Allocation:
     sequence starts again, so the order is free to change there.
     """
 
-    def __init__(self, models, order=None):
+    def __init__(self, models, order=None, prefer=None, members=None):
         self.models = [dict(m) for m in models]
         self.before = [_int(m.get("wounds")) for m in self.models]
         self.left = list(self.before)
         self.groups = build_groups(self.models)
-        self.order = (default_order(self.groups, self.models)
-                      if order is None else list(order))
+        # 'prefer' and 'members' carry an order the player declared
+        # before this Allocation existed - the groups are rebuilt at
+        # every activation, so the declaration has to be re-applied
+        # rather than kept. Both are preferences the rules override
+        # where they have something to say; see prefer_order.
+        if members:
+            for g in self.groups:
+                g["members"] = prefer_members(g["members"], self.models,
+                                              members)
+                g["label"] = _group_label(g["members"], self.models)
+        if order is not None:
+            self.order = list(order)
+        elif prefer:
+            self.order = prefer_order(self.groups, self.models, prefer)
+        else:
+            self.order = default_order(self.groups, self.models)
         problem = order_problem(self.groups, self.order, self.models)
         if problem:
             raise ValueError(problem)
@@ -261,6 +344,16 @@ class Allocation:
         if problem:
             raise ValueError(problem)
         self.order = list(order)
+
+    def declaration(self) -> dict:
+        """The order this state amounts to, in names that survive the
+        groups being rebuilt: {'groups': [group_key, ...],
+        'members': [model index, ...]}. Handing this back to a later
+        Allocation as 'prefer'/'members' reproduces the player's choice
+        on whatever is still standing."""
+        return {"groups": [group_key(self.groups[i]) for i in self.order],
+                "members": [i for gi in self.order
+                            for i in self.groups[gi]["members"]]}
 
     def move_group(self, position: int, delta: int) -> bool:
         """Move the group at 'position' of the order by 'delta' places.

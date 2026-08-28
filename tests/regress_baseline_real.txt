@@ -5,15 +5,15 @@
   ranged:Astartes grenade launcher – krak | A 10.0/10 | W 2.2222/2 | D 4.4444/4 | Dnet 4.4444/4 | R 3.9639/3
   ranged:Bolt rifle | A 20.0/20 | W 1.4815/1 | D 1.4815/1 | Dnet 1.4815/1 | R 1.4815/1
   ranged:TOTAL | D 7.037/7 | Dnet 7.037/7 | R 6.5474/6 | K 1.8505/2 | wipe 0.0099 | warn=0
-  ranged:ORDER | Astartes grenade launcher – krak > Astartes grenade launcher – frag > Bolt rifle | gain 0.0688
+  ranged:ORDER | Astartes grenade launcher – krak > Astartes grenade launcher – frag > Bolt rifle | gain 0.0688 | spent 2.9969
   melee:Astartes chainsword | A 50.0/50 | W 3.7037/4 | D 3.7037/4 | Dnet 3.7037/4 | R 3.7037/4
   melee:TOTAL | D 3.7037/4 | Dnet 3.7037/4 | R 3.7037/4 | K 0.9/1 | wipe 0.0 | warn=0
-  melee:ORDER | Astartes chainsword | gain 0.0
+  melee:ORDER | Astartes chainsword | gain 0.0 | spent 1.0
 ### Assault Intercessor Squad vs Terminator Squad
   ranged:TOTAL | D 0.0/0 | Dnet 0.0/0 | R 0.0/0 | K 0.0/0 | wipe 0.0 | warn=0
   melee:Astartes chainsword | A 40.0/40 | W 3.4568/3 | D 3.4568/3 | Dnet 3.4568/3 | R 3.4568/3
   melee:TOTAL | D 3.4568/3 | Dnet 3.4568/3 | R 3.4568/3 | K 0.8172/1 | wipe 0.0 | warn=0
-  melee:ORDER | Astartes chainsword | gain 0.0
+  melee:ORDER | Astartes chainsword | gain 0.0 | spent 1.0
 ### Redemptor Dreadnought vs Riptide Battlesuit
   ranged:Heavy flamer | A 3.5/3 | W 0.3889/0 | D 0.3889/0 | Dnet 0.3889/0 | R 0.3889/0
   ranged:Heavy onslaught gatling cannon | A 12.0/12 | W 1.5556/1 | D 1.5556/1 | Dnet 1.5556/1 | R 1.5556/1
@@ -24,20 +24,20 @@
   ranged:Twin fragstorm grenade launcher | A 3.5/3 | W 0.1188/0 | D 0.1188/0 | Dnet 0.1188/0 | R 0.1188/0
   ranged:Twin storm bolter | A 2.0/2 | W 0.0679/0 | D 0.0679/0 | Dnet 0.0679/0 | R 0.0679/0
   ranged:TOTAL | D 7.159/7 | Dnet 7.159/7 | S 1.0/0 | R 7.0855/7 | K 0.0493/0 | wipe 0.0493 | warn=0
-  ranged:ORDER | Heavy flamer > Heavy onslaught gatling cannon > Icarus rocket pod > Macro plasma incinerator – standard > Macro plasma incinerator – supercharge > Onslaught gatling cannon > Twin fragstorm grenade launcher > Twin storm bolter | gain 0.0
+  ranged:ORDER | Macro plasma incinerator – supercharge > Icarus rocket pod > Macro plasma incinerator – standard > Heavy flamer > Heavy onslaught gatling cannon > Onslaught gatling cannon > Twin fragstorm grenade launcher > Twin storm bolter | gain 0.0 | spent 7.8674
   melee:Redemptor fist | A 5.0/5 | W 1.1111/1 | D 3.3333/3 | Dnet 3.3333/3 | R 3.3328/3
   melee:TOTAL | D 3.3333/3 | Dnet 3.3333/3 | R 3.3328/3 | K 0.0005/0 | wipe 0.0005 | warn=0
-  melee:ORDER | Redemptor fist | gain 0.0
+  melee:ORDER | Redemptor fist | gain 0.0 | spent 1.0
 ### Ballistus Dreadnought vs Crisis Sunforge Battlesuits
   ranged:Ballistus missile launcher – frag | A 7.0/7 | W 1.037/1 | D 1.037/1 | Dnet 1.037/1 | R 1.037/1
   ranged:Ballistus missile launcher – krak | A 2.0/2 | W 0.7407/1 | D 2.5926/2 | Dnet 2.2222/2 | R 2.1384/2
   ranged:Ballistus lascannon | A 2.0/2 | W 0.7407/1 | D 3.3333/3 | Dnet 2.5926/3 | R 2.5011/3
   ranged:Twin storm bolter | A 2.0/2 | W 0.3292/0 | D 0.3292/0 | Dnet 0.3292/0 | R 0.3292/0
   ranged:TOTAL | D 7.2922/7 | Dnet 6.1811/6 | R 5.7669/5 | K 1.1273/1 | wipe 0.0568 | warn=0
-  ranged:ORDER | Ballistus lascannon > Ballistus missile launcher – krak > Ballistus missile launcher – frag > Twin storm bolter | gain 0.0101
+  ranged:ORDER | Ballistus lascannon > Ballistus missile launcher – krak > Ballistus missile launcher – frag > Twin storm bolter | gain 0.0101 | spent 3.9146
   melee:Armoured feet | A 5.0/5 | W 0.7407/1 | D 0.7407/1 | Dnet 0.7407/1 | R 0.7407/1
   melee:TOTAL | D 0.7407/1 | Dnet 0.7407/1 | R 0.7407/1 | K 0.0021/0 | wipe 0.0 | warn=0
-  melee:ORDER | Armoured feet | gain 0.0
+  melee:ORDER | Armoured feet | gain 0.0 | spent 1.0
 ### Terminator Squad vs Hammerhead Gunship
   ranged:Assault cannon | A 60.0/60 | W 8.8889/9 | D 8.8889/9 | Dnet 8.8889/9 | R 8.842/9
   ranged:Cyclone missile launcher – frag | A 70.0/70 | W 2.5926/2 | D 2.5926/2 | Dnet 2.5926/2 | R 2.5926/2
@@ -45,22 +45,22 @@
   ranged:Heavy flamer | A 35.0/35 | W 2.9167/3 | D 2.9167/3 | Dnet 2.9167/3 | R 2.9167/3
   ranged:Storm bolter | A 20.0/20 | W 0.7407/1 | D 0.7407/1 | Dnet 0.7407/1 | R 0.7407/1
   ranged:TOTAL | D 25.5093/25 | Dnet 25.5093/25 | R 13.9184/14 | K 0.9662/1 | wipe 0.9662 | warn=0
-  ranged:ORDER | Assault cannon > Cyclone missile launcher – frag > Cyclone missile launcher – krak > Heavy flamer > Storm bolter | gain 0.0
+  ranged:ORDER | Cyclone missile launcher – krak > Assault cannon > Cyclone missile launcher – frag > Heavy flamer > Storm bolter | gain 0.0 | spent 2.0774
   melee:Chainfist | A 30.0/30 | W 6.6667/7 | D 13.3333/14 | Dnet 13.3333/14 | R 11.8431/14
   melee:TOTAL | D 13.3333/14 | Dnet 13.3333/14 | R 11.8431/14 | K 0.5126/1 | wipe 0.5126 | warn=0
-  melee:ORDER | Chainfist | gain 0.0
+  melee:ORDER | Chainfist | gain 0.0 | spent 1.0
 ### Captain vs Bladeguard Veteran Squad
   ranged:Master-crafted bolter | A 2.0/2 | W 0.4167/0 | D 0.8333/0 | Dnet 0.8333/0 | R 0.7899/0
   ranged:TOTAL | D 0.8333/0 | Dnet 0.8333/0 | R 0.7899/0 | K 0.0434/0 | wipe 0.0 | warn=0
-  ranged:ORDER | Master-crafted bolter | gain 0.0
+  ranged:ORDER | Master-crafted bolter | gain 0.0 | spent 1.0
   melee:Close combat weapon | A 6.0/6 | W 0.8333/1 | D 0.8333/1 | Dnet 0.8333/1 | R 0.8333/1
   melee:TOTAL | D 0.8333/1 | Dnet 0.8333/1 | R 0.8333/1 | K 0.0386/0 | wipe 0.0 | warn=0
-  melee:ORDER | Close combat weapon | gain 0.0
+  melee:ORDER | Close combat weapon | gain 0.0 | spent 1.0
 ### Bladeguard Veteran Squad vs Intercessor Squad
   ranged:TOTAL | D 0.0/0 | Dnet 0.0/0 | R 0.0/0 | K 0.0/0 | wipe 0.0 | warn=0
   melee:Master-crafted power weapon | A 24.0/24 | W 7.1111/7 | D 14.2222/14 | Dnet 14.2222/14 | R 9.6397/10
   melee:TOTAL | D 14.2222/14 | Dnet 14.2222/14 | R 9.6397/10 | K 4.8199/5 | wipe 0.8815 | warn=0
-  melee:ORDER | Master-crafted power weapon | gain 0.0
+  melee:ORDER | Master-crafted power weapon | gain 0.0 | spent 1.0
 ### Hammerhead Gunship vs Intercessor Squad
   ranged:Accelerator burst cannon | A 4.0/4 | W 0.6667/1 | D 0.6667/1 | Dnet 0.6667/1 | R 0.6667/1
   ranged:Ion cannon (standard) | A 7.5/7 | W 1.25/1 | D 2.5/2 | Dnet 2.5/2 | R 2.4985/2
@@ -70,10 +70,10 @@
   ranged:Smart missile system | A 3.0/3 | W 0.3333/0 | D 0.3333/0 | Dnet 0.3333/0 | R 0.3333/0
   ranged:Twin pulse carbine | A 2.0/2 | W 0.2963/0 | D 0.2963/0 | Dnet 0.2963/0 | R 0.2963/0
   ranged:TOTAL | D 15.5671/15 | Dnet 9.4907/9 | S 1.0/0 | R 8.2125/9 | K 3.9724/4 | wipe 0.4784 | warn=0
-  ranged:ORDER | Ion cannon (standard) > Ion cannon (overcharge) > Railgun > Seeker missile > Accelerator burst cannon > Smart missile system > Twin pulse carbine | gain 0.0896
+  ranged:ORDER | Ion cannon (standard) > Ion cannon (overcharge) > Railgun > Seeker missile > Accelerator burst cannon > Smart missile system > Twin pulse carbine | gain 0.0896 | spent 5.1873
   melee:Armoured hull | A 3.0/3 | W 0.2222/0 | D 0.2222/0 | Dnet 0.2222/0 | R 0.2222/0
   melee:TOTAL | D 0.2222/0 | Dnet 0.2222/0 | R 0.2222/0 | K 0.0156/0 | wipe 0.0 | warn=0
-  melee:ORDER | Armoured hull | gain 0.0
+  melee:ORDER | Armoured hull | gain 0.0 | spent 1.0
 ### Riptide Battlesuit vs Assault Intercessor Squad
   ranged:Missile Drone (Missile pod) | A 2.0/2 | W 0.2222/0 | D 0.4444/0 | Dnet 0.4444/0 | R 0.4444/0
   ranged:Heavy burst cannon | A 12.0/12 | W 2.0/2 | D 4.0/4 | Dnet 4.0/4 | R 3.9812/4
@@ -83,18 +83,18 @@
   ranged:Twin plasma rifle | A 1.0/1 | W 0.4051/0 | D 1.2153/0 | Dnet 0.8102/0 | R 0.8102/0
   ranged:Twin smart missile system | A 3.0/3 | W 0.4444/0 | D 0.4444/0 | Dnet 0.4444/0 | R 0.4444/0
   ranged:TOTAL | D 21.1389/21 | Dnet 14.0903/14 | S 1.0/0 | R 9.6131/10 | K 4.7797/5 | wipe 0.8578 | warn=0
-  ranged:ORDER | Missile Drone (Missile pod) > Heavy burst cannon > Ion accelerator (standard) > Ion accelerator (overcharge) > Twin plasma rifle > Twin fusion blaster > Twin smart missile system | gain 0.0012
+  ranged:ORDER | Missile Drone (Missile pod) > Heavy burst cannon > Ion accelerator (standard) > Ion accelerator (overcharge) > Twin plasma rifle > Twin fusion blaster > Twin smart missile system | gain 0.0012 | spent 4.1914
   melee:Riptide fists | A 6.0/6 | W 0.4444/0 | D 0.8889/0 | Dnet 0.8889/0 | R 0.8889/0
   melee:TOTAL | D 0.8889/0 | Dnet 0.8889/0 | R 0.8889/0 | K 0.4444/0 | wipe 0.0 | warn=0
-  melee:ORDER | Riptide fists | gain 0.0
+  melee:ORDER | Riptide fists | gain 0.0 | spent 1.0
 ### Crisis Sunforge Battlesuits vs Ballistus Dreadnought
   ranged:Gun Drone (Twin pulse carbine) | A 6.0/6 | W 0.1019/0 | D 0.1019/0 | Dnet 0.1019/0 | R 0.1019/0
   ranged:Fusion blaster | A 3.0/3 | W 0.6944/1 | D 2.9514/2 | Dnet 2.9514/2 | R 2.9328/2
   ranged:TOTAL | D 3.0532/2 | Dnet 3.0532/2 | R 3.0329/2 | K 0.0181/0 | wipe 0.0181 | warn=0
-  ranged:ORDER | Gun Drone (Twin pulse carbine) > Fusion blaster | gain 0.0
+  ranged:ORDER | Fusion blaster > Gun Drone (Twin pulse carbine) | gain 0.0 | spent 1.9837
   melee:Battlesuit fists | A 9.0/9 | W 0.0833/0 | D 0.0833/0 | Dnet 0.0833/0 | R 0.0833/0
   melee:TOTAL | D 0.0833/0 | Dnet 0.0833/0 | R 0.0833/0 | K 0.0/0 | wipe 0.0 | warn=0
-  melee:ORDER | Battlesuit fists | gain 0.0
+  melee:ORDER | Battlesuit fists | gain 0.0 | spent 1.0
 ## profiles
   *Terminator Squad | Terminator Sergeant  (T5 Sv2+ W3 inv4+) | D 10.8735/11
   *Riptide Battlesuit | Riptide Battlesuit  (T9 Sv2+ W14 inv4+) | D 7.159/7
@@ -649,4 +649,4 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Ancient +support on Assault Intercessor Squad | Astartes Banner [leader_effects] | modifyRelative/oc
   Commander in Coldstar Battlesuit +leader on Crisis Fireknife Battlesuits | Coldstar Commander [leader_effects] | modifyAbsolute/m
 
-DIGEST 8c4d13d1215832e7  (650 lines)
+DIGEST 44ad4000ff3c512b  (650 lines)

@@ -226,4 +226,18 @@ for name, native in sorted(UNITS.items()):
 assert checked >= 3, f"only {checked} units exercised the real trace"
 print(f"the identity trace holds on the real loader ({checked} units)")
 
+# --- 11. aim(): the player's choice, and it keeps its hands off -------
+
+models = squad()
+one = hc.owed([record(1, "plasma gun", 1)], WEAPONS, by, models)
+picked = hc.aim(one, 0, 3)
+assert one[0]["target"] is None, "aim must not mutate what it was given"
+assert picked[0]["target"] == 3 and picked[0]["damage"] == 1
+assert [r["key"] for r in hc.changed(hc.resolve(models, picked)["rows"])] \
+    == ["t3"]
+assert hc.aim(picked, 0, None)[0]["target"] is None
+# An index that names no entry leaves every one of them alone.
+assert hc.aim(one, 9, 3) == one
+print("the player's target is honoured, and aim() keeps its hands off")
+
 print("hazard_close: all checks passed")

@@ -287,4 +287,84 @@ a.allocate(2)
 assert a.result()[0]["dead"] is True
 print("result reports one row per record passed in")
 
+
+# --- a declared order, re-applied to groups built again ---------------
+
+# The groups are rebuilt at every weapon activation, so an order kept as
+# a list of indices would come to mean something else the moment one
+# emptied. group_key names them in a way that survives that, and
+# prefer_order/prefer_members re-apply the names.
+
+# Two CHARACTERS of the SAME profile must not share a key, or a
+# declaration naming one would move the other.
+twins = [model("A", "A", 3, cap=3, sv=2, character=True, entry=0,
+               scarcity=1),
+         model("B", "B", 3, cap=3, sv=2, character=True, entry=1,
+               scarcity=1)]
+tg = ag.build_groups(twins)
+assert len(tg) == 2
+assert ag.group_key(tg[0]) != ag.group_key(tg[1]), \
+    [ag.group_key(g) for g in tg]
+# ... and a non-CHARACTER group is named by its profile, which is unique
+# by construction: two groups sharing one would have been merged.
+pg = ag.build_groups(squad(3, sv=3, cap=2) + squad(2, sv=5, cap=1,
+                                                  prefix="Light"))
+assert len({ag.group_key(g) for g in pg}) == len(pg)
+
+# A declaration is honoured INSIDE the blocks of the rules and never
+# across them: the CHARACTER cannot be pulled in front of the bodyguard
+# however it is named.
+led = squad(3, sv=3, cap=2) + captain
+lg = ag.build_groups(led)
+char = next(i for i, g in enumerate(lg) if g["character"])
+body = next(i for i, g in enumerate(lg) if not g["character"])
+want_char_first = [ag.group_key(lg[char]), ag.group_key(lg[body])]
+got = ag.prefer_order(lg, led, want_char_first)
+assert got.index(body) < got.index(char), \
+    "a declaration must not put a CHARACTER first"
+assert ag.order_problem(lg, got, led) is None
+
+# Inside a block it decides. Two non-CHARACTER groups, both untouched,
+# sit in the same block and the rules leave the order free.
+free = squad(3, sv=3, cap=2) + squad(2, sv=5, cap=1, prefix="Light")
+fg = ag.build_groups(free)
+assert ag.order_problem(fg, [0, 1], free) is None
+assert ag.order_problem(fg, [1, 0], free) is None
+default = ag.default_order(fg, free)
+other = list(reversed(default))
+assert ag.prefer_order(fg, free, [ag.group_key(fg[i]) for i in other]) \
+    == other, "a legal declaration was not honoured"
+# A group the declaration never named falls behind the ones it did.
+assert ag.prefer_order(fg, free,
+                       [ag.group_key(fg[other[0]])])[0] == other[0]
+# No declaration at all is the default order.
+assert ag.prefer_order(fg, free, []) == default
+assert ag.prefer_order(fg, free, None) == default
+
+# Models: the wounded one is taken first whatever the declaration says -
+# that is the rules, not a preference - and the declaration orders what
+# is left.
+hurt = squad(3, sv=3, cap=2)
+hurt[2]["wounds"] = 1
+members = [0, 1, 2]
+assert ag.prefer_members(members, hurt, [0, 1, 2])[0] == 2, \
+    "the wounded model must be taken first"
+whole = squad(3, sv=3, cap=2)
+assert ag.prefer_members(members, whole, [2, 0, 1]) == [2, 0, 1]
+assert ag.prefer_members(members, whole, []) == \
+    ag._member_order(members, whole)
+assert ag.prefer_members(members, whole, [1])[0] == 1
+
+# And an Allocation built with the declaration reproduces it.
+al = ag.Allocation(free, prefer=[ag.group_key(fg[i]) for i in other])
+assert [ag.group_key(al.groups[i]) for i in al.order] == \
+    [ag.group_key(fg[i]) for i in other]
+# declaration() reports what the state amounts to, in those same names.
+d = al.declaration()
+assert d["groups"] == [ag.group_key(al.groups[i]) for i in al.order]
+assert sorted(d["members"]) == list(range(len(free)))
+back = ag.Allocation(free, prefer=d["groups"], members=d["members"])
+assert back.declaration() == d, "the declaration did not round-trip"
+print("a declared order survives the groups being rebuilt")
+
 print("alloc_groups: all checks passed")

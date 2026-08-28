@@ -159,7 +159,10 @@ class AttackSessionWindow(tk.Toplevel):
         return bar
 
     def _build_bar(self):
-        self.foot_lbl = ttk.Label(self, foreground=WARN, wraplength=940,
+        # ALERT, not WARN: the line only ever appears when the attacking
+        # unit owes mortal wounds to itself, which is a thing that has
+        # happened rather than something to bear in mind.
+        self.foot_lbl = ttk.Label(self, foreground=ALERT, wraplength=940,
                                   justify=tk.LEFT)
         self.foot_lbl.pack(side=tk.BOTTOM, anchor=tk.W, padx=8,
                            pady=(0, 6))
@@ -208,8 +211,7 @@ class AttackSessionWindow(tk.Toplevel):
                   if self._armed is not None else
                   "Nothing left to reorder.")
         self._say("move", target_move,
-                  "Press Fire first: the groups are ordered in the Save "
-                  "Rolls step, once the wounds have been rolled.")
+                  "Nothing of the unit is left to put in order.")
 
     def _say(self, key, on, reason):
         """Caption of a mover bar: what the buttons do when they are
@@ -309,16 +311,18 @@ class AttackSessionWindow(tk.Toplevel):
             self._reselect(self.weapons, "w%d" % (row["position"] + delta))
 
     def _move_target(self, delta):
+        # Through the SESSION, not the Allocation: an Allocation lasts
+        # one activation and the declaration has to last the sequence.
+        # This is also what lets the panel be reordered before anything
+        # is armed, when there is no Allocation to reorder at all.
         row = self._selected(self.targets, self._t_iid)
         if row is None or not row["movable"]:
             return
-        alloc = self.session.alloc
-        if alloc is None:
-            return
         if row["kind"] == "group":
-            moved = alloc.move_group(row["position"], delta)
+            moved = self.session.reorder("group", row["position"], delta)
         else:
-            moved = alloc.move_member(row["group"], row["slot"], delta)
+            moved = self.session.reorder("member", row["slot"], delta,
+                                         group=row["group"])
         if moved:
             self.refresh()
 

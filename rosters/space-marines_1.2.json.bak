@@ -14819,7 +14819,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -14863,7 +14863,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -14923,7 +14923,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -14967,7 +14967,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -15027,7 +15027,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -15071,7 +15071,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -15131,7 +15131,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -15175,7 +15175,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -15219,7 +15219,7 @@
               "key": "damage"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -15279,7 +15279,7 @@
               "key": "hit"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },
@@ -15323,7 +15323,7 @@
               "key": "wound"
              },
              "allowance": {
-              "title": "One roll of each kind (one per kind)",
+              "title": "One roll of each kind (hit AND wound)",
               "key": "eachKind"
              }
             },

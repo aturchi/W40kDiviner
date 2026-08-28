@@ -340,4 +340,46 @@ real = mortals_of(mech(crit_mw={"value": 1, "match": False, "end": True,
 assert real and all(p["spills"] is True for p in real), real[:3]
 print("the spill flag survives the split")
 
+# --- the pool is resolved in three phases, not attack by attack -------
+
+# 06.02 resolves every ordinary wound first, then the mortal wounds that
+# do not spill, then the ones that do. The queue is built in ATTACK
+# order, so a critical wound rolled on the second attack used to be
+# allocated before the ordinary damage of the third - same dice,
+# different model, and so a different amount of damage wasted.
+
+# Both kinds of mortal wound at once, so the order BETWEEN them is
+# checked and not only their order against the ordinary wounds: a
+# DEVASTATING critical does not spill, an ability-driven one does.
+_dev = Weapon(name="dev", wtype="Ranged", A="8", skill=2, S=5, AP=-2,
+              D="2", count=3, keywords=["DEVASTATING WOUNDS"])
+_m = mech()
+_m.devastating = True
+_m.crit_wound = 5
+_m.hitroll_mw = {"thr": 5, "value": 1, "match": False, "spill": True}
+
+_mixed = 0
+for _seed in range(40):
+    _r = ar.resolve_weapon(_dev, dict(REF), {}, mcs.clone_mech(_m),
+                           random.Random(_seed), 1, defer_save=True)
+    _k = [it["kind"] for it in _r["pending"]]
+    _runs, _last = 0, None
+    for _x in _k:
+        if _x != _last:
+            _runs += 1
+            _last = _x
+    _mixed += 1 if _runs > 2 else 0
+assert _mixed > 5, f"only {_mixed} of 40 queues interleave: weak sample"
+
+# However the queue was built, the wounds are TAKEN in phases.
+for _seed in range(12):
+    _r = ar.resolve_weapon(_dev, dict(REF), {}, mcs.clone_mech(_m),
+                           random.Random(_seed), 1, defer_save=True)
+    _out = ar.resolve_saves(_r["pending"], _dev, mcs.clone_mech(_m),
+                            random.Random(_seed), homogeneous(REF), {})
+    _phase = [0 if e["kind"] == "damage" else
+              (2 if e.get("spills") else 1) for e in _out["events"]]
+    assert _phase == sorted(_phase), (_seed, _phase)
+print("the pool is taken in phases: wounds, then mortals, then spills")
+
 print("deferred saves: all checks passed")

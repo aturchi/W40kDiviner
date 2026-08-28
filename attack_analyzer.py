@@ -826,15 +826,15 @@ class AnalyzerApp(tk.Tk):
     @staticmethod
     def _order_hint(parent, t):
         """Firing order: a weapon fires into the unit the previous ones
-        left behind, so the order changes how much damage is wasted.
-        Only shown when reordering is actually worth something."""
-        if t.get("order_gain", 0.0) < 0.005 or not t.get("order"):
+        left behind, so the order changes how much damage is wasted and
+        how soon the target falls. The wording and the thresholds live
+        in result_rows.order_note, which can be read without a display;
+        this only draws whatever it hands back."""
+        note = result_rows.order_note(t)
+        if not note:
             return
-        ttk.Label(parent, foreground="#7a4a00", wraplength=940, text=(
-            f"Firing order: +{t['order_gain']:.2f} models by firing "
-            + " -> ".join(t["order"])
-            + "  (heuristic, not necessarily the best order)")).pack(
-            anchor=tk.W, padx=6, pady=(0, 2))
+        ttk.Label(parent, foreground="#7a4a00", wraplength=940,
+                  text=note).pack(anchor=tk.W, padx=6, pady=(0, 2))
 
     def _open_audit(self, title, results):
         """Why the numbers are what they are: the target numbers, the

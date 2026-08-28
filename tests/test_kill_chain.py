@@ -271,5 +271,150 @@ first_light = ds.stats(kc.resolve(pair, 3, 5)["removed"])["mean"]
 first_heavy = ds.stats(kc.resolve(pair[::-1], 3, 5)["removed"])["mean"]
 assert first_heavy > first_light, (first_heavy, first_light)
 
+# The check above is satisfied by a best_order that never looks at a
+# candidate at all, which is what it did until this triple was added:
+# EVERY mutation of the search survived it. Three weapons whose table
+# order is not the best one, so the function has to actually find the
+# better one and say so.
+TOUGH = {"T": 5, "Sv": 3, "W": 3, "invuln": 4, "fnp": None, "models": 5,
+         "keywords": set()}
+
+
+def order_law(name, A, S, AP, D, count):
+    w = Weapon(name=name, wtype="Ranged", A=A, skill=3, S=S, AP=AP, D=D,
+               count=count)
+    return am.analyze_weapon(w, TOUGH, {}, am.WeaponMechanics(),
+                             alloc=True)["alloc"]
+
+
+# frag first is the roster order and the worst of the three; krak has
+# twice the event damage and belongs at the front.
+triple = [order_law("frag", "D6", 4, 0, "1", 2),
+          order_law("krak", "1", 9, -2, "D6", 2),
+          order_law("bolt", "2", 4, -1, "1", 5)]
+t_order, t_best, t_given = kc.best_order(triple, 3, 5)
+assert t_order == [1, 0, 2], t_order
+assert sorted(t_order) == [0, 1, 2]
+k_given = ds.stats(t_given["kills"])["mean"]
+k_best = ds.stats(t_best["kills"])["mean"]
+assert k_best > k_given + 1e-6, (k_best, k_given)
+# 'given' must be the order the caller passed, not some rearrangement of
+# it: the gain the analyser prints is the difference of the two. Kills
+# alone will not say so - the reverse of this triple kills exactly as
+# many - so the wounds taken off are compared as well.
+close(k_given, ds.stats(kc.resolve(triple, 3, 5)["kills"])["mean"])
+close(ds.stats(t_given["removed"])["mean"],
+      ds.stats(kc.resolve(triple, 3, 5)["removed"])["mean"])
+close(t_given["spent"], kc.resolve(triple, 3, 5)["spent"])
+# ... and the result returned must belong to the order returned.
+close(k_best, ds.stats(kc.resolve([triple[i] for i in t_order], 3,
+                                  5)["kills"])["mean"])
+# The two candidates tie on kills and differ on the wounds taken off, so
+# a search that returns "a candidate" rather than "the best candidate"
+# lands on the other one.
+rev = [triple[i] for i in reversed(t_order)]
+close(ds.stats(kc.resolve(rev, 3, 5)["kills"])["mean"], k_best)
+assert (ds.stats(t_best["removed"])["mean"]
+        > ds.stats(kc.resolve(rev, 3, 5)["removed"])["mean"])
+
+
+# ---- 6b. the criterion: weapons freed, not models killed -------------
+
+# The two disagree, and this is a case where they do. Firing the melta
+# first frees a weapon more often, and kills very slightly FEWER models
+# doing it. The old criterion kept the table order for the sake of that
+# fraction of a body; the new one takes the weapon, because the weapon
+# can be pointed at the next unit and the body cannot.
+HARD = {"T": 5, "Sv": 3, "W": 3, "invuln": 4, "fnp": None, "models": 5,
+        "keywords": set()}
+
+
+def hard_law(name, A, S, AP, D, count):
+    w = Weapon(name=name, wtype="Ranged", A=A, skill=3, S=S, AP=AP, D=D,
+               count=count)
+    return am.analyze_weapon(w, HARD, {}, am.WeaponMechanics(),
+                             alloc=True)["alloc"]
+
+
+trade = [hard_law("plasma", "2", 9, -3, "2", 3),
+         hard_law("bolter", "6", 5, -1, "1", 3),
+         hard_law("melta", "3", 10, -4, "D6", 2)]
+tr_order, tr_best, tr_given = kc.best_order(trade, 3, 5)
+assert tr_order == [2, 0, 1], tr_order
+assert tr_best["spent"] < tr_given["spent"] - 1e-6, \
+    (tr_best["spent"], tr_given["spent"])
+assert (ds.stats(tr_best["kills"])["mean"]
+        < ds.stats(tr_given["kills"])["mean"] - 1e-6), \
+    "this case is only worth having because the two criteria conflict"
+assert kc.order_score(tr_best) > kc.order_score(tr_given)
+
+# The tie-break: when nothing separates two orders on weapons spent, the
+# one that wastes less damage wins.
+tied = [{"spent": 2.0, "removed": [0.0, 0.0, 1.0], "kills": [1.0]},
+        {"spent": 2.0, "removed": [0.0, 1.0, 0.0], "kills": [1.0]}]
+assert kc.order_score(tied[0]) > kc.order_score(tied[1])
+# ... and weapons spent outranks it, however big the gap in wounds.
+assert kc.order_score({"spent": 1.0, "removed": [1.0], "kills": [1.0]}) \
+    > kc.order_score({"spent": 2.0, "removed": [0.0] * 99 + [1.0],
+                      "kills": [1.0]})
+
+
+# ---- 7. weapons spent: what a firing order is really chosen for -------
+
+# 'spent' is the expected number of weapons the unit costs to destroy:
+# the probability it is still standing before each weapon fires, summed.
+# The weapons AFTER the one that finished it could have been pointed at
+# something else, which is the thing the order is picked for and which
+# neither 'kills' nor 'removed' can express.
+
+
+def naive_spent(allocs, wounds, models):
+    """The definition, computed the expensive way: re-run the chain on
+    every prefix. resolve() reads the same figure off the intermediate
+    states it walks through anyway, and the two must agree."""
+    return sum(1.0 - kc.resolve(allocs[:k], wounds, models)["p_wipe"]
+               for k in range(len(allocs)))
+
+
+# A unit nothing can kill costs every weapon it has, by definition.
+tough = {"T": 12, "Sv": 2, "W": 12, "invuln": 4, "fnp": 5, "models": 5,
+         "keywords": set()}
+weak = [am.analyze_weapon(light, tough, {}, am.WeaponMechanics(),
+                          alloc=True)["alloc"]] * 3
+close(kc.resolve(weak, 12, 5)["spent"], 3.0)
+
+# A unit the first weapon always wipes costs exactly one, whatever else
+# is queued behind it.
+huge = Weapon(name="huge", wtype="Ranged", A="30", skill=2, S=20, AP=-4,
+              D="12", count=1)
+over = [am.analyze_weapon(huge, ORDER_REF, {}, am.WeaponMechanics(),
+                          alloc=True)["alloc"],
+        am.analyze_weapon(light, ORDER_REF, {}, am.WeaponMechanics(),
+                          alloc=True)["alloc"]]
+assert kc.resolve(over, 3, 5)["p_wipe"] > 0.999
+close(kc.resolve(over, 3, 5)["spent"], 1.0, eps=1e-3)
+
+# Order changes it where kills and removed cannot see anything: the two
+# orders below destroy the same models and take off the same wounds, and
+# still one of them frees a weapon more often than the other.
+med = Weapon(name="med", wtype="Ranged", A="6", skill=2, S=10, AP=-3,
+             D="4", count=1)
+many = Weapon(name="many", wtype="Ranged", A="8", skill=2, S=10, AP=-3,
+              D="1", count=1)
+duo = [am.analyze_weapon(x, ORDER_REF, {}, am.WeaponMechanics(),
+                         alloc=True)["alloc"] for x in (med, many)]
+a, b = kc.resolve(duo, 3, 5), kc.resolve(duo[::-1], 3, 5)
+close(ds.stats(a["kills"])["mean"], ds.stats(b["kills"])["mean"])
+assert abs(a["spent"] - b["spent"]) > 1e-6, (a["spent"], b["spent"])
+
+# And the cheap figure is the definition, on every shape above.
+for allocs, W, m in ((weak, 12, 5), (over, 3, 5), (duo, 3, 5),
+                     (duo[::-1], 3, 5), (pair, 3, 5), (pair[::-1], 3, 5)):
+    close(kc.resolve(allocs, W, m)["spent"], naive_spent(allocs, W, m))
+
+# An empty queue spends nothing; one weapon that cannot win spends one.
+close(kc.resolve([], 3, 5)["spent"], 0.0)
+close(kc.resolve(pair[:1], 3, 5)["spent"], 1.0)
+
 assert not failures, failures
 print("kill chain: OK")

@@ -178,29 +178,14 @@ def apply_weapon(state: dict, alloc: dict, w: int, tmax: int) -> dict:
     return acc
 
 
-def resolve(allocs, wounds: int, models: int) -> dict:
-    """Fire every weapon into one target unit and read off what happened.
+def _read_state(state: dict, w: int, n: int, tmax: int):
+    """(kills, removed) laws of a chain state, normalised.
 
-    'allocs' are the per-weapon allocation dicts, IN FIRING ORDER: a
-    weapon fires into the unit the previous ones left behind, which is
-    what makes the wasted damage add up the way it does at the table.
-    The spilling mortal pool built up along the way is spent last, as
-    the rules require.
-
-    Returns {'kills', 'removed', 'p_wipe'}:
-      kills    PMF of the number of models destroyed;
-      removed  PMF of the wounds ACTUALLY taken off the unit - damage
-               wasted on a model that died with wounds to spare is not
-               counted, so this is the exact version of what the 'net
-               damage' column estimates by capping each event at W;
-      p_wipe   probability the unit is wiped out.
+    Factored out of resolve() so that the SAME readout can be taken from
+    an intermediate state, which is what makes the per-prefix wipe
+    probability cost a pass over the state instead of a re-run of the
+    whole chain.
     """
-    w, n = max(1, int(wounds or 1)), max(1, int(models or 1))
-    tmax = w * n
-    state = {(tmax, 0): 1.0}               # untouched unit, empty pool
-    for alloc in allocs:
-        if alloc:
-            state = apply_weapon(state, alloc, w, tmax)
     kills, removed = [0.0] * (n + 1), [0.0] * (tmax + 1)
     for (t, pool), p in state.items():
         if p:
@@ -213,7 +198,46 @@ def resolve(allocs, wounds: int, models: int) -> dict:
     if mass:
         kills = [p / mass for p in kills]
         removed = [p / mass for p in removed]
-    return {"kills": kills, "removed": removed,
+    return kills, removed
+
+
+def resolve(allocs, wounds: int, models: int) -> dict:
+    """Fire every weapon into one target unit and read off what happened.
+
+    'allocs' are the per-weapon allocation dicts, IN FIRING ORDER: a
+    weapon fires into the unit the previous ones left behind, which is
+    what makes the wasted damage add up the way it does at the table.
+    The spilling mortal pool built up along the way is spent last, as
+    the rules require.
+
+    Returns {'kills', 'removed', 'p_wipe', 'spent'}:
+      kills    PMF of the number of models destroyed;
+      removed  PMF of the wounds ACTUALLY taken off the unit - damage
+               wasted on a model that died with wounds to spare is not
+               counted, so this is the exact version of what the 'net
+               damage' column estimates by capping each event at W;
+      p_wipe   probability the unit is wiped out;
+      spent    EXPECTED NUMBER OF WEAPONS the unit costs to destroy,
+               summed as the probability it is still standing before
+               each weapon fires. A weapon that fires into a unit which
+               is already gone was not needed, and the ones after it
+               could have been pointed somewhere else - which is the
+               thing a firing order is actually chosen for. It equals
+               len(allocs) when the unit never falls, so it is only
+               meaningful against another order of the SAME weapons.
+    """
+    w, n = max(1, int(wounds or 1)), max(1, int(models or 1))
+    tmax = w * n
+    state = {(tmax, 0): 1.0}               # untouched unit, empty pool
+    spent = 0.0
+    for alloc in allocs:
+        # Read BEFORE firing: this weapon was spent on whatever was
+        # still standing when its turn came.
+        spent += 1.0 - _read_state(state, w, n, tmax)[0][-1]
+        if alloc:
+            state = apply_weapon(state, alloc, w, tmax)
+    kills, removed = _read_state(state, w, n, tmax)
+    return {"kills": kills, "removed": removed, "spent": spent,
             "p_wipe": kills[-1] if kills else 0.0}
 
 
@@ -228,9 +252,35 @@ def _mean_event_damage(alloc: dict) -> float:
     return sum(v * p for v, p in enumerate(dmg))
 
 
+def order_score(res: dict):
+    """The key a firing order is judged by. Bigger is better.
+
+    Two figures, in order of precedence:
+
+      1. FEWER WEAPONS SPENT. What a firing order is chosen for is not
+         how much this unit suffers - the same weapons are fired either
+         way - but how many of them the job took, because the ones still
+         loaded when the target falls can be pointed somewhere else.
+      2. MORE WOUNDS REMOVED, to break the ties. When the target
+         survives the whole volley, 'spent' is the number of weapons
+         whatever the order and says nothing; the wounds actually taken
+         off still do.
+
+    Models killed is deliberately NOT in the key, and used to be the
+    whole of it. It cannot express either idea: a shot fired into a unit
+    that is already gone kills nobody but is spent all the same, and the
+    damage wasted on an over-killed model never shows up in a body
+    count. The two are not always aligned - an order that frees a weapon
+    can kill slightly fewer models - and where they disagree this
+    prefers the freed weapon, which is the question the player asked.
+    """
+    removed = sum(k * p for k, p in enumerate(res["removed"]))
+    return (-res["spent"], removed)
+
+
 def best_order(allocs, wounds: int, models: int, candidates=None):
-    """Pick a firing order that kills more models, without searching
-    every permutation.
+    """Pick a firing order that spends fewer weapons on this target,
+    without searching every permutation.
 
     Order matters because a big damage event wastes its excess on a
     model that was already wounded, so the rule of thumb is to fire the
@@ -239,7 +289,10 @@ def best_order(allocs, wounds: int, models: int, candidates=None):
     theorem, so the two orders it suggests are simply evaluated against
     the one the caller gave and the best of the three is returned - the
     exact optimum would cost a factorial number of chain runs for a
-    gain that is usually a fraction of a model.
+    gain that is usually a fraction of a weapon.
+
+    See order_score for what "best" means here. Ties keep the order the
+    caller gave: a suggestion has to be worth the player's attention.
 
     Returns (order, result, given): 'order' is a list of indices into
     'allocs', 'result' is resolve() for that order and 'given' is
@@ -254,14 +307,14 @@ def best_order(allocs, wounds: int, models: int, candidates=None):
     cands = list(candidates) if candidates else [heavy,
                                                  list(reversed(heavy))]
     best_idx, best_res = idx, given
-    best_mean = sum(k * p for k, p in enumerate(given["kills"]))
+    best_key = order_score(given)
     for cand in cands:
         if list(cand) == best_idx:
             continue
         res = resolve([allocs[i] for i in cand], wounds, models)
-        mean = sum(k * p for k, p in enumerate(res["kills"]))
-        if mean > best_mean + 1e-12:
-            best_idx, best_res, best_mean = list(cand), res, mean
+        key = order_score(res)
+        if key > best_key:
+            best_idx, best_res, best_key = list(cand), res, key
     return best_idx, best_res, given
 
 

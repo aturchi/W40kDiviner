@@ -103,6 +103,14 @@ class AttackSession:
         self._records = []          # one per activation already applied
         self._armed = None          # the activation waiting for apply()
         self.alloc = None           # its allocation state
+        # The allocation order the player has declared, in names that
+        # survive the groups being rebuilt (see alloc_groups.group_key).
+        # It is kept on the SESSION and not on the Allocation because
+        # the Allocation lasts one activation and this has to last the
+        # whole sequence: the saves are the last step of every one of
+        # them, so the order can be settled at any point before the one
+        # that is about to roll them.
+        self.declared = {"groups": [], "members": []}
 
     # ---------- the firing queue ----------
 
@@ -165,6 +173,39 @@ class AttackSession:
 
     # ---------- one activation ----------
 
+    def preview(self):
+        """The allocation as it stands, with nothing armed: the groups
+        the next weapon will find and the order the player has declared
+        for them. Rebuilt on demand rather than kept, because a model
+        dying between activations changes the groups."""
+        return ag.Allocation(self.models, prefer=self.declared["groups"],
+                             members=self.declared["members"])
+
+    def reorder(self, what: str, position: int, delta: int,
+                group=None) -> bool:
+        """Move a group, or a model inside its group, and REMEMBER it.
+
+        Works whether or not an activation is armed. Before one, the
+        move is made on a throw-away preview and only the declaration
+        is kept; during one it is made on the live Allocation as well,
+        so the attacks already rolled land where the player has just
+        said. Either way the declaration outlives the activation, which
+        is the point: reordering used to be possible only after Fire
+        and was forgotten again at the next weapon.
+
+        Returns False and changes nothing when the move would break one
+        of the rules' constraints, so the view can refuse the gesture
+        without explaining it.
+        """
+        alloc = self.alloc if self.alloc is not None else self.preview()
+        if what == "group":
+            ok = alloc.move_group(position, delta)
+        else:
+            ok = alloc.move_member(group, position, delta)
+        if ok:
+            self.declared = alloc.declaration()
+        return ok
+
     def arm(self, index=None) -> dict:
         """Roll the attacks, the hits and the wounds of one weapon and
         stop there. Returns what the defender now has to save against;
@@ -182,7 +223,9 @@ class AttackSession:
         first = ar.resolve_weapon(entry["weapon"], self.reference(),
                                   self.ctx, mech, self.rng,
                                   self.haz_damage, defer_save=True)
-        self.alloc = ag.Allocation(self.models)
+        self.alloc = ag.Allocation(self.models,
+                                   prefer=self.declared["groups"],
+                                   members=self.declared["members"])
         self._armed = {"index": index, "mech": mech, "first": first,
                        "wounds_before": [int(m.get("wounds") or 0)
                                          for m in self.models]}

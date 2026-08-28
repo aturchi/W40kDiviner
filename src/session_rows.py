@@ -36,13 +36,17 @@ DEAD = "dead"
 
 def allocation_of(session):
     """The allocation the right panel is showing: the one belonging to
-    the armed activation, or a fresh preview of the target as it stands
-    now. A preview is thrown away by the next call, so nothing the
-    player does to it survives - the window must reorder the REAL one,
-    which only exists once a weapon is armed."""
+    the armed activation, or a preview of the target as it stands now.
+
+    The second value says whether an activation is armed, which the
+    panel still needs - a preview has no dice behind it and no
+    PRECISION to offer. It no longer means "read-only": the preview is
+    rebuilt on every call and anything done to it would be lost, so the
+    window reorders through session.reorder(), which remembers the
+    declaration instead of the object."""
     if session.alloc is not None:
         return session.alloc, True
-    return ag.Allocation(session.models), False
+    return session.preview(), False
 
 
 def weapon_rows(session, skipped=()) -> list:
@@ -118,6 +122,11 @@ def target_rows(session, record=None) -> list:
     next, and an undo would have to conjure them back.
     """
     alloc, live = allocation_of(session)
+    # A group or a live model can be moved whether or not a weapon is
+    # armed: session.reorder() keeps the declaration, so a move made on
+    # a preview is not lost. 'live' still decides what is DRAWN - the
+    # current group, the PRECISION mark - because those need dice.
+    movable = True
     damage = {}
     if record:
         damage = {r["key"]: r["damage"] for r in record["rows"]
@@ -131,11 +140,12 @@ def target_rows(session, record=None) -> list:
                      "character": group["character"],
                      "current": gi == current,
                      "precision": alloc.precision == gi,
-                     "movable": live, "casualties": False,
+                     "movable": movable, "casualties": False,
                      "models": len([i for i in group["members"]
                                     if alloc.left[i] > 0])})
         for slot, mi in enumerate(group["members"]):
-            rows.append(_model_row(alloc, gi, slot, mi, damage, live))
+            rows.append(_model_row(alloc, gi, slot, mi, damage,
+                                   movable))
     fallen = [i for i in range(len(alloc.models)) if alloc.left[i] <= 0]
     if fallen:
         rows.append({"kind": "group", "group": None,
@@ -144,14 +154,15 @@ def target_rows(session, record=None) -> list:
                      "precision": False, "movable": False,
                      "casualties": True, "models": 0})
         for slot, mi in enumerate(fallen):
-            # 'live' is passed through unchanged: whether a fallen model
-            # may be moved is decided in ONE place, by the group being
-            # None, and not by two guards that can drift apart.
-            rows.append(_model_row(alloc, None, slot, mi, damage, live))
+            # 'movable' is passed through unchanged: whether a fallen
+            # model may be moved is decided in ONE place, by the group
+            # being None, and not by two guards that can drift apart.
+            rows.append(_model_row(alloc, None, slot, mi, damage,
+                                   movable))
     return rows
 
 
-def _model_row(alloc, gi, slot, mi, damage, live) -> dict:
+def _model_row(alloc, gi, slot, mi, damage, movable) -> dict:
     model = alloc.models[mi]
     left = alloc.left[mi]
     return {"kind": "model", "group": gi, "model": mi, "slot": slot,
@@ -159,7 +170,7 @@ def _model_row(alloc, gi, slot, mi, damage, live) -> dict:
             "max": int(model.get("max") or 1),
             "state": _model_state(dict(model, wounds=left)),
             "damage": damage.get(model.get("key"), 0),
-            "movable": live and gi is not None}
+            "movable": movable and gi is not None}
 
 
 def buttons(session) -> dict:
@@ -179,8 +190,14 @@ def buttons(session) -> dict:
             "discard": armed,
             "undo": session.can_undo(),
             "move_weapon": not armed and len(session.queue()) > 1,
-            "move_group": live and len(alloc.groups) > 1,
-            "move_model": live,
+            # Not gated on an activation being armed. The saves are the
+            # LAST step of every activation, so the order can be settled
+            # at any point before the one about to roll them - and
+            # settling it after Fire only, as this did, meant the choice
+            # was made under time pressure and forgotten at the next
+            # weapon.
+            "move_group": len(alloc.groups) > 1,
+            "move_model": bool(alloc.groups),
             "precision": (live and bool(alloc.character_groups())
                           and session.weapons[session._armed["index"]]
                           ["precision"] if armed else False)}

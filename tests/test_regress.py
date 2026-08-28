@@ -89,8 +89,13 @@ def _load_native(army_key):
 
 
 def _num(value):
-    """Round a number for stable digests; keep None visible as such."""
-    return None if value is None else round(value, 4)
+    """Round a number for stable digests; keep None visible as such.
+
+    Adding zero collapses -0.0 onto 0.0. Without it a difference of
+    minus a billionth prints as "-0.0" and the digest flips on noise
+    that rounding was supposed to absorb.
+    """
+    return None if value is None else round(value, 4) + 0.0
 
 
 def _fmt(stats):
@@ -159,9 +164,16 @@ def _damage_section(units, lines):
             # going red. The order is recorded by NAME: an index would
             # move whenever a weapon is added, for no real change.
             if tot.get("order"):
+                # 'spent' rides on this line so that a change to the
+                # ORDER CRITERION shows what it costs as well as what it
+                # buys: an order that frees a weapon may kill slightly
+                # less, and a diff that only showed the winner would
+                # hide half of the trade.
                 lines.append(f"  {mode}:ORDER | "
                              + " > ".join(tot["order"])
-                             + f" | gain {_num(tot.get('order_gain'))}")
+                             + f" | gain {_num(tot.get('order_gain'))}"
+                             + ("" if tot.get("spent") is None
+                                else f" | spent {_num(tot['spent'])}"))
 
 
 # --- Section: defensive profiles ----------------------------------------
