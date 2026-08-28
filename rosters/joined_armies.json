@@ -2,7 +2,7 @@
  "format": "w40k-sim/6",
  "armies": [
   {
-   "name": "Space Marines All Joined",
+   "name": "Space Marines",
    "units": [
     {
      "name": "Ancient",
@@ -5184,7 +5184,7 @@
          "S": 3,
          "AP": 0,
          "D": "1",
-         "count": 1,
+         "count": 10,
          "keywords": [
           "ignores cover",
           "pistol",
@@ -5201,7 +5201,7 @@
          "S": 4,
          "AP": -1,
          "D": "1",
-         "count": 1,
+         "count": 10,
          "keywords": [
           "pistol"
          ],
@@ -5216,7 +5216,7 @@
          "S": 7,
          "AP": -2,
          "D": "1",
-         "count": 1,
+         "count": 10,
          "keywords": [
           "pistol"
          ],
@@ -5231,7 +5231,7 @@
          "S": 8,
          "AP": -3,
          "D": "2",
-         "count": 1,
+         "count": 10,
          "keywords": [
           "hazardous",
           "pistol"
@@ -5247,7 +5247,7 @@
          "S": 4,
          "AP": -1,
          "D": "1",
-         "count": 1,
+         "count": 10,
          "keywords": [],
          "abilities": [],
          "WS": 3
@@ -5260,7 +5260,7 @@
          "S": 8,
          "AP": -2,
          "D": "2",
-         "count": 1,
+         "count": 10,
          "keywords": [],
          "abilities": [],
          "WS": 3
@@ -5273,7 +5273,7 @@
          "S": 5,
          "AP": -2,
          "D": "1",
-         "count": 1,
+         "count": 10,
          "keywords": [],
          "abilities": [],
          "WS": 3
@@ -5286,7 +5286,7 @@
          "S": 8,
          "AP": -2,
          "D": "2",
-         "count": 1,
+         "count": 10,
          "keywords": [
           "devastating wounds"
          ],
@@ -5308,40 +5308,9 @@
        "fnp": null,
        "keywords": [],
        "abilities": [],
-       "weapons": [
-        {
-         "name": "Heavy bolt pistol",
-         "type": "Ranged",
-         "RNG": 18,
-         "A": "1",
-         "S": 4,
-         "AP": -1,
-         "D": "1",
-         "count": 4,
-         "keywords": [
-          "pistol"
-         ],
-         "abilities": [],
-         "BS": 3
-        },
-        {
-         "name": "Astartes chainsword",
-         "type": "Melee",
-         "RNG": null,
-         "A": "4",
-         "S": 4,
-         "AP": -1,
-         "D": "1",
-         "count": 4,
-         "keywords": [],
-         "abilities": [],
-         "WS": 3
-        }
-       ]
+       "weapons": []
       }
-     ],
-     "leader_slots": 1,
-     "support_slots": 1
+     ]
     },
     {
      "name": "Heavy Intercessor Squad",
@@ -7936,9 +7905,7 @@
        "abilities": [],
        "weapons": []
       }
-     ],
-     "leader_slots": 1,
-     "support_slots": 1
+     ]
     },
     {
      "name": "Bladeguard Veteran Squad",
@@ -15258,7 +15225,7 @@
             },
             "extension": true
            },
-           "id": "891bbb0f21de4d5abb41ebd0977dc907"
+           "id": "1819866e17fd42cc99b4ac021f3c8826"
           }
          ],
          "BS": 3
@@ -18454,7 +18421,12 @@
        ]
       }
      ]
-    },
+    }
+   ]
+  },
+  {
+   "name": "Space Marines (Legends)",
+   "units": [
     {
      "name": "Ferren Areios",
      "profile_name": "Ferren Areios",
@@ -35635,7 +35607,7 @@
      ]
     },
     {
-     "name": "Venerable Dreadnought_Space Marines (Legends)",
+     "name": "Venerable Dreadnought",
      "profile_name": "Venerable Dreadnought",
      "points": 165,
      "keywords": [
@@ -35941,7 +35913,12 @@
        ]
       }
      ]
-    },
+    }
+   ]
+  },
+  {
+   "name": "Space Wolves",
+   "units": [
     {
      "name": "Arjac Rockfist",
      "profile_name": "Arjac Rockfist",
@@ -39854,7 +39831,7 @@
      ]
     },
     {
-     "name": "Venerable Dreadnought_Space Wolves",
+     "name": "Venerable Dreadnought",
      "profile_name": "Venerable Dreadnought",
      "points": 125,
      "keywords": [
@@ -40417,7 +40394,12 @@
        ]
       }
      ]
-    },
+    }
+   ]
+  },
+  {
+   "name": "Space Wolves (Legends)",
+   "units": [
     {
      "name": "Krom Dragongaze",
      "profile_name": "Krom Dragongaze",
@@ -51993,7 +51975,7 @@
          "S": 7,
          "AP": -1,
          "D": "2",
-         "count": 6,
+         "count": 3,
          "keywords": [],
          "abilities": [],
          "BS": 4
@@ -52006,7 +51988,7 @@
          "S": 8,
          "AP": -3,
          "D": "3",
-         "count": 6,
+         "count": 3,
          "keywords": [],
          "abilities": [],
          "BS": 4
@@ -52041,9 +52023,7 @@
        "abilities": [],
        "weapons": []
       }
-     ],
-     "leader_slots": 1,
-     "support_slots": 1
+     ]
     },
     {
      "name": "Crisis Starscythe Battlesuits",
@@ -52204,7 +52184,7 @@
          "S": 5,
          "AP": 0,
          "D": "1",
-         "count": 6,
+         "count": 3,
          "keywords": [],
          "abilities": [],
          "BS": 4
@@ -52217,7 +52197,7 @@
          "S": 4,
          "AP": 0,
          "D": "1",
-         "count": 6,
+         "count": 3,
          "keywords": [
           "Ignores Cover",
           "Torrent"
@@ -52255,9 +52235,7 @@
        "abilities": [],
        "weapons": []
       }
-     ],
-     "leader_slots": 1,
-     "support_slots": 1
+     ]
     },
     {
      "name": "Crisis Sunforge Battlesuits",
@@ -52473,7 +52451,7 @@
          "S": 9,
          "AP": -4,
          "D": "D6",
-         "count": 6,
+         "count": 3,
          "keywords": [
           "Melta 2"
          ],
@@ -52510,9 +52488,7 @@
        "abilities": [],
        "weapons": []
       }
-     ],
-     "leader_slots": 1,
-     "support_slots": 1
+     ]
     },
     {
      "name": "Ghostkeel Battlesuit",
@@ -53894,7 +53870,7 @@
          "S": 7,
          "AP": -1,
          "D": "2",
-         "count": 2,
+         "count": 1,
          "keywords": [],
          "abilities": [
           {
@@ -54096,7 +54072,7 @@
          "S": 9,
          "AP": -4,
          "D": "D6",
-         "count": 2,
+         "count": 1,
          "keywords": [
           "Melta 2",
           "Twin-linked"
@@ -54149,7 +54125,7 @@
          "S": 8,
          "AP": -3,
          "D": "3",
-         "count": 2,
+         "count": 1,
          "keywords": [
           "Twin-linked"
          ],
@@ -54201,7 +54177,7 @@
          "S": 5,
          "AP": 0,
          "D": "1",
-         "count": 2,
+         "count": 1,
          "keywords": [
           "Indirect Fire",
           "Twin-linked"
@@ -54261,9 +54237,7 @@
         }
        ]
       }
-     ],
-     "leader_slots": 1,
-     "support_slots": 1
+     ]
     },
     {
      "name": "Sky Ray Gunship",
@@ -55192,7 +55166,12 @@
        "weapons": []
       }
      ]
-    },
+    }
+   ]
+  },
+  {
+   "name": "t-au-empire (Legends)",
+   "units": [
     {
      "name": "Aun’shi",
      "profile_name": "Aun’shi",

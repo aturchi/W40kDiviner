@@ -54,6 +54,9 @@ W, E, N, S, CENTER = "w", "e", "n", "s", "center"
 NW, NE, SW, SE = "nw", "ne", "sw", "se"
 VERTICAL, HORIZONTAL = "vertical", "horizontal"
 EXTENDED, BROWSE, SINGLE = "extended", "browse", "single"
+# Tk's fourth selection mode: a click toggles one entry and leaves
+# the others alone. Absent here until a dialog asked for it.
+MULTIPLE = "multiple"
 NORMAL, DISABLED, ACTIVE = "normal", "disabled", "active"
 WORD, CHAR = "word", "char"
 FLAT, RAISED, SUNKEN, GROOVE, RIDGE, SOLID = (

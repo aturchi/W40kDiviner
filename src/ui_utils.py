@@ -33,6 +33,12 @@ from tkinter import ttk
 _MULTI_KEY = "Cmd" if sys.platform == "darwin" else "Ctrl"
 MULTI_SELECT_HINT = (f"{_MULTI_KEY}+click to select more than one entry, "
                      "Shift+click for a range")
+# Tk's "multiple" selection mode: a plain click toggles one entry and
+# leaves the others alone, so several can be picked with the mouse and
+# nothing else. No range and no drag - the trade for not needing a
+# modifier key at all - which is why it is offered per list rather than
+# imposed on every one of them.
+TOGGLE_SELECT_HINT = "Click to select, click again to deselect"
 HINT_COLOR = "#666666"
 
 
@@ -377,6 +383,15 @@ def multi_select_hint(parent, extra=""):
     management, so the caller pack()s or grid()s it where it fits; 'extra'
     appends a dialog-specific note."""
     text = MULTI_SELECT_HINT + (f" - {extra}" if extra else "")
+    return ttk.Label(parent, text=text, foreground=HINT_COLOR)
+
+
+def toggle_select_hint(parent, extra=""):
+    """The reminder for a list in Tk's 'multiple' mode, where a click
+    toggles one entry: no modifier key, so the Ctrl+click wording of
+    multi_select_hint would be wrong. Same contract - returned WITHOUT
+    geometry management, 'extra' appends a dialog-specific note."""
+    text = TOGGLE_SELECT_HINT + (f" - {extra}" if extra else "")
     return ttk.Label(parent, text=text, foreground=HINT_COLOR)
 
 

@@ -12,7 +12,7 @@ thin GUI over it.
 import tkinter as tk
 from tkinter import ttk, messagebox, simpledialog
 
-from ui_utils import scrollable_listbox, multi_select_hint
+from ui_utils import scrollable_listbox, toggle_select_hint
 from army_load_core import ArmyLoadState
 
 
@@ -31,16 +31,20 @@ class ArmyLoadDialog(tk.Toplevel):
         ttk.Label(self, text="Select armies to import. Select two or more "
                   "and press Join to merge them into a new army.").grid(
             row=0, column=0, columnspan=2, sticky="w", padx=6, pady=4)
+        # MULTIPLE, not EXTENDED: a plain click toggles one army and
+        # leaves the rest alone, so a subset is picked with the mouse
+        # and no modifier key. The list is short and never wants a
+        # range, which is the only thing EXTENDED offered here.
         lb_frame, self.listbox = scrollable_listbox(
             self, width=44, height=14, exportselection=False,
-            selectmode=tk.EXTENDED)
+            selectmode=tk.MULTIPLE)
         lb_frame.grid(row=1, column=0, columnspan=2, sticky="nsew",
                       padx=6, pady=4)
         self.rowconfigure(1, weight=1)
         self.columnconfigure(0, weight=1)
 
-        multi_select_hint(self).grid(row=2, column=0, columnspan=2,
-                                     sticky="w", padx=6)
+        toggle_select_hint(self).grid(row=2, column=0, columnspan=2,
+                                      sticky="w", padx=6)
         bar = ttk.Frame(self)
         bar.grid(row=3, column=0, columnspan=2, pady=4)
         ttk.Button(bar, text="Join selected",
