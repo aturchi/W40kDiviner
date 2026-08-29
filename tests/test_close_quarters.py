@@ -21,6 +21,7 @@ cannot see the table - so the mode is simply selected in the attack
 setup. No tkinter needed.
 """
 import testpaths                      # sets up sys.path to the engine src/
+from viewstub import View as _View     # the shared attacker-view stub
 import analyzer_core as ac
 import attack_math as am
 import mc_support as mcs
@@ -40,22 +41,6 @@ def weapon(name, kws=()):
                count=1)
     w.keywords = list(kws)
     return w
-
-
-class _Model:
-    def __init__(self, weapons):
-        self.weapons = weapons
-
-
-class _View:
-    """Minimal stand-in for a unit view: keywords plus models()."""
-
-    def __init__(self, weapons, keywords=()):
-        self._m = [_Model(weapons)]
-        self.keywords = list(keywords)
-
-    def models(self):
-        return self._m
 
 
 bolter = weapon("bolter")
@@ -107,6 +92,94 @@ assert [(w.name, why) for w, why in skipped] == \
 kept, skipped = ac.select_weapons_split(big, "ranged")
 assert len(kept) == 4 and not skipped, (kept, skipped)
 print("CLOSE-QUARTERS weapons fire in the ranged mode only for big models")
+
+# --- a model with NOTHING but CLOSE-QUARTERS weapons ------------------
+# The pistol rule is a choice - "either its CLOSE-QUARTERS weapons or
+# all of its other ranged weapons" - and a model that has no other
+# ranged weapon has no choice to make. Holding its pistol back in the
+# plain ranged mode silenced it altogether, which is not a reading the
+# rule supports.
+only_cq = _View([pistol], ["INFANTRY"])
+kept, skipped = ac.select_weapons_split(only_cq, "ranged")
+assert [w.name for w in kept] == ["plasma pistol"], [w.name for w in kept]
+assert not skipped, skipped
+# ...and it still fires in close quarters, as it always did.
+kept, skipped = ac.select_weapons_split(only_cq, "close_quarters")
+assert [w.name for w in kept] == ["plasma pistol"] and not skipped
+# A MELEE weapon is not an alternative ranged weapon, so it does not
+# restore the choice and the pistol still fires.
+blade = Weapon(name="blade", wtype="Melee", A="3", skill=3, S=5, AP=-1,
+               D="1", count=1)
+blade.keywords = []
+kept, skipped = ac.select_weapons_split(_View([pistol, blade],
+                                              ["INFANTRY"]), "ranged")
+assert [w.name for w in kept] == ["plasma pistol"], [w.name for w in kept]
+assert not skipped, skipped
+# INVERSE: give the same model ONE other ranged weapon and the choice
+# is back, so the pistol is held out again. This is the pair that shows
+# the new branch is doing work rather than switching the rule off.
+kept, skipped = ac.select_weapons_split(_View([pistol, bolter],
+                                              ["INFANTRY"]), "ranged")
+assert [w.name for w in kept] == ["bolter"], [w.name for w in kept]
+assert [(w.name, why) for w, why in skipped] == \
+    [("plasma pistol", ac.CQ_ONLY_SKIP)], skipped
+# The choice is per MODEL, not per unit: a trooper with only a pistol
+# fires it while the one beside it, which also carries a bolter, does
+# not.
+split = _View([], ["INFANTRY"], per_model=[
+    ([pistol], ["INFANTRY"]),
+    ([weapon("bolter b"), weapon("pistol b", ["PISTOL"])], ["INFANTRY"])])
+kept, skipped = ac.select_weapons_split(split, "ranged")
+assert [w.name for w in kept] == ["plasma pistol", "bolter b"], \
+    [w.name for w in kept]
+assert [(w.name, why) for w, why in skipped] == \
+    [("pistol b", ac.CQ_ONLY_SKIP)], skipped
+print("a model armed only with CLOSE-QUARTERS weapons still shoots")
+
+# --- an attached unit is not one big model ----------------------------
+# 10.06 is written per MODEL, and an attached unit carries the UNION of
+# its parts' keywords (Unit._attach). A MONSTER Leader must therefore
+# NOT license the INFANTRY troopers beside it to fire their bolters at
+# the unit they are engaged with. Reading aview.keywords cannot tell
+# this apart from a unit that is MONSTER throughout.
+trooper_gun, trooper_pistol = weapon("bolter"), weapon("bolt pistol",
+                                                       ["PISTOL"])
+boss_gun, boss_blast = weapon("boss gun"), weapon("boss blast", ["BLAST"])
+attached = _View([], ["INFANTRY", "MONSTER", "CHARACTER"], per_model=[
+    ([trooper_gun, trooper_pistol], ["INFANTRY"]),
+    ([boss_gun, boss_blast], ["MONSTER", "CHARACTER"])])
+# INVERSE: the union DOES say MONSTER, so a union reading would keep
+# the trooper's bolter here. That is the answer this section rules out.
+assert {k.upper() for k in attached.keywords} & ac.CQ_KEYWORDS, \
+    "the fixture must carry MONSTER at unit level"
+kept, skipped = ac.select_weapons_split(attached, "close_quarters")
+assert [w.name for w in kept] == ["bolt pistol", "boss gun"], \
+    [w.name for w in kept]
+assert [(w.name, why) for w, why in skipped] == \
+    [("bolter", ac.CQ_NOT_CQ_SKIP),
+     ("boss blast", ac.CQ_BLAST_SKIP)], skipped
+# ...and in the plain ranged mode the trooper still holds its pistol
+# back while the MONSTER Leader fires everything it has.
+kept, skipped = ac.select_weapons_split(attached, "ranged")
+assert [w.name for w in kept] == ["bolter", "boss gun", "boss blast"], \
+    [w.name for w in kept]
+assert [(w.name, why) for w, why in skipped] == \
+    [("bolt pistol", ac.CQ_ONLY_SKIP)], skipped
+# The unit-wide flag stays true - it is only the -1 on the hit roll,
+# and a weapon that is not CLOSE-QUARTERS can now only have survived
+# the selection if its own model is a MONSTER/VEHICLE.
+assert ac.close_quarters_attacker(attached)
+# The mirror case: an INFANTRY Leader on a MONSTER squad. The Leader
+# fires its pistol only, the monsters fire everything.
+mirror = _View([], ["INFANTRY", "MONSTER", "CHARACTER"], per_model=[
+    ([boss_gun], ["MONSTER"]),
+    ([trooper_gun, trooper_pistol], ["INFANTRY", "CHARACTER"])])
+kept, skipped = ac.select_weapons_split(mirror, "close_quarters")
+assert [w.name for w in kept] == ["boss gun", "bolt pistol"], \
+    [w.name for w in kept]
+assert [(w.name, why) for w, why in skipped] == \
+    [("bolter", ac.CQ_NOT_CQ_SKIP)], skipped
+print("close quarters is decided per model, not on the merged unit")
 
 # --- PISTOL is the same keyword under its old name --------------------
 old_pistol = weapon("bolt pistol", ["PISTOL"])

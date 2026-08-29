@@ -15,9 +15,11 @@ The stub is installed UNCONDITIONALLY: this must run the same way on a
 machine with a display and on one without, and it must never pop up a
 window in the middle of a suite.
 """
+import copy
 import json
 import os
 import random
+import re
 import sys
 
 import tkstub
@@ -213,13 +215,116 @@ squad_t = int(UNITS["Assault Intercessor Squad"]["models"][0]["T"])
 assert session.unit_ref["T"] == squad_t, (session.unit_ref["T"], squad_t)
 win.buttons["fire_all"].invoke()
 win.buttons["write"].invoke()
-captain_rows = [cid for mid, cid in copy_rows(app)
-                if "Captain" in app.trees["B"].item(mid, "text")]
-assert captain_rows, "the Captain has no row"
+
+
+def _split_rows(app):
+    """(captain rows, bodyguard rows) of the defender table."""
+    cap, body = [], []
+    for mid, cid in copy_rows(app):
+        (cap if "Captain" in app.trees["B"].item(mid, "text")
+         else body).append(cid)
+    return cap, body
+
+
+captain_rows, body_rows = _split_rows(app)
+assert captain_rows and body_rows, (captain_rows, body_rows)
 full = int(UNITS["Captain"]["models"][0]["W"])
-assert all(int(wounds(app)[c]) == full for c in captain_rows), \
-    "the CHARACTER took damage while bodyguard models stood"
+w = wounds(app)
+# 05.03: the CHARACTER cannot be allocated an attack while any
+# bodyguard model is still standing. Stated as the implication and not
+# as "the Captain is untouched", because whether the bodyguard survives
+# the volley depends on the roster: the real source records every
+# wargear option at the unit's full count, so fire_all here throws
+# several hundred attacks at a 10-wound bodyguard and wipes it, at
+# which point the Captain IS the only legal target and taking damage is
+# correct. An earlier version asserted the consequent alone and failed
+# under --real_data on a run where the engine had done nothing wrong.
+if any(int(w[c]) > 0 for c in body_rows):
+    assert all(int(w[c]) == full for c in captain_rows), \
+        "the CHARACTER took damage while bodyguard models stood"
+else:
+    assert all(int(w[c]) == 0 for c in body_rows), w
 print("a led unit keeps its CHARACTER out of the way, end to end")
+
+
+# --- 6b. ...and the untouched branch, guaranteed by construction ------
+
+# The check above is only as good as the branch it takes, and on the
+# real source it takes the wipe. So here the volley is BOUNDED instead
+# of tuned: a probe attacker whose maximum possible damage - every
+# attack hitting, wounding, unsaved and rolling top damage - is less
+# than the bodyguard's total wounds. The bodyguard therefore cannot be
+# wiped whatever the dice do, so the Captain must come through at full
+# on every seed and on either roster.
+
+def _dice_max(expr):
+    """The largest value a characteristic expression can take."""
+    m = re.fullmatch(r"\s*(\d*)[dD](\d+)\s*(?:\+\s*(\d+))?\s*", str(expr))
+    if m:
+        return (int(m.group(1) or 1) * int(m.group(2))
+                + int(m.group(3) or 0))
+    try:
+        return int(str(expr).strip())
+    except ValueError:
+        return 1
+
+
+def _probe_attacker(name, budget):
+    """A one-model copy of the attacker carrying ONE ranged weapon, in
+    as many copies as fit under 'budget' points of maximum damage."""
+    src = copy.deepcopy(UNITS["Intercessor Squad"])
+    src["name"] = src["profile_name"] = name
+    group = next(m for m in src["models"]
+                 if any(x.get("type") == "Ranged" for x in m["weapons"]))
+    gun = copy.deepcopy(next(x for x in group["weapons"]
+                             if x.get("type") == "Ranged"))
+    per_copy = _dice_max(gun.get("A")) * _dice_max(gun.get("D"))
+    gun["count"] = max(1, budget // max(1, per_copy))
+    group["model_count"] = 1
+    group["weapons"] = [gun]
+    src["models"] = [group]
+    UNITS[name] = src
+    return gun["count"] * per_copy
+
+
+body_wounds = sum(int(m["model_count"]) * int(m["W"])
+                  for m in UNITS["Assault Intercessor Squad"]["models"])
+ceiling = _probe_attacker("Probe Shooter", body_wounds - 1)
+assert ceiling < body_wounds, (ceiling, body_wounds)
+
+# Run it over a range of seeds rather than one. The bound makes the
+# claim true on every seed, so checking many costs nothing and says far
+# more than checking one; and it lets the loop insist that SOME seed
+# actually landed a wound, which is what stops the case passing because
+# the volley happened to miss everything.
+landed = 0
+for seed in range(1, 26):
+    SEEN.clear()
+    app = build(attacker="Probe Shooter",
+                defender="Assault Intercessor Squad", leader="Captain",
+                seed=seed)
+    app.cmd_attack()
+    win = window_of(app)
+    assert win is not None, (seed, SEEN)
+    win.buttons["fire_all"].invoke()
+    win.buttons["write"].invoke()
+    captain_rows, body_rows = _split_rows(app)
+    w = wounds(app)
+    assert any(int(w[c]) > 0 for c in body_rows), \
+        (f"seed {seed}: the bodyguard cannot be wiped by construction, "
+         f"so one of them must still stand", w)
+    assert all(int(w[c]) == full for c in captain_rows), \
+        (f"seed {seed}: the CHARACTER took damage while bodyguard "
+         f"models stood", w)
+    body_full = sum(int(m["model_count"]) * int(m["W"])
+                    for m in UNITS["Assault Intercessor Squad"]["models"])
+    if sum(int(w[c]) for c in body_rows) < body_full:
+        landed += 1
+assert landed, ("no seed in 25 landed a single wound on the bodyguard, so "
+                "the bounded volley proves nothing - the probe attacker "
+                "has been trimmed too far")
+print(f"a bounded volley cannot reach the CHARACTER on any of 25 seeds "
+      f"({landed} of them drew blood)")
 
 
 # --- 6b. masked copies are models already removed ---------------------

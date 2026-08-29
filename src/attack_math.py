@@ -229,6 +229,32 @@ def combine_reroll(a, b):
     return None
 
 
+def crit_threshold(n) -> int:
+    """A critical hit or wound threshold, clamped to what a d6 can mean.
+
+    A critical is scored on an UNMODIFIED roll and an unmodified 1
+    always fails (05.01, 05.02), so 2+ is the best a threshold can
+    ever be. "Critical on a 1+" is not a state the rules can produce:
+    it would make the natural 1 a success, and it did - roll_probs
+    built its face list from the raw threshold while computing the
+    critical probability from max(2, ...), so a threshold of 1 gave
+    p_hit = 1.0 alongside p_crit = 5/6, six faces hitting of which
+    only five were critical.
+
+    Only the FLOOR is applied here. The ceiling needs no clamp: every
+    site that lowers a threshold does so with min(), starting from 6.
+
+    A value that is not a number raises, as int() always did: the
+    parser catches it and reports the ability as unsupported, which is
+    better than silently applying a threshold nobody asked for.
+
+    Shared by the exact chain and the dice resolver, and applied where
+    thresholds are PARSED as well, so a nonsense value never reaches
+    the maths and never reaches the ability description either.
+    """
+    return max(2, int(n))
+
+
 def roll_probs(target, mod: int, reroll: str = None, times: int = None,
                crit_on: int = 6, unmod_min: int = 1):
     """(p_success, p_crit) of one d6 roll needing 'target'+, with a net
@@ -242,12 +268,13 @@ def roll_probs(target, mod: int, reroll: str = None, times: int = None,
     the modifiers say (Indirect Fire: 6 with no spotter, 4 with one).
     It is a floor on the die, not a replacement for the roll: the
     modified result must still beat the target."""
+    crit_on = crit_threshold(crit_on)
     faces = [r for r in range(1, 7)
              if r >= unmod_min
              and (r == 6 or r >= crit_on
                   or (r > 1 and r + mod >= target))]
     p = len(faces) / 6.0
-    pc = (7 - max(2, crit_on, unmod_min)) / 6.0
+    pc = (7 - max(crit_on, unmod_min)) / 6.0
     if times is None:
         times = rules_config.CAP_REROLLS
     if reroll is None or times <= 0:
@@ -291,6 +318,7 @@ def hit_threshold_mw_probs(target, mod, reroll, thr, crit_on: int = 6,
     Re-rolls apply to failed dice only and may land in either region.
     """
     times = rules_config.CAP_REROLLS
+    crit_on = crit_threshold(crit_on)
     floor, top = max(1, unmod_min), max(2, thr)
     mw = [r for r in range(1, 7) if r >= top and r >= floor]
     hit = [r for r in range(1, 7)
@@ -415,6 +443,40 @@ def effective_fnp(defender_ref: dict, mech, mw: bool):
     if "fnp" in mech.ignore_malus:
         mod = max(0, mod)
     return fnp, mod
+
+
+def fnp_roll_ok(r: int, eff: int) -> bool:
+    """Does the die result 'r' pass a Feel No Pain roll needing 'eff'+?
+
+    An unmodified 1 ALWAYS fails, whatever the modifiers say. Feel No
+    Pain modifiers are NOT capped (only hit and wound rolls are), so a
+    +1 on a 2+ roll drives 'eff' to 1 and without this floor the roll
+    would become automatic - which is exactly the rule the saving throw
+    already applies (_p_save_roll counts from 2). Shared by the exact
+    chain and the dice resolver so the two cannot drift apart."""
+    return r > 1 and r >= eff
+
+
+def fnp_ignore_prob(eff: int, reroll: str = None, times: int = None) \
+        -> float:
+    """P(one point of damage is ignored) by a Feel No Pain of 'eff'+.
+
+    The 5/6 ceiling belongs to the BASE roll - it is the natural 1 that
+    always fails - and NOT to the result after a re-roll: a failed Feel
+    No Pain that is re-rolled gets a fresh die, so a 2+ with a re-roll
+    of failures ignores 35/36 and not 5/6. Capping the accumulated
+    total instead of the base is what used to throw the whole re-roll
+    away on any roll of 3+ or better."""
+    p = sum(1 for r in range(1, 7) if fnp_roll_ok(r, eff)) / 6.0
+    if times is None:
+        times = rules_config.CAP_REROLLS
+    if not reroll or times <= 0 or p <= 0.0:
+        return p
+    P, cont = 0.0, 1.0
+    for _ in range(times + 1):
+        P += cont * p
+        cont *= (1.0 - p) if reroll == "fails" else 1.0 / 6.0
+    return min(P, 1.0)
 
 
 def effective_invuln(defender_ref: dict, mech):
@@ -795,7 +857,8 @@ def parse_weapon_keywords(keywords, mech: WeaponMechanics):
         kw = str(kw).strip().upper()      # rosters vary in casing
         m = _ANTI_RE.match(kw)
         if m:
-            mech.anti.append((m.group(1).strip(), int(m.group(2))))
+            mech.anti.append((m.group(1).strip(),
+                              crit_threshold(m.group(2))))
             continue
         m = _HUNTER_RE.match(kw)
         if m:
@@ -982,7 +1045,9 @@ def _dispatch(dyn, s, tok, mech) -> bool:
                 return False
         elif tok[0] == "CRITON" and len(tok) >= 3:
             # CRITON HIT|WOUND N -> lower the critical threshold (best wins)
-            step, n = tok[1], int(tok[2])
+            # crit_threshold(): the editor's threshold field is free
+            # text, so a "1" must not become a critical on a natural 1.
+            step, n = tok[1], crit_threshold(tok[2])
             if step == "HIT":
                 mech.crit_hit_on = min(mech.crit_hit_on, n)
             elif step == "WOUND":
@@ -1151,7 +1216,8 @@ def _dispatch(dyn, s, tok, mech) -> bool:
     if roll_m and roll_m.group(4) == "UNMOD" and roll_m.group(3) == "+":
         step, thr = roll_m.group(1), int(roll_m.group(2))
         if step == "WOUND" and s == "OVERRIDE WOUND ALWAYS CRIT":
-            mech.crit_wound_on = min(mech.crit_wound_on, thr)
+            mech.crit_wound_on = min(mech.crit_wound_on,
+                                     crit_threshold(thr))
             return True
         if step == "HIT" and s == "OVERRIDE HIT ONLY IRRESPECTIVE":
             mech.hit_unmod_only = thr
@@ -1181,13 +1247,42 @@ def has_damage_modifiers(mech) -> bool:
 
 def apply_damage_modifiers(d: int, mech) -> int:
     """Apply the defender's per-attack Damage modifiers to a single
-    Damage value 'd', in the FIXED 11th-ed. order (independent of the
-    order the abilities were declared):
+    Damage value 'd'.
+
+    The 11th-ed. order (Rules Appendix, Modifiers) is:
+
+        set/replace -> MULTIPLY -> ADD -> DIVIDE -> SUBTRACT -> round up
+
+    and note that this is NOT the 9th/10th-ed. order, which put division
+    FIRST and had no addition step between the two: 11th swapped
+    multiplication and division around and slid addition in between.
+
+    What this function does:
 
       Step 1  set    : replace D by a fixed value (mech.dmg_set)
       Step 2  mult   : multiply cumulatively, rounding UP (mech.dmg_mult)
       Step 3  add    : additive modifier, e.g. -1 (mech.dmg_add)
       Step 4  floor  : D is at least 1, UNLESS mech.dmg_set_zero forces 0
+
+    DECLARED APPROXIMATION. mech.dmg_mult carries BOTH a genuine
+    multiplication (step 2, in the right place) and a halving, which
+    the rules count as a division (step 4, after the addition). The two
+    orders give the same answer everywhere except when a halving meets
+    a POSITIVE addition - 12 of the 80 combinations of D 1..8 against
+    halve x add -2..+2, all of them with add > 0.
+
+    That case is not reachable. A positive dmg_add would be a defender
+    ability that INCREASES the damage of the attack coming at it, and
+    the shipped rosters carry no damage modifier of any kind (no
+    CHARMOD D, CHARMULT D or CHARSET D at all). The one addition that
+    does occur in quantity is MELTA, on 607 weapons, and _finish_damage
+    convolves it into the Damage BEFORE calling this function - so a
+    melta shot into a halving ability is computed as ceil((D+X)/2),
+    which is exactly what the rules ask for.
+
+    Rounding up early is safe for the same reason it always was:
+    ceil(x) + a == ceil(x + a) for integer a, and every additive
+    modifier here is an integer.
 
     A 0-Damage input (no attack) stays 0. Used by the exact maths (via
     transform over the Damage PMF) and mirrored by the dice resolver."""
@@ -1390,16 +1485,21 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     if x_active(mech.extra_attacks):
         extra_pmf = convolve(extra_pmf, x_pmf(mech.extra_attacks))
     per_copy = char_pmf(weapon.A)
+    if len(extra_pmf) > 1 or extra_pmf[0] != 1.0:
+        per_copy = convolve(per_copy, extra_pmf)
     if mech.attacks_mod:
-        # Defender ability on the attack's Attacks characteristic: it
-        # modifies the characteristic, so it lands BEFORE the extra
-        # attacks granted by Rapid Fire / Blast / Cleave.
+        # Defender ability on the attack's Attacks characteristic
+        # ("subtract 1 from the Attacks characteristic of that attack").
+        # RAPID FIRE, BLAST, CLEAVE and extra attacks all modify the
+        # SAME characteristic, and the Rules Appendix (02.02.01) applies
+        # the limits - "A cannot be less than 1" - only AFTER every
+        # modifier has been applied. So the floor is taken on the TOTAL
+        # and not on the datasheet value alone: A 1 with -1 and RAPID
+        # FIRE 1 is 1 + 1 - 1 = 1, not max(1, 1 - 1) + 1 = 2.
         per_copy = transform(
             per_copy,
             lambda v: rules_config.clamp_characteristic(
                 "A", v + mech.attacks_mod))
-    if len(extra_pmf) > 1 or extra_pmf[0] != 1.0:
-        per_copy = convolve(per_copy, extra_pmf)
     attacks_pmf = delta(0)
     for _ in range(max(1, weapon.count)):
         attacks_pmf = convolve(attacks_pmf, per_copy)
@@ -1470,7 +1570,7 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     # come on 4+. The 'half_range' flag says the attack IS within half
     # range, so an unticked flag means the bonus applies - the analyzer
     # cannot know the real distance, and 'beyond' is the common case.
-    crit_hit_on = mech.crit_hit_on
+    crit_hit_on = crit_threshold(mech.crit_hit_on)
     if mech.conversion and not ctx.get("half_range"):
         crit_hit_on = min(crit_hit_on, CONVERSION_CRIT_HIT)
     # OVERWATCH: hits only on an unmodified N+ (6 by default). Every hit
@@ -1531,7 +1631,7 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
     if "wound" in mech.ignore_malus:
         wound_mod = max(0, wound_mod)
     wound_mod = _cap(wound_mod)
-    crit_wound_on = mech.crit_wound_on
+    crit_wound_on = crit_threshold(mech.crit_wound_on)
     # ANTI-X: the defender keywords may arrive in any casing.
     dkw = {str(k).strip().upper()
            for k in (defender_ref.get("keywords") or ())}
@@ -1683,16 +1783,8 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         if not fnp:
             return pmf
         eff = fnp - fnp_mod               # FNP: no cap (like saves, 11th)
-        p_ig = min(5.0 / 6.0, max(0.0, (7 - eff) / 6.0))
-        times = rules_config.CAP_REROLLS
-        if mech.reroll_fnp and times > 0 and p_ig > 0:
-            P, cont = 0.0, 1.0
-            for _ in range(times + 1):
-                P += cont * p_ig
-                cont *= ((1.0 - p_ig) if mech.reroll_fnp == "fails"
-                         else 1.0 / 6.0)
-            p_ig = min(P, 5.0 / 6.0)
-        return binomial_thin(pmf, 1.0 - p_ig)
+        return binomial_thin(pmf,
+                             1.0 - fnp_ignore_prob(eff, mech.reroll_fnp))
 
     def mw_save_thin(pmf):
         """An invulnerable save that applies to mortal wounds (they
@@ -2029,12 +2121,40 @@ def analyze_weapon_best(weapon, defender_ref: dict, ctx: dict, mech,
     return res, None
 
 
-def hazardous_damage_per_fail(keywords) -> int:
-    """11th ed.: a failed Hazardous test (a d6 roll of 1-2) deals 3
-    damage to a MONSTER or VEHICLE, 1 damage otherwise. 'keywords' are
-    the FIRING unit's keywords."""
-    kw = {str(k).upper() for k in (keywords or [])}
-    return 3 if (kw & {"MONSTER", "VEHICLE"}) else 1
+# The keywords 06.03 asks about. CHARACTER is deliberately NOT among
+# them: it was in the 10th-ed. wording of Hazardous and 11th dropped it.
+HAZARD_TRIPLE_KEYWORDS = frozenset(("MONSTER", "VEHICLE"))
+
+
+def hazardous_damage_per_fail(model_keywords) -> int:
+    """11th ed. 06.03: a failed hazard roll (a d6 of 1-2) costs the
+    FIRING unit 1 mortal wound, or 3 instead "if EACH MODEL in that unit
+    is a MONSTER/VEHICLE model".
+
+    'model_keywords' is one keyword collection PER MODEL of that unit -
+    Unit.model_keywords() - and NOT the unit's own set. The two differ
+    for an ATTACHED unit, which carries the union of its parts: a
+    MONSTER Leader joined to an INFANTRY squad puts MONSTER at unit
+    level while the troopers are not MONSTER models, and reading the
+    union charged that unit 3 where the rules charge 1.
+
+    A unit with no models at all costs 1: the neutral answer, rather
+    than the vacuous "every model qualifies" that all() would give.
+    """
+    if isinstance(model_keywords, str):
+        model_keywords = None
+    models = []
+    for kws in (model_keywords or ()):
+        if isinstance(kws, str):
+            raise TypeError(
+                "hazardous_damage_per_fail takes one keyword collection "
+                "PER MODEL, not the unit's flat keyword set: 06.03 asks "
+                "whether EVERY model is a MONSTER/VEHICLE model, which "
+                "the union an attached unit carries cannot answer")
+        models.append({str(k).strip().upper() for k in (kws or ())})
+    if not models:
+        return 1
+    return 3 if all(kw & HAZARD_TRIPLE_KEYWORDS for kw in models) else 1
 
 
 def hazardous_self_damage_mean(count: int, dmg_per_fail: int = 1) -> float:

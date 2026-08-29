@@ -142,10 +142,14 @@ def _fnp_keep(rng, dmg: int, fnp, mech, mw: bool) -> int:
     if not fnp:
         return dmg
     eff = fnp - fnp_mod                   # FNP: no cap (like saves, 11th)
+    # An unmodified 1 always fails, exactly as it does on a saving throw
+    # (_save_made) and on the invulnerable rolled against mortal wounds
+    # (_mw_save_keep). The predicate is attack_math's, so the exact
+    # chain and this resolver cannot disagree about which faces pass.
+    ok = lambda r: am.fnp_roll_ok(r, eff)
     kept = 0
     for _ in range(dmg):
-        r = _roll_success(rng, lambda x: x >= eff, mech.reroll_fnp)
-        if r < eff:
+        if not ok(_roll_success(rng, ok, mech.reroll_fnp)):
             kept += 1
     return kept
 
@@ -234,9 +238,15 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         # generateExtras "extra attacks": X further attacks per copy.
         if am.x_active(mech.extra_attacks):
             extra_a += am.x_value(mech.extra_attacks, rng)
-        a_char = rules_config.clamp_characteristic(
-            "A", (weapon.A.value(rng) or 0) + mech.attacks_mod)
-        n_att += a_char + extra_a
+        a_char = (weapon.A.value(rng) or 0) + extra_a
+        if mech.attacks_mod:
+            # The limits are applied AFTER every modifier (02.02.01),
+            # and RAPID FIRE / BLAST / CLEAVE / extra attacks modify the
+            # same Attacks characteristic, so the floor is taken on the
+            # TOTAL - exactly as analyze_weapon does it.
+            a_char = rules_config.clamp_characteristic(
+                "A", a_char + mech.attacks_mod)
+        n_att += a_char
 
     # static roll parameters (mirror analyze_weapon)
     # 11th ed.: BS/WS CHARACTERISTIC modifiers (cover, plunging fire) and
@@ -286,7 +296,7 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
         "BS", (skill.value() or 0) - skill_mod)
     # CONVERSION, mirroring analyze_weapon: beyond half range the
     # critical-hit threshold drops to 4+.
-    crit_hit_on = mech.crit_hit_on
+    crit_hit_on = am.crit_threshold(mech.crit_hit_on)
     if mech.conversion and not ctx.get("half_range"):
         crit_hit_on = min(crit_hit_on, am.CONVERSION_CRIT_HIT)
     # OVERWATCH, mirroring analyze_weapon: hits only on an unmodified N+,
@@ -304,7 +314,7 @@ def resolve_weapon(weapon, defender_ref: dict, ctx: dict,
     if "wound" in mech.ignore_malus:
         wound_mod = max(0, wound_mod)
     wound_mod = am._cap(wound_mod)
-    crit_on = mech.crit_wound_on
+    crit_on = am.crit_threshold(mech.crit_wound_on)
     dkw = {str(k).strip().upper()
            for k in (defender_ref.get("keywords") or ())}
     for kw, x in mech.anti:                # case-insensitive, as the maths
@@ -582,7 +592,23 @@ def resolve_saves(pending, weapon, mech, rng: random.Random, alloc,
                 continue
             # DEVASTATING WOUNDS: a mortal wound for every rule that
             # keys on it, but allocated like ordinary damage - one
-            # model, no spill, the excess wasted.
+            # model, no spill, the excess wasted (24.10: "can damage a
+            # maximum of one model for each critical wound; any
+            # remaining mortal wounds inflicted by that attack are
+            # lost").
+            #
+            # current_model() and not mortal_model(): the two are the
+            # 05.03 declared group order and the 06.02 mortal-wound
+            # selection, and they can only disagree if a model outside
+            # the CURRENT allocation group is the one 06.02 would
+            # force. That state is not reachable here - CHARACTER
+            # groups sort last, a group is only left behind once it is
+            # empty, and the spilling pool that CAN reach another group
+            # is spent after this loop, not during it - so both return
+            # the same model on every path. Verified by inspection,
+            # recorded here so the next reader does not have to redo
+            # it; if the group ordering ever changes, this is the line
+            # to revisit.
             i = alloc.current_model()
             if i is None:
                 no_target += 1

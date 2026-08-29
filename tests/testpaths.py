@@ -11,9 +11,11 @@ Design goals:
   current working directory.
 - Tests default to the bundled **synthetic** roster in ``tests/synthetic/``.
   The real ArmyFetcher tree is used only when explicitly requested, via the
-  ``W40K_TEST_REAL`` flag or an explicit ``W40K_TEST_DATA`` path (test_regress.py
-  exposes this as ``--real_data``). Requesting real data that is absent falls
-  back to synthetic.
+  ``W40K_TEST_REAL`` flag, an explicit ``W40K_TEST_DATA`` path, or
+  ``--real_data`` on the command line (run_all.py sets the env flag for the
+  whole suite; test_regress.py also parses the argument itself). Requesting
+  real data that is absent falls back to synthetic AND says so on stderr --
+  a silent fallback would let a run reported as real be entirely synthetic.
 - Tests ask for a roster by bare name via :func:`roster` and stay agnostic
   to the on-disk layout: the real ArmyFetcher tree keeps its
   ``fetched_armies_40kapp/`` subdir, while the synthetic roster lives flat in
@@ -72,13 +74,55 @@ def _truthy(value):
     return str(value).strip().lower() in ("1", "true", "yes", "on")
 
 
+#: Command-line spelling of the real-data request. run_all.py sets the
+#: env flag for the whole suite and forwards this to test_regress.py, so
+#: the two must mean the same thing.
+_ARGV_FLAG = "--real_data"
+
+
+def _argv_real():
+    """Whether ``--real_data`` was passed on the command line.
+
+    Without this, ``python3 test_x.py --real_data`` read the SYNTHETIC
+    roster in silence: only test_regress.py parsed the flag, every other
+    test ignored argv entirely, and the env flag run_all.py sets was the
+    single real switch. Three tests sat broken against the real roster
+    for exactly that reason - each of them passed when run by hand with
+    the flag, because the flag did nothing.
+    """
+    return _ARGV_FLAG in sys.argv[1:]
+
+
 def _real_requested():
-    """Whether the real ArmyFetcher data was explicitly asked for, via the
-    ``W40K_TEST_REAL`` flag or an explicit ``W40K_TEST_DATA`` path. Absent
-    both, the tests default to the synthetic roster."""
+    """Whether the real ArmyFetcher data was explicitly asked for, via
+    the ``W40K_TEST_REAL`` flag, an explicit ``W40K_TEST_DATA`` path, or
+    ``--real_data`` on the command line. Absent all three, the tests
+    default to the synthetic roster."""
     if os.environ.get("W40K_TEST_DATA"):
         return True
-    return _truthy(os.environ.get("W40K_TEST_REAL", ""))
+    if _truthy(os.environ.get("W40K_TEST_REAL", "")):
+        return True
+    return _argv_real()
+
+
+_warned_fallback = False
+
+
+def _warn_fallback(real_dir):
+    """Say so when real data was asked for and is not there.
+
+    The fallback itself is deliberate - the suite has to run on a
+    checkout with no ArmyFetcher tree - but falling back WITHOUT saying
+    so means a run reported as '--real_data' can be entirely synthetic,
+    which is the same class of silence this module now guards against on
+    the argv side."""
+    global _warned_fallback
+    if _warned_fallback:
+        return
+    _warned_fallback = True
+    print(f"testpaths: real data requested but {_PROBE_ROSTER} is not "
+          f"under {real_dir!r} - falling back to the synthetic roster",
+          file=sys.stderr)
 
 
 def _resolve(force_real=None):
@@ -88,13 +132,14 @@ def _resolve(force_real=None):
     tree is used only when explicitly requested (``force_real`` True, or
     the env flags via :func:`_real_requested`) AND it actually contains
     the probe roster -- otherwise it falls back to synthetic so the suite
-    still runs. ``force_real`` overrides the env when not None."""
+    still runs, saying so on stderr. ``force_real`` overrides the env
+    when not None."""
     want_real = _real_requested() if force_real is None else force_real
     if want_real:
         real = _configured_real_dir()
         if os.path.isfile(_real_roster_path(real, _PROBE_ROSTER)):
             return real, False
-        # Requested real data but it isn't there -> synthetic fallback.
+        _warn_fallback(real)
     return SYNTHETIC_DIR, True
 
 

@@ -10,7 +10,12 @@
   melee:TOTAL | D 3.7037/4 | Dnet 3.7037/4 | R 3.7037/4 | K 0.9/1 | wipe 0.0 | warn=0
   melee:ORDER | Astartes chainsword | gain 0.0 | spent 1.0
 ### Assault Intercessor Squad vs Terminator Squad
-  ranged:TOTAL | D 0.0/0 | Dnet 0.0/0 | R 0.0/0 | K 0.0/0 | wipe 0.0 | warn=0
+  ranged:Hand flamer | A 35.0/35 | W 1.9444/2 | D 1.9444/2 | Dnet 1.9444/2 | R 1.9444/2
+  ranged:Heavy bolt pistol | A 10.0/10 | W 0.7407/1 | D 0.7407/1 | Dnet 0.7407/1 | R 0.7407/1
+  ranged:Plasma pistol – standard | A 10.0/10 | W 2.2222/2 | D 2.2222/2 | Dnet 2.2222/2 | R 2.2222/2
+  ranged:Plasma pistol – supercharge | A 10.0/10 | W 2.2222/2 | D 4.4444/4 | Dnet 4.4444/4 | S 3.3333 | R 3.5826/3
+  ranged:TOTAL | D 9.3519/9 | Dnet 9.3519/9 | S 3.3333/3 | R 8.4697/8 | K 2.4943/2 | wipe 0.0244 | warn=0
+  ranged:ORDER | Plasma pistol – supercharge > Hand flamer > Heavy bolt pistol > Plasma pistol – standard | gain 0.0 | spent 3.9975
   melee:Astartes chainsword | A 40.0/40 | W 3.4568/3 | D 3.4568/3 | Dnet 3.4568/3 | R 3.4568/3
   melee:TOTAL | D 3.4568/3 | Dnet 3.4568/3 | R 3.4568/3 | K 0.8172/1 | wipe 0.0 | warn=0
   melee:ORDER | Astartes chainsword | gain 0.0 | spent 1.0
@@ -57,7 +62,12 @@
   melee:TOTAL | D 0.8333/1 | Dnet 0.8333/1 | R 0.8333/1 | K 0.0386/0 | wipe 0.0 | warn=0
   melee:ORDER | Close combat weapon | gain 0.0 | spent 1.0
 ### Bladeguard Veteran Squad vs Intercessor Squad
-  ranged:TOTAL | D 0.0/0 | Dnet 0.0/0 | R 0.0/0 | K 0.0/0 | wipe 0.0 | warn=0
+  ranged:Heavy bolt pistol | A 6.0/6 | W 1.0/1 | D 1.0/1 | Dnet 1.0/1 | R 1.0/1
+  ranged:Neo-volkite pistol | A 6.0/6 | W 1.3333/1 | D 2.6667/2 | Dnet 2.6667/2 | R 2.6664/2
+  ranged:Plasma pistol – standard | A 6.0/6 | W 1.7778/2 | D 1.7778/2 | Dnet 1.7778/2 | R 1.7778/2
+  ranged:Plasma pistol – supercharge | A 6.0/6 | W 2.7778/3 | D 5.5556/6 | Dnet 5.5556/6 | S 2.0 | R 5.5359/6
+  ranged:TOTAL | D 11.0/11 | Dnet 11.0/11 | S 2.0/2 | R 9.0633/10 | K 4.4325/5 | wipe 0.6568 | warn=0
+  ranged:ORDER | Neo-volkite pistol > Plasma pistol – supercharge > Heavy bolt pistol > Plasma pistol – standard | gain 0.0684 | spent 3.1443
   melee:Master-crafted power weapon | A 24.0/24 | W 7.1111/7 | D 14.2222/14 | Dnet 14.2222/14 | R 9.6397/10
   melee:TOTAL | D 14.2222/14 | Dnet 14.2222/14 | R 9.6397/10 | K 4.8199/5 | wipe 0.8815 | warn=0
   melee:ORDER | Master-crafted power weapon | gain 0.0 | spent 1.0
@@ -216,31 +226,27 @@
   close_quarters | kept=1 skipped=1
   melee | kept=1 skipped=0
 ### TORRENT: Assault Intercessor Squad
-  ranged | SKIP Hand flamer | CLOSE-QUARTERS: fires only in close quarters
-  ranged | SKIP Heavy bolt pistol | CLOSE-QUARTERS: fires only in close quarters
-  ranged | SKIP Plasma pistol – standard | CLOSE-QUARTERS: fires only in close quarters
-  ranged | SKIP Plasma pistol – supercharge | CLOSE-QUARTERS: fires only in close quarters
-  ranged | kept=0 skipped=4
-  ranged+indirect | SKIP Hand flamer | CLOSE-QUARTERS: fires only in close quarters
-  ranged+indirect | SKIP Heavy bolt pistol | CLOSE-QUARTERS: fires only in close quarters
-  ranged+indirect | SKIP Plasma pistol – standard | CLOSE-QUARTERS: fires only in close quarters
-  ranged+indirect | SKIP Plasma pistol – supercharge | CLOSE-QUARTERS: fires only in close quarters
+  ranged | kept=4 skipped=0
+  ranged+indirect | SKIP Hand flamer | inapplicable due to indirect fire
+  ranged+indirect | SKIP Heavy bolt pistol | inapplicable due to indirect fire
+  ranged+indirect | SKIP Plasma pistol – standard | inapplicable due to indirect fire
+  ranged+indirect | SKIP Plasma pistol – supercharge | inapplicable due to indirect fire
   ranged+indirect | kept=0 skipped=4
   close_quarters | kept=4 skipped=0
   melee | kept=1 skipped=0
 ## attach
 ### leaders=21 supports=9 others=61
 ATTACH Canis Wolfborn -> Fenrisian Wolves | models=6 | pts=120
-  ranged vs Riptide Battlesuit | D 0.0 -> 0.0
+  ranged vs Riptide Battlesuit | D 0.0 -> 0.0093
   melee vs Riptide Battlesuit | D 0.4167 -> 0.7778
 ATTACH Captain -> Assault Intercessor Squad | models=6 | pts=155
-  ranged vs Riptide Battlesuit | D 0.0 -> 0.1852
+  ranged vs Riptide Battlesuit | D 4.6759 -> 4.8611
   melee vs Riptide Battlesuit | D 1.7284 -> 1.7284
 ATTACH Captain With Jump Pack -> Skyclaws | models=6 | pts=165
-  ranged vs Riptide Battlesuit | D 26.3194 -> 26.3194
+  ranged vs Riptide Battlesuit | D 26.3194 -> 26.8796
   melee vs Riptide Battlesuit | D 1.6667 -> 1.9907
 ATTACH Chaplain -> Assault Intercessor Squad | models=6 | pts=135
-  ranged vs Riptide Battlesuit | D 0.0 -> 0.0
+  ranged vs Riptide Battlesuit | D 4.6759 -> 4.8241
   melee vs Riptide Battlesuit | D 1.7284 -> 3.4568
 ATTACH Chaplain In Terminator Armour -> Relic Terminator Squad | models=6 | pts=275
   ranged vs Riptide Battlesuit | D 23.5185 -> 23.5556
@@ -287,22 +293,22 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Ancient On Bike | Unbreakable Duty | feelNoPain/grant | def close_quarters Probe Lance | flags=on | 3.3333 -> 1.6667
   Ancient On Bike | Unbreakable Duty | feelNoPain/grant | def ranged Probe Psyker | flags=on | 2.2222 -> 1.1111
   Ancient On Bike | Unbreakable Duty | feelNoPain/grant | def melee Probe Psyker | flags=on | 2.2222 -> 1.1111
-  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Infantry | flags=off | 29.1667 -> 30.9167
+  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Infantry | flags=off | 29.6111 -> 31.4167
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att melee Probe Infantry | flags=off | 2.4444 -> 3.0556
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Infantry | flags=off | 1.1111 -> 1.3333
-  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Elite | flags=off | 7.7778 -> 8.9444
+  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Elite | flags=off | 7.9259 -> 9.1296
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att melee Probe Elite | flags=off | 0.5432 -> 0.8148
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Elite | flags=off | 0.2963 -> 0.4074
-  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Vehicle | flags=off | 7.7778 -> 12.4444
+  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Vehicle | flags=off | 7.8519 -> 12.6111
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att melee Probe Vehicle | flags=off | 0.4074 -> 0.9167
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Vehicle | flags=off | 0.1852 -> 0.4167
-  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Monster | flags=off | 8.75 -> 11.375
+  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Monster | flags=off | 8.9722 -> 11.7083
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att melee Probe Monster | flags=off | 0.8148 -> 1.8333
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Monster | flags=off | 0.4444 -> 0.8333
-  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Colossus | flags=off | 7.7778 -> 12.4444
+  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Colossus | flags=off | 7.8519 -> 12.6111
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att melee Probe Colossus | flags=off | 0.4074 -> 0.9167
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Colossus | flags=off | 0.1852 -> 0.4167
-  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Flyer | flags=off | 11.6667 -> 15.1667
+  Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att ranged Probe Flyer | flags=off | 11.8889 -> 15.5
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att melee Probe Flyer | flags=off | 0.8148 -> 1.8333
   Apothecary Biologis +support on Eradicator Squad | Surgical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Flyer | flags=off | 0.4444 -> 0.8333
   Assault Intercessor Squad | Shock Assault | reRoll/woundRoll | att melee Probe Infantry | flags=off | 6.6667 -> 7.7778
@@ -635,22 +641,34 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def close_quarters Probe Lance | flags=off | 5.0 -> 3.3333
   Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def ranged Probe Psyker | flags=off | 3.4074 -> 2.2716
   Ethereal +leader on Breacher Team | Failure Is Not an Option [leader_effects] | feelNoPain/grant | def melee Probe Psyker | flags=off | 3.4074 -> 2.2716
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att ranged Probe Infantry | flags=on | 10.9583 -> 14.4722
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Infantry | flags=on | 10.9583 -> 14.4722
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att ranged Probe Elite | flags=on | 3.8025 -> 5.0494
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Elite | flags=on | 3.8025 -> 5.0494
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att ranged Probe Vehicle | flags=on | 3.2222 -> 4.3426
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Vehicle | flags=on | 3.2222 -> 4.3426
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att ranged Probe Monster | flags=on | 3.9306 -> 4.9167
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Monster | flags=on | 3.9306 -> 4.9167
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att ranged Probe Colossus | flags=on | 3.2222 -> 4.3426
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Colossus | flags=on | 3.2222 -> 4.3426
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att ranged Probe Flyer | flags=on | 4.4861 -> 5.75
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [BS/WS] [leader_effects] | ignoreMalus/Skill | att close_quarters Probe Flyer | flags=on | 4.4861 -> 5.75
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att ranged Probe Infantry | flags=on | 10.9583 -> 14.4722
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Infantry | flags=on | 5.0 -> 6.6667
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Infantry | flags=on | 10.9583 -> 14.4722
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att ranged Probe Elite | flags=on | 3.8025 -> 5.0494
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Elite | flags=on | 1.4815 -> 1.9753
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Elite | flags=on | 3.8025 -> 5.0494
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att ranged Probe Vehicle | flags=on | 3.2222 -> 4.3426
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Vehicle | flags=on | 1.1111 -> 1.4815
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Vehicle | flags=on | 3.2222 -> 4.3426
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att ranged Probe Monster | flags=on | 3.9306 -> 4.9167
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Monster | flags=on | 1.6667 -> 2.2222
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Monster | flags=on | 3.9306 -> 4.9167
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att ranged Probe Colossus | flags=on | 3.2222 -> 4.3426
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Colossus | flags=on | 1.1111 -> 1.4815
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Colossus | flags=on | 3.2222 -> 4.3426
+  Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att ranged Probe Flyer | flags=on | 4.4861 -> 5.75
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att melee Probe Flyer | flags=on | 1.6667 -> 2.2222
   Ferren Areios +leader on Assault Intercessor Squad | Unrelenting and Uncompromising [hit roll] [leader_effects] | ignoreMalus/Hit | att close_quarters Probe Flyer | flags=on | 4.4861 -> 5.75
   Fire Raptor Gunship | Strafing Run | modifyRelative/hitRoll | att ranged Probe Infantry | flags=off | 18.5262 -> 22.9356
@@ -752,28 +770,40 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Kratos | Line-breaker | disableMechanic/closeQuartersPenalty | att close_quarters Probe Monster | flags=off | 13.3588 -> 17.4969
   Kratos | Line-breaker | disableMechanic/closeQuartersPenalty | att close_quarters Probe Colossus | flags=off | 10.8519 -> 14.2994
   Kratos | Line-breaker | disableMechanic/closeQuartersPenalty | att close_quarters Probe Flyer | flags=off | 15.3889 -> 20.1821
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Infantry | flags=on | 13.4167 -> 20.1111
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Infantry | flags=on | 10.0 -> 13.3333
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att close_quarters Probe Infantry | flags=on | 13.4167 -> 20.1111
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Elite | flags=on | 4.7099 -> 7.0617
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Elite | flags=on | 2.963 -> 3.9506
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att close_quarters Probe Elite | flags=on | 4.7099 -> 7.0617
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Vehicle | flags=on | 4.2731 -> 6.4074
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Vehicle | flags=on | 2.2222 -> 2.963
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att close_quarters Probe Vehicle | flags=on | 4.2731 -> 6.4074
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Monster | flags=on | 3.7315 -> 5.5926
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Monster | flags=on | 3.3333 -> 4.4444
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att close_quarters Probe Monster | flags=on | 3.7315 -> 5.5926
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Colossus | flags=on | 4.2731 -> 6.4074
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Colossus | flags=on | 2.2222 -> 2.963
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att close_quarters Probe Colossus | flags=on | 4.2731 -> 6.4074
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att ranged Probe Flyer | flags=on | 4.8426 -> 7.2593
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att melee Probe Flyer | flags=on | 3.3333 -> 4.4444
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [hit] [leader_effects] | modifyRelative/hitRoll | att close_quarters Probe Flyer | flags=on | 4.8426 -> 7.2593
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Infantry | flags=on | 13.4167 -> 14.5556
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att melee Probe Infantry | flags=on | 10.0 -> 13.3333
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att close_quarters Probe Infantry | flags=on | 13.4167 -> 14.5556
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Elite | flags=on | 4.7099 -> 5.9537
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att melee Probe Elite | flags=on | 2.963 -> 4.4444
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att close_quarters Probe Elite | flags=on | 4.7099 -> 5.9537
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Vehicle | flags=on | 4.2731 -> 6.5093
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att melee Probe Vehicle | flags=on | 2.2222 -> 4.4444
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att close_quarters Probe Vehicle | flags=on | 4.2731 -> 6.5093
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Monster | flags=on | 3.7315 -> 5.7963
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att melee Probe Monster | flags=on | 3.3333 -> 6.6667
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att close_quarters Probe Monster | flags=on | 3.7315 -> 5.7963
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Colossus | flags=on | 4.2731 -> 6.5093
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att melee Probe Colossus | flags=on | 2.2222 -> 4.4444
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att close_quarters Probe Colossus | flags=on | 4.2731 -> 6.5093
+  Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att ranged Probe Flyer | flags=on | 4.8426 -> 7.463
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att melee Probe Flyer | flags=on | 3.3333 -> 6.6667
   Krom Dragongaze +leader on Blood Claws | Refuse to Accept Defeat [wound] [leader_effects] | modifyRelative/woundRoll | att close_quarters Probe Flyer | flags=on | 4.8426 -> 7.463
   Kroot Carnivores | Stealth [core_abilities] | special/benefitOfCover | def ranged Probe Shooter | flags=off | 13.3333 -> 10.0
@@ -855,49 +885,55 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Librarian With Jump Pack +leader on Skyclaws | Might of Heroes (Psychic) [leader_effects] | modifyRelative/ap | att melee Probe Vehicle | flags=off | 1.6667 -> 2.5
   Librarian With Jump Pack +leader on Skyclaws | Might of Heroes (Psychic) [leader_effects] | modifyRelative/ap | att melee Probe Colossus | flags=off | 1.6667 -> 2.5
   Librarian With Jump Pack +leader on Skyclaws | Might of Heroes (Psychic) [leader_effects] | modifyRelative/ap | att melee Probe Flyer | flags=off | 2.5 -> 3.3333
-  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Infantry | flags=off | 0.8333 -> 1.0
+  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Infantry | flags=off | 18.6111 -> 20.0278
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Infantry | flags=off | 6.6667 -> 8.3333
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Infantry | flags=off | 20.2083 -> 21.6111
-  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Elite | flags=off | 0.2469 -> 0.3457
+  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Elite | flags=off | 6.4815 -> 7.3827
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Elite | flags=off | 1.9753 -> 2.963
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Elite | flags=off | 7.1296 -> 8.0247
-  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Vehicle | flags=off | 0.1852 -> 0.3704
+  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Vehicle | flags=off | 5.6019 -> 8.287
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Vehicle | flags=off | 1.4815 -> 3.3333
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Vehicle | flags=off | 6.2731 -> 9.0463
-  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Monster | flags=off | 0.2778 -> 0.5556
+  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Monster | flags=off | 6.1111 -> 8.75
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Monster | flags=off | 2.2222 -> 5.0
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Monster | flags=off | 6.7361 -> 9.4167
-  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Colossus | flags=off | 0.1852 -> 0.3704
+  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Colossus | flags=off | 5.6019 -> 8.287
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Colossus | flags=off | 1.4815 -> 3.3333
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Colossus | flags=off | 6.2731 -> 9.0463
-  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Flyer | flags=off | 0.2778 -> 0.5556
+  Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Flyer | flags=off | 7.2222 -> 10.4167
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Flyer | flags=off | 2.2222 -> 5.0
   Lieutenant +support on Assault Intercessor Squad | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Flyer | flags=off | 7.9861 -> 11.2778
-  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Infantry | flags=off | 0.5556 -> 0.6667
+  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Infantry | flags=off | 2.7778 -> 3.1667
   Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Infantry | flags=off | 7.4074 -> 7.7778
   Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Infantry | flags=off | 2.3611 -> 2.6667
-  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Elite | flags=off | 0.1235 -> 0.1728
+  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Elite | flags=off | 1.1111 -> 1.284
   Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Elite | flags=off | 1.0185 -> 1.1543
-  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Vehicle | flags=off | 0.0926 -> 0.1852
+  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Vehicle | flags=off | 1.2037 -> 1.5741
   Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Vehicle | flags=off | 1.1343 -> 1.4352
-  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Monster | flags=off | 0.1852 -> 0.3704
+  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Monster | flags=off | 1.2963 -> 2.037
   Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Monster | flags=off | 4.4444 -> 5.5556
   Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Monster | flags=off | 1.1574 -> 1.7593
-  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Colossus | flags=off | 0.0926 -> 0.1852
+  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Colossus | flags=off | 1.2037 -> 1.5741
   Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Colossus | flags=off | 1.1343 -> 1.4352
-  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Flyer | flags=off | 0.1852 -> 0.3704
+  Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Flyer | flags=off | 1.2963 -> 2.037
   Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Flyer | flags=off | 4.4444 -> 5.5556
   Lieutenant In Phobos Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Flyer | flags=off | 1.1574 -> 1.7593
+  Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Infantry | flags=off | 2.6389 -> 3.0
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Infantry | flags=off | 1.25 -> 1.5
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Infantry | flags=off | 2.6389 -> 3.0
+  Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Elite | flags=off | 1.1111 -> 1.284
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Elite | flags=off | 0.3704 -> 0.5185
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Elite | flags=off | 1.1111 -> 1.284
+  Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Vehicle | flags=off | 1.2037 -> 1.5741
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Vehicle | flags=off | 0.2778 -> 0.5556
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Vehicle | flags=off | 1.2037 -> 1.5741
+  Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Monster | flags=off | 1.25 -> 1.9444
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Monster | flags=off | 0.4167 -> 0.8333
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Monster | flags=off | 1.25 -> 1.9444
+  Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Colossus | flags=off | 1.2037 -> 1.5741
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Colossus | flags=off | 0.2778 -> 0.5556
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Colossus | flags=off | 1.2037 -> 1.5741
+  Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Flyer | flags=off | 1.25 -> 1.9444
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att melee Probe Flyer | flags=off | 0.4167 -> 0.8333
   Lieutenant In Reiver Armour +support on Hounds Of Morkai | Tactical Precision [leader_effects] | special/lethalHits | att close_quarters Probe Flyer | flags=off | 1.25 -> 1.9444
   Lieutenant With Combi-weapon | Priority Objective Identified | reRoll/woundRoll | att ranged Probe Infantry | flags=on | 0.3333 -> 0.3889
@@ -1177,22 +1213,22 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att close_quarters Probe Colossus | flags=off | 5.1157 -> 6.1806
   Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att ranged Probe Flyer | flags=off | 2.5926 -> 3.2407
   Wolf Guard led by Captain | Chosen Companions | modifyRelative/hitRoll | att close_quarters Probe Flyer | flags=off | 5.8565 -> 7.0602
-  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Infantry | flags=off | 0.4444 -> 0.5556
+  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Infantry | flags=off | 27.1111 -> 33.8889
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att melee Probe Infantry | flags=off | 13.3333 -> 16.6667
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att close_quarters Probe Infantry | flags=off | 28.2222 -> 35.2778
-  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Elite | flags=off | 0.0988 -> 0.1235
+  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Elite | flags=off | 9.4815 -> 11.8519
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att melee Probe Elite | flags=off | 3.9506 -> 4.9383
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att close_quarters Probe Elite | flags=off | 9.9259 -> 12.4074
-  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Vehicle | flags=off | 0.0741 -> 0.0926
+  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Vehicle | flags=off | 8.5926 -> 10.7407
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att melee Probe Vehicle | flags=off | 2.963 -> 3.7037
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att close_quarters Probe Vehicle | flags=off | 9.0 -> 11.25
-  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Monster | flags=off | 0.1481 -> 0.1852
+  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Monster | flags=off | 7.5556 -> 9.4444
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att melee Probe Monster | flags=off | 4.4444 -> 5.5556
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att close_quarters Probe Monster | flags=off | 7.8519 -> 9.8148
-  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Colossus | flags=off | 0.0741 -> 0.0926
+  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Colossus | flags=off | 8.5926 -> 10.7407
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att melee Probe Colossus | flags=off | 2.963 -> 3.7037
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att close_quarters Probe Colossus | flags=off | 9.0 -> 11.25
-  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Flyer | flags=off | 0.1481 -> 0.1852
+  Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att ranged Probe Flyer | flags=off | 9.7778 -> 12.2222
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att melee Probe Flyer | flags=off | 4.4444 -> 5.5556
   Wolf Guard Battle Leader +leader on Blood Claws | Tempered Ferocity [SUSTAINED HITS 1] [leader_effects] | generateExtras/extraHits | att close_quarters Probe Flyer | flags=off | 10.1852 -> 12.7315
   Wolf Guard Battle Leader In Terminator Armour +leader on Relic Terminator Squad | Tactical Precision [leader_effects] | special/lethalHits | att ranged Probe Infantry | flags=off | 61.7222 -> 64.5556
@@ -1254,4 +1290,4 @@ SUPPORT Ancient On Bike -> Outrider Squad | models=4 | pts=160
   Commander in Coldstar Battlesuit +leader on Crisis Fireknife Battlesuits | Coldstar Commander [leader_effects] | modifyAbsolute/m
   Company Heroes | Astartes Banner | modifyRelative/oc
 
-DIGEST f6c60cd337391a16  (1255 lines)
+DIGEST a44eb8b6df1caa8f  (1291 lines)

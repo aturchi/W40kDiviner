@@ -160,7 +160,15 @@ assert app._is_masked("A", unit_row()), \
     "a unit with nothing standing must be masked"
 # And it really is out of the game, not just greyed.
 masked_copies, _mw, _wc = app._masks_for("A", 0)
-assert masked_copies == {0: 5}, masked_copies
+# Derived from the entry, never written down: a datasheet is free to
+# split its models across several groups - the real Intercessor Squad
+# keeps its Sergeant in one of its own - and a hardcoded {0: 5} was
+# simply the synthetic roster's shape, which made this line fail under
+# --real_data rather than test anything.
+every_copy = {mi: int(m["model_count"])
+              for mi, m in lc.entry_models(app.rosters["A"][0])}
+assert masked_copies == every_copy, (masked_copies, every_copy)
+assert sum(every_copy.values()) == len(cs), (every_copy, len(cs))
 assert app._build_unit("A", 0) is None, "a wiped unit still built"
 print("the unit row is masked once nothing of it is left standing")
 

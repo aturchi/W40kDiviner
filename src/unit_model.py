@@ -333,6 +333,37 @@ class Unit:
         unit's Toughness characteristic when a leader is attached."""
         return list(self._models)
 
+    def model_keywords(self) -> list:
+        """One effective keyword set per model of models(), in the same
+        order, each read against the unit that model CAME FROM rather
+        than against this (possibly merged) one.
+
+        A few rules quantify over MODELS and not over the unit - 11th
+        ed. 06.03 charges 3 mortal wounds per failed hazard roll only
+        "if each model in that unit is a MONSTER/VEHICLE model", and
+        10.06 keys the close-quarters penalty on "each time a
+        MONSTER/VEHICLE model in your unit makes an attack". Reading
+        self.keywords cannot answer either, because an attached unit
+        carries the UNION of its parts (_attach) and a Leader's
+        keywords therefore look as if every model had them.
+
+        Model.inherited_keywords is the model's original unit's list,
+        frozen when the roster was loaded, so it survives the merge.
+        What it does NOT see is a keyword added or removed on the unit
+        during combat: modifier_engine's setKeyword writes on the unit
+        view's own list. The difference between that list as it stands
+        now and the union of the models' original ones is exactly what
+        combat granted or revoked, and it applies to every model, so it
+        is folded back in here.
+        """
+        models = self.models()
+        inherited = [set(m.inherited_keywords) for m in models]
+        seen = set().union(*inherited) if inherited else set()
+        now = set(self.keywords)
+        granted, revoked = now - seen, seen - now
+        return [m.effective_keywords((base | granted) - revoked)
+                for m, base in zip(models, inherited)]
+
     def __iter__(self):
         return iter(self.models())
 

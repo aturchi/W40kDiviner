@@ -176,14 +176,51 @@ CQ_KEYWORDS = {"MONSTER", "VEHICLE"}
 CLOSE_QUARTERS_KW = {"CLOSE-QUARTERS", "CLOSE QUARTERS", "PISTOL"}
 
 
-def close_quarters_attacker(aview) -> bool:
-    """True when the attacking unit is a MONSTER or a VEHICLE, which is
-    what decides the close-quarters shooting rule: those models may fire
-    everything (at -1 to hit unless the weapon is CLOSE-QUARTERS, and
-    never with BLAST), everyone else may fire CLOSE-QUARTERS weapons
-    only."""
+def close_quarters_model(keywords) -> bool:
+    """True when ONE model, given its effective keyword set, is a
+    MONSTER or a VEHICLE.
+
+    10.06 is written per MODEL - "each time a MONSTER/VEHICLE model in
+    your unit makes an attack" - so which weapons a model may fire is
+    its own business and not the unit's. It matters for an attached
+    unit, which carries the union of its parts: a MONSTER Leader must
+    not license the INFANTRY troopers beside it to fire their
+    non-CLOSE-QUARTERS weapons at an engaged target.
+    """
     return bool({str(k).strip().upper()
-                 for k in (aview.keywords or ())} & CQ_KEYWORDS)
+                 for k in (keywords or ())} & CQ_KEYWORDS)
+
+
+def close_quarters_attacker(aview) -> bool:
+    """True when ANY model of the attacking unit is a MONSTER or a
+    VEHICLE.
+
+    This drives the ctx flag that puts -1 on the hit roll, where the
+    union is provably enough even for a mixed attached unit. The
+    penalty is gated on 'not mech.close_quarters', and
+    select_weapons_split now decides PER MODEL, so a weapon that is not
+    CLOSE-QUARTERS can only have survived the close-quarters selection
+    if its own model is a MONSTER/VEHICLE. A small model's surviving
+    weapons are all CLOSE-QUARTERS and exempt whatever this returns.
+    Which weapons may fire at all is the per-model question, and that
+    one goes through close_quarters_model().
+    """
+    return any(close_quarters_model(kws) for kws in aview.model_keywords())
+
+
+def hazardous_damage(aview) -> int:
+    """Mortal wounds one failed hazard roll costs the ATTACKING unit.
+
+    11th ed. 06.03 keys on EVERY model of the unit being a
+    MONSTER/VEHICLE model, so the question cannot be answered from
+    aview.keywords - an attached unit carries the union of its parts.
+    Unit.model_keywords() reads each model against the unit it came
+    from, which is what the rule asks for.
+
+    Both callers - the analyzer and the game assistant - go through
+    here so they cannot answer the same question two ways.
+    """
+    return am.hazardous_damage_per_fail(aview.model_keywords())
 
 
 def ability_selection(flags: dict) -> dict:
@@ -243,13 +280,28 @@ def select_weapons_split(aview, mode: str, melee_name: str = None,
     # not silently dropped - same treatment as indirect fire and close
     # quarters. Only the UNCONDITIONAL form counts: a roll-time
     # condition cannot decide whether a weapon is fired.
-    big = close_quarters_attacker(aview)
-    for model in aview.models():
+    # 10.06 is a per-MODEL rule, so 'big' is decided inside the loop
+    # against the model's OWN unit's keywords: a MONSTER Leader joined
+    # to an INFANTRY squad must not license the troopers to fire their
+    # non-CLOSE-QUARTERS weapons at the unit they are engaged with.
+    for model, kws in zip(aview.models(), aview.model_keywords()):
+        big = close_quarters_model(kws)
+        # The pistol rule is a CHOICE: a model fires either its
+        # CLOSE-QUARTERS weapons or all of its other ranged weapons. A
+        # model that HAS no other ranged weapon has no choice to make,
+        # so holding its CLOSE-QUARTERS weapons back in the plain ranged
+        # mode would silence it altogether. Melee weapons are not part
+        # of the choice and do not count as an alternative.
+        has_other_ranged = any(
+            w.type == "Ranged"
+            and not ({str(k).strip().upper() for k in w.keywords}
+                     & CLOSE_QUARTERS_KW)
+            for w in model.weapons)
         for w in model.weapons:
             kw = {str(k).strip().upper() for k in w.keywords}
             is_cq = bool(kw & CLOSE_QUARTERS_KW)
             if mode == "ranged" and w.type == "Ranged":
-                if is_cq and not big:
+                if is_cq and not big and has_other_ranged:
                     skipped.append((w, CQ_ONLY_SKIP))
                     continue
             elif cq and w.type == "Ranged":
@@ -605,7 +657,7 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
     False to skip that extra pass when only the damage is wanted."""
     manual = manual or {}
     attack_type = "Melee" if mode == "melee" else "Ranged"
-    haz_damage = am.hazardous_damage_per_fail(aview.keywords)
+    haz_damage = hazardous_damage(aview)
     # ctx keys are attacker-side by nature, so they carry no side
     # prefix; the FLAG behind this one does (attacker_stationary), to
     # pair with defender_stationary.

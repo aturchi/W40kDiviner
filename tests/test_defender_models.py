@@ -56,17 +56,37 @@ def views(entry, masked=None):
 ENTRY = entry_of("Assault Intercessor Squad", "Captain")
 _A, DVIEW = views(ENTRY)
 NATIVE = dict(lc.entry_models(ENTRY))
-assert lc.attached_model_indices(ENTRY) == {1}, "the Captain is attached"
+
+# The indices are DERIVED and never written down. A datasheet is free to
+# split its bodyguard across several model groups - the squad used here
+# has one group of Intercessors and a second holding the Sergeant - and
+# an earlier version of this file assumed a single group at index 0 with
+# the Leader at index 1. That holds for the synthetic roster and is
+# silently false for the real one, where the squad keeps its Sergeant in
+# a group of its own and the Leader lands at index 2 - so the whole file
+# failed at this line under --real_data instead of testing anything.
+# Derived, it runs on both, and the real source makes the case HARDER:
+# the correspondence then has three groups to get wrong, not two.
+_attached = sorted(lc.attached_model_indices(ENTRY))
+assert len(_attached) == 1, ("one attached Leader is the shape this file "
+                             "is written around", _attached)
+LEAD = _attached[0]                       # the Leader's model group
+BODY = [i for i in sorted(NATIVE) if i != LEAD]     # the bodyguard's
+assert BODY, ("the bodyguard must have at least one model group", BODY)
+BODY0 = BODY[0]
+BODY_COPIES = sum(NATIVE[i]["model_count"] for i in BODY)
+BODY_WOUNDS = sum(NATIVE[i]["model_count"] * NATIVE[i]["W"] for i in BODY)
+LEAD_KEY = f"m{LEAD}c0"
 
 
 # --- 1. the unit reference is what the UNIT fixes ---------------------
 
 ref = dm.unit_reference(DVIEW)
-bodyguard_t = NATIVE[0]["T"]
+bodyguard_t = max(NATIVE[i]["T"] for i in BODY)
 assert ref["T"] == bodyguard_t, (ref["T"], bodyguard_t)
 # ... and the Captain's own Toughness is ignored even when it differs.
 tough = {m["T"] for m in NATIVE.values()}
-assert ref["T"] == max(NATIVE[i]["T"] for i in (0,)), ref["T"]
+assert ref["T"] == max(NATIVE[i]["T"] for i in BODY), ref["T"]
 assert ref["models"] == sum(m["model_count"] for m in NATIVE.values())
 # Keywords are the UNION of the parts: the attached Captain's own
 # keyword is on the combined unit, which no bodyguard model brought.
@@ -144,15 +164,15 @@ assert len(recs) == sum(m["model_count"] for m in NATIVE.values())
 by_key = {r["key"]: r for r in recs}
 captain = [r for r in recs if r["character"]]
 bodies = [r for r in recs if not r["character"]]
-assert len(captain) == 1 and captain[0]["entry"] == 1
-assert len(bodies) == NATIVE[0]["model_count"]
-assert captain[0]["max"] == NATIVE[1]["W"], captain[0]
-assert bodies[0]["max"] == NATIVE[0]["W"], bodies[0]
-assert captain[0]["invuln"] == NATIVE[1]["invuln"]
-assert bodies[0]["invuln"] == NATIVE[0]["invuln"]
+assert len(captain) == 1 and captain[0]["entry"] == LEAD
+assert len(bodies) == BODY_COPIES
+assert captain[0]["max"] == NATIVE[LEAD]["W"], captain[0]
+assert bodies[0]["max"] == NATIVE[BODY0]["W"], bodies[0]
+assert captain[0]["invuln"] == NATIVE[LEAD]["invuln"]
+assert bodies[0]["invuln"] == NATIVE[BODY0]["invuln"]
 assert captain[0]["invuln"] != bodies[0]["invuln"], "the case is degenerate"
 # Scarcity is the count at FULL strength, not the copies still standing.
-assert bodies[0]["scarcity"] == NATIVE[0]["model_count"]
+assert bodies[0]["scarcity"] == NATIVE[BODY0]["model_count"]
 assert captain[0]["scarcity"] == 1
 # And it is the profile as MODIFIED, not as printed: a save modifier on
 # the defender has to reach the record, or the window would roll the
@@ -162,9 +182,9 @@ _a, dv_mod = ac.build_views(
     {"defender_model": {"Sv": -1}})
 recs_mod, problem = dm.records(rows_for(ENTRY), ENTRY, dv_mod)
 assert problem is None, problem
-assert recs_mod[0]["sv"] != NATIVE[0]["Sv"], (recs_mod[0]["sv"],
-                                              NATIVE[0]["Sv"])
-assert recs_mod[0]["sv"] == NATIVE[0]["Sv"] - 1
+assert recs_mod[0]["sv"] != NATIVE[BODY0]["Sv"], (recs_mod[0]["sv"],
+                                                  NATIVE[BODY0]["Sv"])
+assert recs_mod[0]["sv"] == NATIVE[BODY0]["Sv"] - 1
 print("each model carries the profile of its own group, not the unit's")
 
 
@@ -191,12 +211,12 @@ print("the attached models are found by structure, never by the keyword")
 # surviving index, and the bodyguard profile must not move onto it.
 # Masking every copy of the Captain's group is how the table says he is
 # gone: build_entry_unit then drops the group entirely.
-_a, dv_solo = views(ENTRY, masked={1: NATIVE[1]["model_count"]})
-rows = [r for r in rows_for(ENTRY) if r["mi"] == 0]
+_a, dv_solo = views(ENTRY, masked={LEAD: NATIVE[LEAD]["model_count"]})
+rows = [r for r in rows_for(ENTRY) if r["mi"] in BODY]
 recs2, problem = dm.records(rows, ENTRY, dv_solo)
 assert problem is None, problem
-assert all(r["entry"] == 0 for r in recs2)
-assert recs2[0]["max"] == NATIVE[0]["W"]
+assert all(r["entry"] in BODY for r in recs2)
+assert recs2[0]["max"] == NATIVE[BODY0]["W"]
 assert not any(r["character"] for r in recs2)
 print("masking a group shifts the correspondence, and it follows")
 
@@ -209,14 +229,23 @@ print("masking a group shifts the correspondence, and it follows")
 recs3, problem = dm.records(rows_for(ENTRY), ENTRY, dv_solo)
 assert problem and "model groups" in problem, problem
 assert len(recs3) == len(rows_for(ENTRY))
-assert recs3[-1]["max"] == NATIVE[1]["W"], "fallen back to the datasheet"
+assert recs3[-1]["max"] == NATIVE[LEAD]["W"], "fallen back to the datasheet"
 assert recs3[-1]["character"] is True, "the structure still holds"
 
-# A view of the right LENGTH but the wrong models is caught by name.
 # A view of the right LENGTH but the wrong models is caught by name:
-# claim the surviving groups are (1, 0) instead of (0, 1) and the join
+# claim the surviving groups arrive in a different order and the join
 # must refuse rather than swap the two profiles over.
-mapping, why = dm.view_by_model_index([1, 0], ENTRY, DVIEW)
+#
+# The list HAS to be the right length here, or the length check fires
+# first and this proves nothing about names. That is what a hardcoded
+# two-element list did once the squad turned out to have three model
+# groups: the assertion still passed, on the wrong reason.
+true_order = sorted(NATIVE)
+mapping, why = dm.view_by_model_index(true_order, ENTRY, DVIEW)
+assert mapping and why is None, ("the true order must join cleanly",
+                                 mapping, why)
+swapped = [true_order[1], true_order[0]] + true_order[2:]
+mapping, why = dm.view_by_model_index(swapped, ENTRY, DVIEW)
 assert mapping == {} and why and "on the table" in why, (mapping, why)
 print("a join that cannot be trusted is reported, not patched over")
 
@@ -232,10 +261,10 @@ assert groups[order[0]]["character"] is False, "the CHARACTER is not first"
 alloc = ag.Allocation(recs)
 # The Captain is unreachable while a single bodyguard model stands.
 seen = set()
-for _ in range(NATIVE[0]["model_count"] * NATIVE[0]["W"]):
+for _ in range(BODY_WOUNDS):
     seen.add(alloc.models[alloc.current_model()]["key"])
     alloc.allocate(1)
-assert not any(k.startswith("m1") for k in seen), seen
+assert not any(k.startswith(f"m{LEAD}") for k in seen), seen
 assert alloc.current_model() is not None
 assert alloc.models[alloc.current_model()]["character"] is True
 print("the records feed the allocation groups and the rules hold")
@@ -243,12 +272,12 @@ print("the records feed the allocation groups and the rules hold")
 
 # --- 7. wounds already lost come from the table, not the profile ------
 
-hurt = rows_for(ENTRY, wounds={"m0c0": 1, "m1c0": 2})
+hurt = rows_for(ENTRY, wounds={f"m{BODY0}c0": 1, LEAD_KEY: 2})
 recs4, problem = dm.records(hurt, ENTRY, DVIEW)
 assert problem is None
 got = {r["key"]: r["wounds"] for r in recs4}
-assert got["m0c0"] == 1 and got["m1c0"] == 2, got
-assert got["m0c1"] == NATIVE[0]["W"]
+assert got[f"m{BODY0}c0"] == 1 and got[LEAD_KEY] == 2, got
+assert got[f"m{BODY0}c1"] == NATIVE[BODY0]["W"]
 # A cell holding something that is not a number is read as no wounds
 # left rather than as a full model: a model at zero is simply not
 # grouped, which is the safe way to be wrong here.
@@ -256,8 +285,7 @@ odd = rows_for(ENTRY)
 odd[0]["wounds"] = "dead?"
 recs5, _p = dm.records(odd, ENTRY, DVIEW)
 assert recs5[0]["wounds"] == 0
-assert len(ag.build_groups(recs5)[0]["members"]) \
-    == NATIVE[0]["model_count"] - 1
+assert len(ag.build_groups(recs5)[0]["members"]) == BODY_COPIES - 1
 print("wounds come from the table, and unreadable ones do not inflate it")
 
 print("defender_models: all checks passed")

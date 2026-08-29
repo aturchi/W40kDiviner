@@ -881,7 +881,7 @@ class GameAssistantApp(tk.Tk):
             mode == "close_quarters"
             and analyzer_core.close_quarters_attacker(aview))
         attack_type = "Melee" if mode == "melee" else "Ranged"
-        haz_damage = attack_math.hazardous_damage_per_fail(attacker.keywords)
+        haz_damage = analyzer_core.hazardous_damage(aview)
         pairs, skipped = [], list(skipped)
         for w in weapons:
             mech = analyzer_core.mechanics_for_attack(w, dview, attack_type,

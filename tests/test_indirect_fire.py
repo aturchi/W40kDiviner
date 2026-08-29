@@ -14,6 +14,7 @@ Also checks that the dice resolver reproduces the exact figures.
 No tkinter needed.
 """
 import testpaths                      # sets up sys.path to the engine src/
+from viewstub import View as _View     # the shared attacker-view stub
 import analyzer_core as ac
 import attack_math as am
 import mc_support as mcs
@@ -88,22 +89,6 @@ close(dmg(bolter, {"indirect": True}), dmg(bolter, {}), "keyword-gated")
 print("cover, re-roll ban and the unmodified floor all apply")
 
 # --- weapon selection: kept vs skipped --------------------------------
-class _Model:
-    def __init__(self, weapons):
-        self.weapons = weapons
-
-
-class _View:
-    """Minimal stand-in for a unit view: keywords plus models()."""
-
-    def __init__(self, weapons, keywords=()):
-        self._m = [_Model(weapons)]
-        self.keywords = list(keywords)
-
-    def models(self):
-        return self._m
-
-
 view = _View([mortar, bolter])
 kept, skipped = ac.select_weapons_split(view, "ranged", None, indirect=True)
 assert [w.name for w in kept] == ["mortar"], kept
