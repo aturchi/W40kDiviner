@@ -110,6 +110,9 @@ class AttackSessionWindow(tk.Toplevel):
                           "the model inside its group")
         self.buttons["precision"] = ttk.Button(
             bar, text="Aim at character", command=self._toggle_precision)
+        ui.tip(self.buttons["precision"],
+               "PRECISION: send this weapon's wounds at the attached "
+               "character instead of the bodyguard")
         self.buttons["precision"].pack(side=tk.LEFT, padx=(8, 0))
         panes.add(right, weight=1)
 
@@ -143,9 +146,11 @@ class AttackSessionWindow(tk.Toplevel):
         bar = ttk.Frame(parent)
         bar.pack(fill=tk.X, pady=(4, 0))
         up = ttk.Button(bar, text="Move up", command=lambda: command(-1))
+        ui.tip(up, tip)
         up.pack(side=tk.LEFT)
         down = ttk.Button(bar, text="Move down",
                           command=lambda: command(1))
+        ui.tip(down, tip)
         down.pack(side=tk.LEFT, padx=3)
         key = "move_weapon" if command == self._move_weapon else "move"
         # The caption is kept, not thrown away: a greyed-out pair of
@@ -168,13 +173,21 @@ class AttackSessionWindow(tk.Toplevel):
                            pady=(0, 6))
         bar = ttk.Frame(self)
         bar.pack(side=tk.BOTTOM, fill=tk.X, padx=8, pady=6)
-        for key, text, command in (
-                ("fire", "Fire", self._fire),
-                ("apply", "Roll saves", self._roll_saves),
-                ("discard", "Re-roll", self._discard),
-                ("fire_all", "Fire all", self._fire_all),
-                ("undo", "Undo weapon", self._undo)):
+        for key, text, command, help_text in (
+                ("fire", "Fire", self._fire,
+                 "Roll hits and wounds for the current weapon"),
+                ("apply", "Roll saves", self._roll_saves,
+                 "Roll the defender's saves for the wounds just scored "
+                 "and work out the damage"),
+                ("discard", "Re-roll", self._discard,
+                 "Throw away this weapon's rolls and fire it again"),
+                ("fire_all", "Fire all", self._fire_all,
+                 "Resolve every remaining weapon in one go, in the order "
+                 "shown on the left"),
+                ("undo", "Undo weapon", self._undo,
+                 "Take back the last weapon resolved, damage included")):
             btn = ttk.Button(bar, text=text, command=command)
+            ui.tip(btn, help_text)
             btn.pack(side=tk.LEFT, padx=(0, 3))
             self.buttons[key] = btn
         self.buttons["cancel"] = ttk.Button(bar, text="Cancel",
@@ -182,6 +195,9 @@ class AttackSessionWindow(tk.Toplevel):
         self.buttons["cancel"].pack(side=tk.RIGHT)
         self.buttons["write"] = ttk.Button(bar, text="End sequence",
                                            command=self._write)
+        ui.tip(self.buttons["write"],
+               "Close the attack and write its result onto the roster and "
+               "into the attack log")
         self.buttons["write"].pack(side=tk.RIGHT, padx=3)
 
     # ---------- drawing ----------

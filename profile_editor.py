@@ -28,6 +28,9 @@ from editor_widgets import PickerDialog  # noqa: E402
 from ability_editor import AbilityEditor  # noqa: E402
 from setup_panel import show_options_dialog  # noqa: E402
 from merge_dialog import MergeDialog  # noqa: E402
+from roster_picker import ask_roster_files  # noqa: E402
+import ui_utils as ui                       # noqa: E402
+from army_load_dialog import ArmyLoadDialog  # noqa: E402
 
 SCALARS = (str, int, float, bool, type(None))
 
@@ -76,18 +79,38 @@ class EditorApp(tk.Tk):
         bar = ttk.Frame(self)
         bar.pack(side=tk.TOP, fill=tk.X)
         self.buttons = {}
-        for text, cmd in [("Import JSON", self.cmd_import),
-                          ("Save JSON", self.cmd_save),
-                          ("Select army", self.cmd_select_army),
-                          ("Add unit", self.cmd_add_unit),
-                          ("Add model", self.cmd_add_model),
-                          ("Add weapon", self.cmd_add_weapon),
-                          ("Duplicate", self.cmd_duplicate),
-                          ("Remove", self.cmd_remove),
-                          ("Apply form", self.cmd_apply_form),
-                          ("Apply JSON", self.cmd_apply_json),
-                          ("Revert changes", self.cmd_revert)]:
+        for text, cmd, help_text in [
+                ("Import JSON", self.cmd_import,
+                 "Pick one or more roster files; with several armies you "
+                 "can then join, rename and save them before editing"),
+                ("Save JSON", self.cmd_save,
+                 "Write the document to disk (asks for a path unless it "
+                 "still is exactly the file it came from)"),
+                ("Select army", self.cmd_select_army,
+                 "Choose which army of a multi-army document the tree "
+                 "shows"),
+                ("Add unit", self.cmd_add_unit,
+                 "Add an empty unit, or a copy of one from any loaded "
+                 "army"),
+                ("Add model", self.cmd_add_model,
+                 "Add a model group to the selected unit"),
+                ("Add weapon", self.cmd_add_weapon,
+                 "Add a weapon to the selected model"),
+                ("Duplicate", self.cmd_duplicate,
+                 "Copy the selected node next to the original; units, "
+                 "models and weapons get a non-ambiguous name"),
+                ("Remove", self.cmd_remove,
+                 "Delete the selected node and everything under it"),
+                ("Apply form", self.cmd_apply_form,
+                 "Write the Quick edit fields back into the node"),
+                ("Apply JSON", self.cmd_apply_json,
+                 "Replace the node with the JSON shown, after checking "
+                 "that it parses"),
+                ("Revert changes", self.cmd_revert,
+                 "Re-read the source file, discarding every unsaved "
+                 "edit")]:
             btn = ttk.Button(bar, text=text, command=cmd)
+            ui.tip(btn, help_text)
             btn.pack(side=tk.LEFT, padx=3, pady=3)
             self.buttons[text] = btn
         self._update_buttons(None)
@@ -97,13 +120,27 @@ class EditorApp(tk.Tk):
         self._merge_btn = ttk.Button(bar, text="Merge JSON",
                                      command=self.cmd_merge_json,
                                      state=tk.DISABLED)
+        ui.tip(self._merge_btn,
+               "Compare the displayed army against a newer file and pull "
+               "in the changes you pick, unit by unit")
         self._merge_btn.pack(side=tk.LEFT, padx=3, pady=3)
+        # Join / save: same gating as Merge JSON, and the same reason -
+        # there is nothing to join until a document is loaded.
+        self._join_btn = ttk.Button(bar, text="Join / save",
+                                    command=self.cmd_join_armies,
+                                    state=tk.DISABLED)
+        ui.tip(self._join_btn,
+               "Join, rename or write out the armies currently loaded, "
+               "without going back through Import")
+        self._join_btn.pack(side=tk.LEFT, padx=3, pady=3)
         # Always-enabled settings button (not part of the selection-managed
         # button set above). caps=False: the modifier caps belong to the
         # attack maths, which this program never runs.
-        ttk.Button(bar, text="Options",
-                   command=lambda: show_options_dialog(self, caps=False)).pack(
-            side=tk.LEFT, padx=3, pady=3)
+        ui.tip(ttk.Button(bar, text="Options",
+                          command=lambda: show_options_dialog(
+                              self, caps=False)),
+               "Font scale for this session").pack(side=tk.LEFT, padx=3,
+                                                   pady=3)
         self.status = ttk.Label(bar, text="No file loaded")
         self.status.pack(side=tk.LEFT, padx=10)
 
@@ -303,10 +340,13 @@ class EditorApp(tk.Tk):
                                     text=", ".join(val) or "(empty)",
                                     width=32)
                     lbl.grid(row=row, column=1, sticky=tk.W, padx=4)
-                    ttk.Button(self.form_frame, text="Edit...",
-                               command=lambda k=key, n=node,
-                               nk=node_kind: self._edit_list(n, k, nk)
-                               ).grid(row=row, column=2, padx=2)
+                    ui.tip(ttk.Button(self.form_frame, text="Edit...",
+                                      command=lambda k=key, n=node,
+                                      nk=node_kind: self._edit_list(
+                                          n, k, nk)),
+                           "Edit this list: pick from the configured "
+                           "vocabulary or type a value of your own"
+                           ).grid(row=row, column=2, padx=2)
                     row += 1
             # ---- copy/paste of whole models / weapons ----
             cp = ttk.Frame(self.form_frame)
@@ -314,18 +354,22 @@ class EditorApp(tk.Tk):
                     padx=4, pady=12)
             if node_kind in ("models", "weapons"):
                 kind = "model" if node_kind == "models" else "weapon"
-                ttk.Button(cp, text=f"Copy {kind}",
-                           command=lambda k=kind, n=node:
-                           self._clip_set((k, n))).pack(side=tk.LEFT)
+                ui.tip(ttk.Button(cp, text=f"Copy {kind}",
+                                  command=lambda k=kind, n=node:
+                                  self._clip_set((k, n))),
+                       f"Hold this {kind} so it can be pasted into "
+                       "another node").pack(side=tk.LEFT)
             paste_kind = (
                 "model" if node_kind == "units" and self.clip
                 and self.clip[0] == "model"
                 else "weapon" if node_kind == "models" and self.clip
                 and self.clip[0] == "weapon" else None)
             if paste_kind is not None:
-                ttk.Button(cp, text=f"Paste {paste_kind}",
-                           command=lambda n=node:
-                           self._paste_into(n)).pack(side=tk.LEFT, padx=6)
+                ui.tip(ttk.Button(cp, text=f"Paste {paste_kind}",
+                                  command=lambda n=node:
+                                  self._paste_into(n)),
+                       f"Add a copy of the held {paste_kind} to this node"
+                       ).pack(side=tk.LEFT, padx=6)
         # JSON pane: the full node
         self.json_text.delete("1.0", tk.END)
         self.json_text.insert("1.0", json.dumps(node, indent=1,
@@ -423,22 +467,47 @@ class EditorApp(tk.Tk):
     # ---------- commands ----------
 
     def cmd_import(self):
-        """Import a native army file into the editor tree for editing."""
-        paths = filedialog.askopenfilenames(
-            title="Import native JSON (one or more)",
-            filetypes=[("JSON", "*.json"), ("All files", "*.*")])
+        """Import native army files into the editor tree for editing.
+
+        The armies are listed as they are on disk (split_armies), not
+        silently merged by name as load_many did: two files that both
+        carry "Space Marines" are two armies, and what to do about it -
+        join them, rename one, drop one - is now the user's call in the
+        load dialog rather than a decision taken behind their back.
+        """
+        paths = ask_roster_files(
+            self, title="Import native JSON (one or more)")
         if not paths:
             return
         try:
-            self.data = native_format.load_many(paths)
-            ability_ids.normalize(self.data)
+            singles = native_format.split_armies(paths)
         except Exception as exc:
             messagebox.showerror("Import failed", str(exc))
             return
-        # A union of several files has no single source path: disable revert
-        # and make the next Save prompt for a combined-file path. A single
-        # file keeps its path so revert/save target it as before.
-        self.current_path = paths[0] if len(paths) == 1 else None
+        if not singles:
+            messagebox.showinfo("Import", "No armies found in the selection.")
+            return
+        whole_file = True
+        if len(singles) > 1:
+            dlg = ArmyLoadDialog(self, singles, allow_save=True,
+                                 title="Select, join and save armies",
+                                 open_label="Import")
+            self.wait_window(dlg)
+            if dlg.result is None:
+                return                       # cancelled
+            data = dlg.result
+            whole_file = (not dlg.state.modified
+                          and len(data["armies"]) == len(singles))
+        else:
+            data = singles[0]
+        self.data = data
+        ability_ids.normalize(self.data)
+        # Revert and Save target the source file only when what is in
+        # memory IS that file: one path, nothing joined or renamed, every
+        # army kept. Anything else has no single file to go back to, so
+        # revert is disabled and the next Save asks where to write.
+        self.current_path = (paths[0] if len(paths) == 1 and whole_file
+                             else None)
         self._sel_path = None        # old selection paths are now invalid
         armies = self.data["armies"]
         self.army_idx = 0 if len(armies) == 1 else None
@@ -449,6 +518,37 @@ class EditorApp(tk.Tk):
         self.rebuild_tree()
         self._update_buttons(None)
         self._update_status("Loaded")
+
+    def cmd_join_armies(self):
+        """Reopen the join/save dialog on the armies currently in memory,
+        so a roster can be joined or written out after it has been edited.
+
+        The dialog is handed SHALLOW copies of the army dicts: a rename
+        inside it must not reach the loaded document unless the dialog is
+        confirmed, and copying the units list too would mean duplicating
+        a five-megabyte roster to change a string.
+        """
+        if self.data is None or not self.data.get("armies"):
+            messagebox.showinfo("Join / save", "Load a file first.")
+            return
+        singles = [{"format": native_format.FORMAT_TAG, "armies": [dict(a)]}
+                   for a in self.data["armies"]]
+        dlg = ArmyLoadDialog(self, singles, allow_save=True,
+                             title="Join / save armies", open_label="Apply")
+        self.wait_window(dlg)
+        if dlg.result is None:
+            self._update_status("Join cancelled")
+            return
+        self.data = dlg.result
+        ability_ids.normalize(self.data)
+        if dlg.state.modified or len(self.data["armies"]) != len(singles):
+            self.current_path = None
+        self._sel_path = None
+        armies = self.data["armies"]
+        self.army_idx = 0 if armies else None
+        self.rebuild_tree()
+        self._update_buttons(None)
+        self._update_status("Armies applied")
 
     def cmd_merge_json(self):
         """Load a second (new-version) native file and open the selective
@@ -505,10 +605,11 @@ class EditorApp(tk.Tk):
         self._update_status("Merge applied (in memory)")
 
     def _update_status(self, prefix):
-        # Merge is available as soon as any army file is loaded.
-        if hasattr(self, "_merge_btn"):
-            self._merge_btn.config(
-                state=tk.NORMAL if self.data is not None else tk.DISABLED)
+        # Merge and Join/save are available as soon as a file is loaded.
+        live = tk.NORMAL if self.data is not None else tk.DISABLED
+        for attr in ("_merge_btn", "_join_btn"):
+            if hasattr(self, attr):
+                getattr(self, attr).config(state=live)
         army = self._army()
         if army is None:
             self.status.config(text=f"{prefix}: no army selected")

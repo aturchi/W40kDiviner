@@ -17,6 +17,7 @@ keep their data untouched (the JSON tab remains the catch-all).
 
 import tkinter as tk
 from tkinter import ttk, messagebox
+import ui_utils as ui
 from ui_utils import scrollable_listbox
 
 import condition_specs as cs
@@ -56,13 +57,16 @@ class AbilityEditor(ttk.Frame):
         self.ab_list.bind("<<ListboxSelect>>", lambda e: self.show_ability())
         row = ttk.Frame(left)
         row.pack(fill=tk.X, pady=3)
-        ttk.Button(row, text="Add", command=self.cmd_add).pack(side=tk.LEFT)
-        ttk.Button(row, text="Remove",
-                   command=self.cmd_remove).pack(side=tk.LEFT, padx=4)
-        ttk.Button(row, text="Copy",
-                   command=self.cmd_copy).pack(side=tk.LEFT, padx=4)
+        ui.tip(ttk.Button(row, text="Add", command=self.cmd_add),
+               "Add an empty ability to this node").pack(side=tk.LEFT)
+        ui.tip(ttk.Button(row, text="Remove", command=self.cmd_remove),
+               "Delete the selected ability").pack(side=tk.LEFT, padx=4)
+        ui.tip(ttk.Button(row, text="Copy", command=self.cmd_copy),
+               "Hold the selected ability so it can be pasted onto "
+               "another node").pack(side=tk.LEFT, padx=4)
         self.paste_btn = ttk.Button(row, text="Paste",
                                     command=self.cmd_paste)
+        ui.tip(self.paste_btn, "Add a copy of the held ability here")
         # packed only while the shared clipboard holds an ability
         self.clip_get = lambda: None     # injected by the host editor
         self.clip_set = lambda item: None
@@ -128,16 +132,22 @@ class AbilityEditor(ttk.Frame):
                                       state="readonly", width=18)
         self.cond_type.set(cs.list_types()[0])
         self.cond_type.pack(side=tk.LEFT)
-        ttk.Button(crow, text="Add", width=4,
-                   command=self.cmd_add_cond).pack(side=tk.LEFT, padx=2)
-        ttk.Button(crow, text="Del", width=4,
-                   command=self.cmd_del_cond).pack(side=tk.LEFT)
+        ui.tip(ttk.Button(crow, text="Add", width=4,
+                          command=self.cmd_add_cond),
+               "Add the condition chosen on the left; an ability applies "
+               "only when ALL of its conditions hold"
+               ).pack(side=tk.LEFT, padx=2)
+        ui.tip(ttk.Button(crow, text="Del", width=4,
+                          command=self.cmd_del_cond),
+               "Delete the selected condition").pack(side=tk.LEFT)
         self.cond_form = ttk.Frame(cond_outer)
         self.cond_form.pack(side=tk.LEFT, fill=tk.BOTH, expand=True,
                             padx=4, pady=4)
 
-        ttk.Button(right, text="Apply changes",
-                   command=self.cmd_apply).pack(anchor=tk.W, pady=4)
+        ui.tip(ttk.Button(right, text="Apply changes",
+                          command=self.cmd_apply),
+               "Write the form back into the ability; until then the edits "
+               "are only on screen").pack(anchor=tk.W, pady=4)
 
     # ---------- public API ----------
 

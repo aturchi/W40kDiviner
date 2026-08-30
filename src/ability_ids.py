@@ -1,10 +1,11 @@
-"""Ability id helpers (shared by the profile editor and join_armies).
+"""Ability id helpers (shared by the profile editor and the load dialog).
 
 Every ability-like dict (unit/model/weapon abilities and unit
 leader_effects) carries a unique 'id' so a persistent per-profile
 enable/disable toggle can reference it. Ids are assigned lazily: the
-editor stamps missing ones before saving, and join_armies guarantees
-global uniqueness when merging files (re-stamping on collision)."""
+editor stamps missing ones before saving, and the load dialog
+guarantees global uniqueness when writing merged files (re-stamping on
+collision): ids are only unique per SOURCE file."""
 
 import uuid
 

@@ -164,6 +164,12 @@ class Misc:
     def winfo_exists(self):
         return True
 
+    def winfo_ismapped(self):
+        """Whether a geometry manager is holding this widget. Tk answers
+        it for real, and code that hides and re-shows a widget (the
+        editor's selection-driven buttons) asks before acting."""
+        return self._packed
+
     def winfo_width(self):
         return 400
 
@@ -323,21 +329,30 @@ class Label(Widget):
     pass
 
 
-class Button(Widget):
+class _Invokable(Widget):
+    """The widgets that carry a 'command'. They are SIBLINGS here, as in
+    real tkinter: ttk.Checkbutton does not derive from ttk.Button, so a
+    test asking "is this a Button" must get the same answer on either
+    toolkit. It used to get 'yes' for every checkbutton in the window."""
+
     def invoke(self):
         cmd = self._opts.get("command")
         return cmd() if cmd else None
 
 
-class Checkbutton(Button):
+class Button(_Invokable):
     pass
 
 
-class Radiobutton(Button):
+class Checkbutton(_Invokable):
     pass
 
 
-class Menubutton(Button):
+class Radiobutton(_Invokable):
+    pass
+
+
+class Menubutton(_Invokable):
     pass
 
 
@@ -581,7 +596,11 @@ class Listbox(Widget):
         self._items.extend(items)
 
     def delete(self, a, b=None):
+        # Tk drops deleted rows from the selection too; a stub that kept
+        # it would leave a rebuilt list ticked on rows that no longer
+        # exist, which is the one state a refresh must never produce.
         self._items = []
+        self._sel = ()
 
     def get(self, a, b=None):
         return self._items[a] if b is None else self._items[a:]
@@ -590,16 +609,41 @@ class Listbox(Widget):
         return len(self._items)
 
     def curselection(self):
-        return self._sel
+        return tuple(sorted(self._sel))
 
-    def selection_set(self, a, b=None):
-        self._sel = (a,)
+    def _range(self, first, last):
+        """Tk's (first, last) index pair as a set of integers. 'end' and
+        None both mean the last row; last=None means 'just first'."""
+        if first in (None, END, "end"):
+            first = self.size() - 1
+        first = max(0, int(first))
+        if last is None:
+            last = first
+        elif last in (END, "end"):
+            last = self.size() - 1
+        return set(range(first, min(int(last), self.size() - 1) + 1))
+
+    def selection_set(self, first, last=None):
+        """ADDS to the selection, as Tk does - it does not replace it.
+        The stub used to assign, which made every multi-selection list
+        look single-selection and let a test that never selected two
+        rows pass for the wrong reason."""
+        self._sel = tuple(sorted(set(self._sel) | self._range(first, last)))
+
+    def selection_clear(self, first=None, last=None):
+        """Clears the given range; bare, it clears everything (which is
+        what selection_clear(0, END) does anyway)."""
+        if first is None:
+            self._sel = ()
+        else:
+            self._sel = tuple(sorted(set(self._sel)
+                                     - self._range(first, last)))
+
+    def selection_includes(self, i):
+        return int(i) in set(self._sel)
 
     def see(self, i):
         pass
-
-    def selection_clear(self, *a, **k):
-        self._sel = ()
 
     def yview(self, *a):
         pass
@@ -612,6 +656,8 @@ class Listbox(Widget):
     def itemconfigure(self, *a, **k):
         pass
 
+    itemconfig = itemconfigure
+
     def index(self, i):
         return 0
 
@@ -622,6 +668,33 @@ class Listbox(Widget):
 class PanedWindow(Widget):
     def add(self, child, **kw):
         pass
+
+
+class Notebook(Widget):
+    """ttk.Notebook. Keeps the pages it was given so a test can ask which
+    tabs a window offers; ttk.Notebook was mapped onto Frame here until a
+    window that actually adds tabs had to be built headlessly."""
+
+    def __init__(self, master=None, **kw):
+        Widget.__init__(self, master, **kw)
+        self._tabs = []                 # [(child, text)]
+
+    def add(self, child, **kw):
+        self._tabs.append((child, kw.get("text", "")))
+
+    def tabs(self):
+        return tuple(str(id(c)) for c, _t in self._tabs)
+
+    def select(self, tab=None):
+        return self.tabs()[0] if tab is None and self._tabs else None
+
+    def tab(self, which, option=None, **kw):
+        i = which if isinstance(which, int) else 0
+        text = self._tabs[i][1] if i < len(self._tabs) else ""
+        return text if option in ("text", "-text") else {"text": text}
+
+    def index(self, which):
+        return 0
 
 
 class Menu(Widget):
@@ -888,7 +961,7 @@ def install():
                  "Combobox"):
         setattr(ttk, name, g[name])
     ttk.Combobox = Combobox
-    ttk.Notebook = Frame
+    ttk.Notebook = Notebook
     ttk.Separator = Frame
     ttk.Progressbar = Frame
     ttk.Style = _Style

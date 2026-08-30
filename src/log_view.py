@@ -46,22 +46,31 @@ class AttackLogWindow(tk.Toplevel):
 
         bar = ttk.Frame(self)
         bar.pack(fill=tk.X, padx=6, pady=6)
-        ttk.Button(bar, text="New turn",
-                   command=self.cmd_new_turn).pack(side=tk.LEFT)
+        ui.tip(ttk.Button(bar, text="New turn", command=self.cmd_new_turn),
+               "Start a new game turn: the attacks that follow are "
+               "recorded under it").pack(side=tk.LEFT)
         self.turn_lbl = ttk.Label(bar, font=ui.bold_font())
         self.turn_lbl.pack(side=tk.LEFT, padx=8)
-        ttk.Button(bar, text="Delete selected",
-                   command=self.cmd_delete).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Clear log",
-                   command=self.cmd_clear).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Delete selected",
+                          command=self.cmd_delete),
+               "Remove the selected attacks from the log"
+               ).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Clear log", command=self.cmd_clear),
+               "Empty the whole log and start again from turn 1"
+               ).pack(side=tk.LEFT, padx=3)
         ttk.Button(bar, text="Close",
                    command=self.destroy).pack(side=tk.RIGHT)
-        ttk.Button(bar, text="Save CSV...",
-                   command=self.cmd_save_csv).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(bar, text="Save text...",
-                   command=self.cmd_save_text).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(bar, text="Copy all",
-                   command=self.cmd_copy).pack(side=tk.RIGHT, padx=3)
+        ui.tip(ttk.Button(bar, text="Save CSV...",
+                          command=self.cmd_save_csv),
+               "Write the log as a spreadsheet-friendly table"
+               ).pack(side=tk.RIGHT, padx=3)
+        ui.tip(ttk.Button(bar, text="Save text...",
+                          command=self.cmd_save_text),
+               "Write the log as readable text, turn by turn"
+               ).pack(side=tk.RIGHT, padx=3)
+        ui.tip(ttk.Button(bar, text="Copy all", command=self.cmd_copy),
+               "Copy the whole log to the clipboard"
+               ).pack(side=tk.RIGHT, padx=3)
 
         pane = ttk.PanedWindow(self, orient=tk.VERTICAL)
         pane.pack(fill=tk.BOTH, expand=True, padx=6, pady=(0, 6))

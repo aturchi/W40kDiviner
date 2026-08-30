@@ -66,6 +66,8 @@ class PickerDialog(tk.Toplevel):
         # following the font scale, because rescaling reconfigures the
         # named fonts and a copy is not one of them.
         self.tree.tag_configure(SUGGESTED_TAG, font=ui.bold_font())
+        ui.tip(self.tree, "Filter with the box above; double-click a row "
+                          "to choose it")
         self.tree.bind("<Double-Button-1>", lambda e: self.cmd_ok())
         self.refresh()
         self.grab_set()

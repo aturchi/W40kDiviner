@@ -28,7 +28,7 @@ Run:  python3 attack_analyzer.py
 import os
 import sys
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, messagebox
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "src"))
@@ -51,6 +51,7 @@ import ui_utils as ui          # noqa: E402
 from ui_utils import (scrollable_listbox, multi_select_hint,  # noqa: E402
                       save_text)
 from army_load_dialog import ArmyLoadDialog  # noqa: E402
+from roster_picker import ask_roster_files   # noqa: E402
 from unit_tree import UnitTree              # noqa: E402
 
 
@@ -78,23 +79,41 @@ class AnalyzerApp(tk.Tk):
     def _build_widgets(self):
         bar = ttk.Frame(self)
         bar.pack(side=tk.TOP, fill=tk.X)
-        ttk.Button(bar, text="Load JSON",
-                   command=self.cmd_load).pack(side=tk.LEFT, padx=3, pady=3)
-        ttk.Button(bar, text="Save / load session",
-                   command=self.cmd_session).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Analyze",
-                   command=self.cmd_analyze).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Mask / unmask selected",
-                   command=self.cmd_mask).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Inspect",
-                   command=self.cmd_inspect).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Load JSON", command=self.cmd_load),
+               "Pick one or more roster JSON files; with several armies "
+               "available you can then join, rename and save them"
+               ).pack(side=tk.LEFT, padx=3, pady=3)
+        ui.tip(ttk.Button(bar, text="Save / load session",
+                          command=self.cmd_session),
+               "Store or restore the whole working state: rosters, joins, "
+               "masking, weapon counts and the attack context"
+               ).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Analyze", command=self.cmd_analyze),
+               "Run the exact maths for the attacker against every "
+               "selected defender; each opens its own result window"
+               ).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Mask / unmask selected",
+                          command=self.cmd_mask),
+               "Switch the selected weapons or abilities off for the next "
+               "analysis (a unit or model row acts on every weapon below "
+               "it). Nothing is written back to the roster file"
+               ).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Inspect", command=self.cmd_inspect),
+               "Read-only full profile of the last selected unit, with the "
+               "printable cheat sheet"
+               ).pack(side=tk.LEFT, padx=3)
         self.compare_btn = ttk.Button(bar, text="Compare (0)",
                                       command=self.cmd_compare)
+        ui.tip(self.compare_btn,
+               "Open the comparison window for the analyses pinned with "
+               "'Add to compare'")
         self.compare_btn.pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Options",
-                   command=lambda: show_options_dialog(self,
-                                                       charts=True)).pack(
-            side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Options",
+                          command=lambda: show_options_dialog(self,
+                                                              charts=True)),
+               "Font scale, chart preferences and the caps on modifiers "
+               "and re-rolls, for this session"
+               ).pack(side=tk.LEFT, padx=3)
         self.status = ttk.Label(bar, text="No file loaded")
         self.status.pack(side=tk.LEFT, padx=10)
 
@@ -124,10 +143,16 @@ class AnalyzerApp(tk.Tk):
             join_btn = ttk.Button(btn_row, text="Join",
                                   command=lambda k=key: self.cmd_join(k),
                                   state=tk.DISABLED)
+            ui.tip(join_btn,
+                   "Attach the selected leader or support to the selected "
+                   "unit; the pair becomes one [JOINED] entry with the "
+                   "shared abilities active")
             join_btn.pack(side=tk.LEFT)
             split_btn = ttk.Button(btn_row, text="Un-join",
                                    command=lambda k=key:
                                    self.cmd_unjoin(k))
+            ui.tip(split_btn, "Split a [JOINED] entry back into the units "
+                              "it was made of")
             # packed only while a [JOINED] entry is selected
             ttk.Label(col, text="Units:").pack(anchor=tk.W, padx=4)
             # Free leader/support slots of the SELECTED target; blank
@@ -187,9 +212,8 @@ class AnalyzerApp(tk.Tk):
         """Load one or more native JSON files. With several armies available,
         open the load/join dialog so the user can pick a subset and
         optionally merge armies before importing."""
-        paths = filedialog.askopenfilenames(
-            title="Load native JSON (one or more)",
-            filetypes=[("JSON", "*.json"), ("All files", "*.*")])
+        paths = ask_roster_files(
+            self, title="Load native JSON (one or more)")
         if not paths:
             return
         try:
@@ -775,15 +799,20 @@ class AnalyzerApp(tk.Tk):
             f"{dist_stats.tail_prob(eff, unit_w) * 100:.1f}%")).pack(
             side=tk.LEFT)
         if results is not None:
-            ttk.Button(row, text="Export CSV...",
-                       command=lambda: self._export_table(
-                           f"{heading} - {label}", results, stats)).pack(
-                side=tk.RIGHT, padx=6)
-            ttk.Button(row, text="Audit...",
-                       command=lambda: self._open_audit(
-                           f"{heading} - {label}", results)).pack(
-                side=tk.RIGHT, padx=6)
+            ui.tip(ttk.Button(row, text="Export CSV...",
+                              command=lambda: self._export_table(
+                                  f"{heading} - {label}", results, stats)),
+                   "Write this table to a CSV file, with the statistics "
+                   "currently on show").pack(side=tk.RIGHT, padx=6)
+            ui.tip(ttk.Button(row, text="Audit...",
+                              command=lambda: self._open_audit(
+                                  f"{heading} - {label}", results)),
+                   "Step-by-step trail of how each number was reached: "
+                   "thresholds, modifiers and the rules applied"
+                   ).pack(side=tk.RIGHT, padx=6)
             pin_btn = ttk.Button(row, text="Add to compare")
+            ui.tip(pin_btn, "Pin this analysis so it can be overlaid on "
+                            "the others in the Compare window")
             pin_btn.configure(command=lambda: self._pin(
                 f"{heading} [{label.split('(')[0].strip()}]", results,
                 context, pin_btn))
@@ -877,8 +906,9 @@ class AnalyzerApp(tk.Tk):
         body = audit.report(results) or "No weapon in this analysis."
         text.insert("1.0", body)
         text.configure(state=tk.DISABLED)
-        ttk.Button(row, text="Copy to clipboard",
-                   command=lambda: self._copy(body)).pack(side=tk.LEFT)
+        ui.tip(ttk.Button(row, text="Copy to clipboard",
+                          command=lambda: self._copy(body)),
+               "Copy the whole audit trail as text").pack(side=tk.LEFT)
 
     def _export_table(self, title, results, stats=None):
         """The table exactly as shown, as CSV - the statistics on show
@@ -977,10 +1007,12 @@ class ComparisonWindow(tk.Toplevel):
                                                         padx=(2, 8))
         ttk.Button(row, text="Close", command=self.destroy).pack(
             side=tk.RIGHT, padx=3)
-        ttk.Button(row, text="Clear pins",
-                   command=self._clear).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(row, text="Export CSV...",
-                   command=self._export).pack(side=tk.RIGHT, padx=3)
+        ui.tip(ttk.Button(row, text="Clear pins", command=self._clear),
+               "Drop every pinned analysis and empty this window"
+               ).pack(side=tk.RIGHT, padx=3)
+        ui.tip(ttk.Button(row, text="Export CSV...", command=self._export),
+               "Write the comparison table to a CSV file"
+               ).pack(side=tk.RIGHT, padx=3)
         self.canvas = dist_view.OverlayCanvas(self, height=200)
         self.canvas.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True,
                          padx=6, pady=(0, 6))

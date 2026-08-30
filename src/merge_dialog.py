@@ -24,6 +24,7 @@ All diff/apply logic lives in :mod:`profile_diff`; this module is pure UI.
 import tkinter as tk
 from tkinter import ttk
 
+import ui_utils as ui
 from ui_utils import scrollable_listbox, multi_select_hint, WrappedList
 import profile_diff as pd
 
@@ -86,10 +87,15 @@ class MergeDialog(tk.Toplevel):
         self.merge_btn = ttk.Button(ubtn, text="Merge selected",
                                     state=tk.DISABLED,
                                     command=self._merge_selected)
+        ui.tip(self.merge_btn,
+               "Bring the selected units of the new file into the working "
+               "copy, whole")
         self.merge_btn.pack(fill=tk.X, pady=2)
         self.delete_btn = ttk.Button(ubtn, text="Delete selected",
                                      state=tk.DISABLED,
                                      command=self._delete_selected)
+        ui.tip(self.delete_btn,
+               "Drop the selected units from the working copy")
         self.delete_btn.pack(fill=tk.X, pady=2)
 
         ttk.Separator(root).grid(row=3, column=0, sticky="ew", pady=6)
@@ -132,8 +138,10 @@ class MergeDialog(tk.Toplevel):
         bottom.columnconfigure(0, weight=1)
         self.status = ttk.Label(bottom, text="")
         self.status.grid(row=0, column=0, sticky="w")
-        ttk.Button(bottom, text="Finish",
-                   command=self._finish).grid(row=0, column=1, padx=4)
+        ui.tip(ttk.Button(bottom, text="Finish", command=self._finish),
+               "Commit the working copy into the editor; nothing is "
+               "written to disk until you save"
+               ).grid(row=0, column=1, padx=4)
         ttk.Button(bottom, text="Cancel",
                    command=self._cancel).grid(row=0, column=2)
         self.protocol("WM_DELETE_WINDOW", self._cancel)
@@ -151,10 +159,12 @@ class MergeDialog(tk.Toplevel):
         lb.frame.grid(row=1, column=0, sticky="nsew")
         btns = ttk.Frame(frame)
         btns.grid(row=2, column=0, sticky="w", pady=3)
-        ttk.Button(btns, text="Accept selected",
-                   command=on_sel).pack(side=tk.LEFT)
-        ttk.Button(btns, text="Accept all",
-                   command=on_all).pack(side=tk.LEFT, padx=4)
+        ui.tip(ttk.Button(btns, text="Accept selected", command=on_sel),
+               "Take the selected differences from the new file into the "
+               "working copy").pack(side=tk.LEFT)
+        ui.tip(ttk.Button(btns, text="Accept all", command=on_all),
+               "Take every difference shown in this box"
+               ).pack(side=tk.LEFT, padx=4)
         return lb
 
     # ---------- rendering ----------

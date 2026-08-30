@@ -1,25 +1,26 @@
 """Keywords configuration.
 
-Loads keywords_config.json (searched in the project root, i.e. next to
-the executables, then in src/). Provides the unit / model / weapon
-keyword vocabularies used by the editors and by effect_specs
-(setKeyword option list). Falls back to empty lists when the file is
-missing or broken, so the editor still starts.
+Loads keywords_config.json: the user's own copy next to the program
+first, the shipped one second (app_paths.resource decides where those
+two are, which is not the same pair of folders once the program is
+built). Provides the unit / model / weapon keyword vocabularies used by
+the editors and by effect_specs (setKeyword option list). Falls back to
+empty lists when the file is missing or broken, so the editor still
+starts.
 """
 
 import json
-import os
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_SEARCH = [os.path.join(os.path.dirname(_HERE), "keywords_config.json"),
-           os.path.join(_HERE, "keywords_config.json")]
+import app_paths
+
+FILENAME = "keywords_config.json"
 
 _EMPTY = {"unit_keywords": [], "model_keywords": [], "weapon_keywords": []}
 
 
 def load() -> dict:
     """Load and cache the keyword-vocabulary config (unit/model/weapon keyword lists) used by the editor list dialogs."""
-    for path in _SEARCH:
+    for path in app_paths.resource(FILENAME):
         try:
             with open(path, encoding="utf-8") as f:
                 cfg = json.load(f)

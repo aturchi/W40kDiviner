@@ -156,6 +156,7 @@ def ask_save_or_load(parent, title="Session"):
     Returns 'save', 'load' or None (cancelled)."""
     import tkinter as tk
     from tkinter import ttk
+    import ui_utils as ui
 
     dlg = tk.Toplevel(parent)
     dlg.title(title)
@@ -171,10 +172,14 @@ def ask_save_or_load(parent, title="Session"):
         choice["value"] = value
         dlg.destroy()
 
-    ttk.Button(row, text="Save session",
-               command=lambda: pick("save")).pack(side=tk.LEFT, padx=6)
-    ttk.Button(row, text="Load session",
-               command=lambda: pick("load")).pack(side=tk.LEFT, padx=6)
+    ui.tip(ttk.Button(row, text="Save session",
+                      command=lambda: pick("save")),
+           "Write the current state to a session file"
+           ).pack(side=tk.LEFT, padx=6)
+    ui.tip(ttk.Button(row, text="Load session",
+                      command=lambda: pick("load")),
+           "Read a session file back, replacing what is loaded now"
+           ).pack(side=tk.LEFT, padx=6)
     ttk.Button(row, text="Cancel",
                command=dlg.destroy).pack(side=tk.LEFT, padx=6)
     dlg.grab_set()

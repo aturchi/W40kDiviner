@@ -38,7 +38,7 @@ are welcome!
 
 ## Contents
 
-- [The four programs](#the-four-programs)
+- [The three programs](#the-three-programs)
 - [Requirements & install](#requirements--install)
 - [Quick start](#quick-start)
 - [The native JSON format](#the-native-json-format)
@@ -46,7 +46,7 @@ are welcome!
   - [Ability reference — conditions & effects](#ability-reference--conditions--effects)
 - [Program 2 — Attack Analyzer](#program-2--attack-analyzer)
 - [Program 3 — Game Assistant](#program-3--game-assistant)
-- [Program 4 — Join Armies (CLI)](#program-4--join-armies-cli)
+- [Loading rosters](#loading-rosters)
 - [Common UI concepts](#common-ui-concepts)
 - [Keyword configuration](#keyword-configuration)
 - [Building Windows executables](#building-windows-executables)
@@ -56,16 +56,15 @@ are welcome!
 
 ---
 
-## The four programs
+## The three programs
 
 | Program | File | Type | Purpose |
 |---|---|---|---|
-| **Profile Editor** | `profile_editor.py` | GUI | Create/edit army rosters, units, models, weapons and abilities; import & save native JSON; **compare & selectively merge** a second roster (*Merge JSON*). |
+| **Profile Editor** | `profile_editor.py` | GUI | Create/edit army rosters, units, models, weapons and abilities; import & save native JSON; **join, rename and write out** whole armies (*Join / save*); **compare & selectively merge** a second roster (*Merge JSON*). |
 | **Attack Analyzer** | `attack_analyzer.py` | GUI | Exact damage **distribution** (mean, median, percentiles, models killed) of one attacker vs one or more defenders, with full modifier context, audit trail, comparison between pinned analyses and CSV export. |
 | **Game Assistant** | `game_assistant.py` | GUI | In-game attack resolution with real dice rolls; per-model wound tracking and masking, undo, assisted wound allocation and a log of the attacks of the game. |
-| **Join Armies** | `join_armies.py` | CLI | Combine several JSON files into one — as separate armies (`multi`) or merged into a single army (`single`). |
 
-All three GUIs share the same object model (`src/unit_model.py`), the same
+All three share the same object model (`src/unit_model.py`), the same
 modifier engine (`src/modifier_engine.py`), the leader/support attachment logic
 (`src/leader_core.py`), and the keyword vocabularies in `src/keywords_config.json`.
 
@@ -77,7 +76,7 @@ modifier engine (`src/modifier_engine.py`), the leader/support attachment logic
   - On most Linux distros Tkinter is a separate package, e.g.
     `sudo apt install python3-tk`.
   - On Windows/macOS the official python.org installers already include it.
-- **No third-party packages** are needed to run the four programs — they use
+- **No third-party packages** are needed to run the three programs — they use
   only the standard library.
   - `ArmyFetcher/` additionally needs `requests` and `beautifulsoup4`; see its
     own README.
@@ -100,8 +99,9 @@ python3 profile_editor.py      # or attack_analyzer.py / game_assistant.py
    one by hand. Consider that ArmyFetcher create unit's abilities which have 
    only the description. You still must edit the JSON files by hand to properly 
    create the abilities.
-2. *(Optional)* **Merge factions** into a single file with `join_armies.py` so
-   both armies of a game live in one JSON (for your convenience).
+2. *(Optional)* **Merge factions** into a single file from the load dialog of
+   any of the three programs, so both armies of a game live in one JSON (see
+   [Loading rosters](#loading-rosters)).
 3. **Analyze** matchups before the game with the Attack Analyzer.
 4. **Play** with the Game Assistant, which rolls the dice and helps you track wounds and other variables.
 
@@ -150,8 +150,13 @@ node.
 
 **Workflow**
 
-- **Import JSON / Save JSON** — load an existing native file, edit, save back.
-  `Select army` switches between armies inside a multi-army file.
+- **Import JSON / Save JSON** — load one or more native files, edit, save back
+  (see [Loading rosters](#loading-rosters)). `Select army` switches between the
+  armies of a multi-army document; `Join / save` reopens the join dialog on what
+  is already loaded, so armies can be merged, renamed or written out after being
+  edited. `Save JSON` writes straight back to the source file only while the
+  document still *is* that file — after a join, a rename or a partial import it
+  asks where to write, so the original is never truncated.
 - **Tree navigation** — click a node to edit it. The editor supports two views
   of the selected node:
   - a **Quick edit** form for scalar fields (long-text fields such as
@@ -442,6 +447,14 @@ says so too. It is a heuristic over three candidate orders, not the optimum.
 
 - combat flags — half range, attacker stationary, attacker charged, defender in
   cover, and below-half / below-full-strength states for either side;
+- **Indirect fire** — the shooting mode: only `INDIRECT FIRE` weapons fire, the
+  target always counts as in Cover, hit re-rolls are lost and an unmodified
+  roll below **6** always fails. The **spotter** tick relaxes that floor to
+  **4**, but only together with **attacker stationary**, which the rules
+  require on top of it. The two stay separate ticks — *stationary* also feeds
+  `HEAVY` and the ability conditions, so ticking it as a side effect would
+  misreport the attack — and a spotter ticked on its own draws the missing one
+  in the warning colour;
 - **Battle round** (a number, not a tick, default `1`) — the only context the
   combat maths never reads. It exists solely so an ability carrying the
   **Battle round** condition can be true; nothing else in the engine looks at
@@ -549,40 +562,39 @@ recorded separately.
 
 ---
 
-## Program 4 — Join Armies (CLI)
+## Loading rosters
 
-**Run:**
+All three GUIs load rosters the same way, in two steps.
 
-```bash
-# multi (default): keep each input as its own army in one file
-python3 join_armies.py tau.json wolves.json -o combined.json
+**1. Choose the files.** `Load JSON` (`Import JSON` in the editor) opens the
+picker: the folder on the left, the files chosen for loading on the right.
+A click selects a file, a second click deselects it — no modifier key — and
+the list on the right **survives changing folder**, so a selection can be
+assembled from several places. `System dialog…` falls back to the platform's
+own file dialog and *adds* what it returns, for network locations or a name
+typed by hand.
 
-# single: merge every unit into ONE army named with -n
-python3 join_armies.py tau.json wolves.json --join single -n "My Alliance" \
-        -o combined.json
-```
+**2. Choose the armies.** When the files hold more than one army, the load
+dialog lists them all and offers two ways of combining them:
 
-Combine several native JSON files into one. Two modes:
+- **Join into one** merges the selected armies into a **single new army** under
+  a name you choose. Units whose names collide across sources are suffixed with
+  their source army (`pippo` from `pluto` and from `topolino` → `pippo_pluto`,
+  `pippo_topolino`) so both survive with a traceable origin. The originals leave
+  the list and the result takes their place, so joins can be chained.
+- **Save selected** writes the selected armies to one file, each keeping its own
+  identity — two or more of them make a **multi-army file**. Ability ids are
+  re-stamped on the way out, so ids that were only unique per source file stay
+  unique in the result. The window stays open, so one session can write several
+  files. *(Profile Editor only; the same dialog is reachable later through
+  `Join / save`.)*
+- **Rename** fixes a name. Both joins reject **duplicate army names**, and so
+  does saving: a warning appears as soon as two selected armies share one.
+- **Open / Import** takes the selected armies into the program.
 
-- **`--join multi`** *(default)* — keep each input file as its **own army** in a
-  multi-army output file.
-- **`--join single`** — merge **every unit into one army**, named with `-n`.
-  Units whose names collide across sources are suffixed with their source army
-  (e.g. `pippo` from `pluto` and `topolino` → `pippo_pluto`, `pippo_topolino`)
-  so both survive with a traceable origin.
-
-Both modes:
-
-- **Reject duplicate army names** — rename them before joining.
-- After merging, re-stamp every ability with a globally unique id so ids from
-  different files can’t collide.
-
-| Option | Meaning |
-|---|---|
-| `inputs...` | one or more input JSON files (positional) |
-| `-o`, `--output` | output path (default `combined.json`) |
-| `-j`, `--join` | `multi` (default) or `single` — see above |
-| `-n`, `--name` | name for the joined army; **only used with `--join single`** (default `NewArmy`) |
+Armies are listed **as they are on disk**: two files that both carry
+`Space Marines` are two armies, and what to do about it is your call rather
+than a silent merge.
 
 ---
 
@@ -591,9 +603,12 @@ Both modes:
 - **Search** — list widgets across the GUIs support incremental search
   (`src/search_widget.py`).
 - **Selecting several entries** — most lists use `Ctrl+click` (`Cmd` on macOS)
-  and `Shift+click` for a range; the label under each says which. The army list
-  when a file holds more than one army is the exception: a click selects, a
-  second click deselects, so a subset can be picked with the mouse alone.
+  and `Shift+click` for a range; the label under each says which. The roster
+  picker and the army list are the exception: a click selects, a second click
+  deselects, so a subset can be picked with the mouse alone.
+- **Tooltips** — hovering a button shows one line saying what it does and what
+  it acts on. Buttons whose caption already is the explanation (`OK`, `Cancel`,
+  `Close`) have none.
 - **Inspect** — full-profile view of a unit (`src/inspect_dialog.py`),
   read-only in both programs: abilities and weapon counts are switched off by
   masking a row of the program's own table (the unit tree in the Analyzer, the
@@ -619,7 +634,6 @@ is **editable**.
 This is used only for keywords matching and validation, the code still has
 hardcoded mechanics for for many of the keywords listed here.
 
-- Search order: first next to the executable / project root, then `src/`.
 - Parametric weapon keywords (`SUSTAINED HITS`, `RAPID FIRE`, `MELTA`, `ANTI`, `CLEAVE`)
   take a value typed after the name, e.g. `SUSTAINED HITS 2`.
 - If the file is missing or malformed the programs still start, with empty
@@ -629,11 +643,11 @@ hardcoded mechanics for for many of the keywords listed here.
 
 ## Building Windows executables
 
-`W40kDiviner.spec` is a **PyInstaller** spec that builds four self-contained
+`W40kDiviner.spec` is a **PyInstaller** spec that builds three self-contained
 one-file executables (Python and all dependencies embedded):
 
 ```
-ProfileEditor.exe    AttackAnalyzer.exe    GameAssistant.exe    JoinArmies.exe
+ProfileEditor.exe    AttackAnalyzer.exe    GameAssistant.exe
 ```
 
 Build (on Windows, from the `W40kDiviner` folder):
@@ -643,11 +657,19 @@ pip install pyinstaller
 pyinstaller W40kDiviner.spec
 ```
 
-Executables land in `dist/`. `keywords_config.json` is embedded, but a copy
-placed **next to the .exe** takes precedence (user-customisable vocabularies).
-Ship your roster `.json` files alongside the executables; they are loaded through
-the file dialogs. UPX is disabled on purpose (compressed one-file bootloaders
-trip some antivirus heuristics).
+Executables land in `dist/`, one `.exe` each with no shared folder between them.
+
+A one-file build unpacks itself into a temporary folder that is deleted on exit,
+so nothing you are meant to touch can live inside it. Two things are looked for
+**next to the executable**:
+
+- `rosters/` — your roster `.json` files. It is also the folder the load dialog
+  opens in by default.
+- `keywords_config.json` — optional. The shipped copy is embedded; one placed
+  next to the `.exe` takes precedence.
+
+UPX is disabled on purpose (compressed one-file bootloaders trip some antivirus
+heuristics).
 
 Please consider that I do now have a PC with windows, so this section is totally
 untested and I just made the .spec file with Claude AI just for your convenience.
@@ -690,7 +712,6 @@ W40kDiviner/
 ├── profile_editor.py        # Program 1 (GUI)
 ├── attack_analyzer.py       # Program 2 (GUI)
 ├── game_assistant.py        # Program 3 (GUI)
-├── join_armies.py           # Program 4 (CLI)
 ├── W40kDiviner.spec          # PyInstaller build spec (Windows)
 ├── src/                     # shared engine + UI modules
 │   ├── native_format.py     #   native JSON schema (w40k-sim/6) I/O + migration
@@ -708,6 +729,11 @@ W40kDiviner/
 │   ├── mod_presets.py       #   named sets of manual modifiers
 │   ├── unit_mask.py         #   what a unit-tree row is, and what masking does
 │   ├── unit_tree.py         #   the analyzer's unit tree widget
+│   ├── app_paths.py         #   where the program's files are (frozen or not)
+│   ├── roster_picker_core.py #  file picker state: folders + basket (pure)
+│   ├── roster_picker.py     #   the roster file picker window
+│   ├── army_load_core.py    #   join / rename / save of loaded armies (pure)
+│   ├── army_load_dialog.py  #   the load / join / save dialog
 │   ├── attack_log.py        #   game log of the attacks resolved (pure)
 │   ├── log_view.py          #   attack-log window
 │   ├── undo_stack.py        #   undo/redo history of the table edits (pure)

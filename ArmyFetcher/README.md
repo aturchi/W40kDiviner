@@ -94,8 +94,9 @@ to the source's default directory unless `--out` overrides it:
 - `fetched_armies_40kapp/` for `--source 40kapp`
 
 Each file is a native `w40k-sim/6` army file, ready to open in the Profile
-Editor, Attack Analyzer or Game Assistant, or to merge with
-[`join_armies.py`](../README.md#program-4--join-armies-cli).
+Editor, Attack Analyzer or Game Assistant. Several files can be loaded at once
+and joined or written back out as one from the load dialog — see
+[Loading rosters](../README.md#loading-rosters).
 
 ---
 

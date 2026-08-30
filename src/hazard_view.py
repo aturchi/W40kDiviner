@@ -200,9 +200,15 @@ class HazardWindow(tk.Toplevel):
         aim.pack(fill=tk.X, padx=8, pady=(4, 0))
         self.buttons["aim"] = ttk.Button(aim, text="Send here",
                                          command=self._aim)
+        ui.tip(self.buttons["aim"],
+               "Start the selected weapon's self-inflicted wounds on the "
+               "selected model instead of where the rules would put them")
         self.buttons["aim"].pack(side=tk.LEFT)
         self.buttons["clear"] = ttk.Button(aim, text="Use the sequence",
                                            command=self._clear_aim)
+        ui.tip(self.buttons["clear"],
+               "Drop the aiming and let the wounds fall in the order the "
+               "rules give")
         self.buttons["clear"].pack(side=tk.LEFT, padx=6)
         ttk.Label(aim, foreground=DIM, wraplength=460, justify=tk.LEFT,
                   text="Pick a weapon on the left and a model on the "
@@ -213,9 +219,14 @@ class HazardWindow(tk.Toplevel):
         bar.pack(fill=tk.X, padx=8, pady=8)
         self.buttons["apply"] = ttk.Button(bar, text="Apply",
                                            command=self._apply)
+        ui.tip(self.buttons["apply"],
+               "Take these self-inflicted wounds on the attacking unit")
         self.buttons["apply"].pack(side=tk.RIGHT)
         self.buttons["skip"] = ttk.Button(bar, text="Skip",
                                           command=self._skip)
+        ui.tip(self.buttons["skip"],
+               "Leave the attacking unit untouched (the wounds were "
+               "already accounted for elsewhere)")
         self.buttons["skip"].pack(side=tk.RIGHT, padx=6)
         self.tally = ttk.Label(bar, foreground=ALERT)
         self.tally.pack(side=tk.LEFT)

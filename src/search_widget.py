@@ -9,6 +9,8 @@ Treeview matches are revealed (parents opened) and selected."""
 import tkinter as tk
 from tkinter import ttk
 
+import ui_utils as ui
+
 
 def _tree_items(tree):
     """All item iids of a Treeview, depth-first."""
@@ -60,8 +62,9 @@ class SearchDialog(tk.Toplevel):
         self.entry = ttk.Entry(self, width=28)
         self.entry.grid(row=0, column=1, padx=2)
         self.entry.focus_set()
-        ttk.Button(self, text="Next",
-                   command=self.cmd_next).grid(row=0, column=2, padx=4)
+        ui.tip(ttk.Button(self, text="Next", command=self.cmd_next),
+               "Jump to the next row matching the text (Enter does the "
+               "same)").grid(row=0, column=2, padx=4)
         self.info = ttk.Label(self, text="")
         self.info.grid(row=1, column=0, columnspan=3, sticky=tk.W, padx=4)
         self.entry.bind("<Return>", lambda e: self.cmd_next())

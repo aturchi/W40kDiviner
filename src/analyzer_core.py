@@ -223,6 +223,25 @@ def hazardous_damage(aview) -> int:
     return am.hazardous_damage_per_fail(aview.model_keywords())
 
 
+def spotter_ctx(flags: dict) -> bool:
+    """Whether the Indirect Shooting floor drops from 6 to 4.
+
+    10.07 asks for BOTH halves: a friendly unit that can see the target
+    (the 'spotter' tick) AND the attacking unit having Remained
+    Stationary. The two are separate boxes in the setup panel because
+    'stationary' is not only about indirect fire - HEAVY reads it for
+    its +1, and so do the ability conditions - so they cannot simply be
+    coupled in the widget without making one of them lie.
+
+    The rule therefore lives here, where both programs pass through, and
+    a spotter ticked on its own does nothing. Without it the interface
+    could describe a state the rules do not allow: the indirect floor
+    relaxed to 4+ while a HEAVY weapon of the same unit goes without its
+    stationary bonus.
+    """
+    return bool(flags.get("spotter") and flags.get("attacker_stationary"))
+
+
 def ability_selection(flags: dict) -> dict:
     """The attack-setup ability selection carried in the flags dict:
     {'extra': [...], 'disabled': [...], 'optimise': bool}. 'optimise'
@@ -668,7 +687,9 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
            "plunging": flags.get("plunging"),
            "damaged": flags.get("damaged"),
            "indirect": flags.get("indirect"),
-           "spotter": flags.get("spotter"),
+           # Not flags['spotter']: 10.07 needs the attacker stationary
+           # as well - see spotter_ctx.
+           "spotter": spotter_ctx(flags),
            "overwatch": flags.get("overwatch"),
            "overwatch_value": flags.get("overwatch_value"),
            "close_quarters_penalty": (mode == "close_quarters"

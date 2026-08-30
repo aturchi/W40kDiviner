@@ -20,7 +20,7 @@ import os
 import random
 import sys
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, messagebox
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "src"))
@@ -43,6 +43,7 @@ import defender_models                         # noqa: E402
 import hazard_close                            # noqa: E402
 import hazard_view                             # noqa: E402
 from search_widget import attach_search       # noqa: E402
+from roster_picker import ask_roster_files    # noqa: E402
 from ui_utils import scrollable_listbox, multi_select_hint  # noqa: E402
 import ui_utils as ui                          # noqa: E402
 from setup_panel import (SetupPanel, show_options_dialog,   # noqa: E402
@@ -102,15 +103,17 @@ class ArmySetupDialog(tk.Toplevel):
         for col, side in ((1, "A"), (2, "B")):
             frame = ttk.LabelFrame(self, text=f"Army {side}")
             frame.grid(row=0, column=col, sticky="nsew", padx=4, pady=4)
-            ttk.Button(frame, text=f"Add to {side}",
-                       command=lambda s=side: self.cmd_add(s)).pack(
-                fill=tk.X, padx=3, pady=2)
+            ui.tip(ttk.Button(frame, text=f"Add to {side}",
+                              command=lambda s=side: self.cmd_add(s)),
+                   f"Put every unit selected on the left into army {side}"
+                   ).pack(fill=tk.X, padx=3, pady=2)
             lb_frame, lb = scrollable_listbox(
                 frame, width=40, height=18, exportselection=False)
             lb_frame.pack(fill=tk.BOTH, expand=True, padx=3)
-            ttk.Button(frame, text="Remove",
-                       command=lambda s=side: self.cmd_remove(s)).pack(
-                fill=tk.X, padx=3, pady=2)
+            ui.tip(ttk.Button(frame, text="Remove",
+                              command=lambda s=side: self.cmd_remove(s)),
+                   "Take the selected units out of this army"
+                   ).pack(fill=tk.X, padx=3, pady=2)
             lbl = ttk.Label(frame, text="Total: 0 pts",
                             font=ui.bold_font())
             lbl.pack(anchor=tk.W, padx=3, pady=2)
@@ -188,21 +191,37 @@ class GameAssistantApp(tk.Tk):
     def _build_widgets(self):
         bar = ttk.Frame(self)
         bar.pack(side=tk.TOP, fill=tk.X)
-        ttk.Button(bar, text="Load JSON",
-                   command=self.cmd_load).pack(side=tk.LEFT, padx=3, pady=3)
-        ttk.Button(bar, text="Save / load session",
-                   command=self.cmd_session).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Options",
-                   command=lambda: show_options_dialog(self)).pack(
-            side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Execute attack",
-                   command=self.cmd_attack).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Mask / unmask selected",
-                   command=self.cmd_mask).pack(side=tk.LEFT, padx=3)
-        ttk.Button(bar, text="Inspect",
-                   command=self.cmd_inspect).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Load JSON", command=self.cmd_load),
+               "Pick one or more roster JSON files, then choose the units "
+               "of the two armies"
+               ).pack(side=tk.LEFT, padx=3, pady=3)
+        ui.tip(ttk.Button(bar, text="Save / load session",
+                          command=self.cmd_session),
+               "Store or restore the whole game: rosters, wounds, masking "
+               "and the attack log"
+               ).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Options",
+                          command=lambda: show_options_dialog(self)),
+               "Font scale and the caps on modifiers and re-rolls, for "
+               "this session").pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Execute attack",
+                          command=self.cmd_attack),
+               "Roll the selected attacker against the selected defender, "
+               "one weapon at a time"
+               ).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Mask / unmask selected",
+                          command=self.cmd_mask),
+               "Switch the selected models, weapons or abilities off: "
+               "casualties, spent one-use weapons, abilities already used"
+               ).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(bar, text="Inspect", command=self.cmd_inspect),
+               "Read-only full profile of the selected unit, with the "
+               "printable cheat sheet").pack(side=tk.LEFT, padx=3)
         self.log_btn = ttk.Button(bar, text="Attack log (0)",
                                   command=self.cmd_log)
+        ui.tip(self.log_btn,
+               "Every attack of the game, by turn, with export to CSV or "
+               "text")
         self.log_btn.pack(side=tk.LEFT, padx=3)
         ttk.Label(bar, text="Attacking army:").pack(side=tk.LEFT, padx=6)
         self.att_side = tk.StringVar(value="A")
@@ -215,9 +234,13 @@ class GameAssistantApp(tk.Tk):
         # the pending action cannot push the status text around.
         self.redo_btn = ttk.Button(bar, text="Redo", state=tk.DISABLED,
                                    command=self.cmd_redo)
+        ui.tip(self.redo_btn, "Put back the change just undone (Ctrl-Y)")
         self.redo_btn.pack(side=tk.RIGHT, padx=3, pady=3)
         self.undo_btn = ttk.Button(bar, text="Undo", state=tk.DISABLED,
                                    command=self.cmd_undo)
+        ui.tip(self.undo_btn,
+               "Take back the last change to wounds or masking (Ctrl-Z); "
+               "the label to the left names it")
         self.undo_btn.pack(side=tk.RIGHT, padx=3)
         self.undo_lbl = ttk.Label(bar, foreground="#888888", text="")
         self.undo_lbl.pack(side=tk.RIGHT, padx=3)
@@ -265,9 +288,8 @@ class GameAssistantApp(tk.Tk):
     def cmd_load(self):
         """Load army files, run the two-army setup and join dialog, and build
         both rosters from the result."""
-        paths = filedialog.askopenfilenames(
-            title="Load native JSON (one or more)",
-            filetypes=[("JSON", "*.json"), ("All files", "*.*")])
+        paths = ask_roster_files(
+            self, title="Load native JSON (one or more)")
         if not paths:
             return
         try:
@@ -871,10 +893,14 @@ class GameAssistantApp(tk.Tk):
             return
         ctx = {k: flags.get(k) for k in ("half_range", "charged", "cover",
                                          "plunging", "damaged",
-                                         "indirect", "spotter",
+                                         "indirect",
                                          "overwatch", "overwatch_value")}
         # The ctx key has no side prefix, the flag behind it does.
         ctx["stationary"] = flags.get("attacker_stationary")
+        # The indirect floor drops to 4+ only with the spotter AND the
+        # attacker stationary; the rule is shared with the analyzer so
+        # the two programs cannot drift apart on it.
+        ctx["spotter"] = analyzer_core.spotter_ctx(flags)
         # Close quarters: only a MONSTER/VEHICLE attacker takes the -1,
         # and only with weapons that are not CLOSE-QUARTERS.
         ctx["close_quarters_penalty"] = (

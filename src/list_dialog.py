@@ -5,6 +5,7 @@ self.result is the new list, or None on cancel."""
 
 import tkinter as tk
 from tkinter import ttk
+import ui_utils as ui
 from ui_utils import scrollable_listbox, multi_select_hint
 
 from keywords_config import vocabulary_for  # noqa: F401
@@ -36,10 +37,11 @@ class StringListDialog(tk.Toplevel):
         self.entry = ttk.Combobox(self, width=26,
                                   values=sorted(vocabulary or []))
         self.entry.grid(row=2, column=0, padx=6, sticky=tk.W)
-        ttk.Button(self, text="Add",
-                   command=self.cmd_add).grid(row=2, column=1)
-        ttk.Button(self, text="Remove",
-                   command=self.cmd_remove).grid(row=2, column=2, padx=4)
+        ui.tip(ttk.Button(self, text="Add", command=self.cmd_add),
+               "Add the value in the box to the list (Enter does the same)"
+               ).grid(row=2, column=1)
+        ui.tip(ttk.Button(self, text="Remove", command=self.cmd_remove),
+               "Delete every selected entry").grid(row=2, column=2, padx=4)
         ttk.Button(self, text="OK",
                    command=self.cmd_ok).grid(row=3, column=1, pady=8)
         ttk.Button(self, text="Cancel",

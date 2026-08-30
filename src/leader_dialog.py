@@ -17,6 +17,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 
 import leader_core as lc
+import ui_utils as ui
 from ui_utils import scrollable_listbox, multi_select_hint
 
 _GREY = "#aaaaaa"
@@ -57,10 +58,12 @@ class JoinDialog(tk.Toplevel):
 
         bar = ttk.Frame(self)
         bar.grid(row=1, column=0, columnspan=3, pady=4)
-        ttk.Button(bar, text="Join",
-                   command=self.cmd_join).pack(side=tk.LEFT, padx=4)
-        ttk.Button(bar, text="Remove",
-                   command=self.cmd_remove).pack(side=tk.LEFT, padx=4)
+        ui.tip(ttk.Button(bar, text="Join", command=self.cmd_join),
+               "Attach the selected leaders or supports to the selected "
+               "unit").pack(side=tk.LEFT, padx=4)
+        ui.tip(ttk.Button(bar, text="Remove", command=self.cmd_remove),
+               "Detach the selected attachment, putting both units back "
+               "on their own").pack(side=tk.LEFT, padx=4)
         ttk.Button(bar, text="OK",
                    command=self.cmd_ok).pack(side=tk.LEFT, padx=12)
         self._refresh()
@@ -208,12 +211,15 @@ class TwoArmyJoinDialog(tk.Toplevel):
             lbl = ttk.Label(bar, text="", foreground="#666666")
             self.slot_lbl[side] = lbl
             lbl.pack(side=tk.RIGHT, padx=8)
-            ttk.Button(bar, text="Join",
-                       command=lambda s=side: self._join(s)
-                       ).pack(side=tk.LEFT, padx=3)
-            ttk.Button(bar, text="Unjoin",
-                       command=lambda s=side: self._unjoin(s)
-                       ).pack(side=tk.LEFT, padx=3)
+            ui.tip(ttk.Button(bar, text="Join",
+                              command=lambda s=side: self._join(s)),
+                   "Attach the selected leaders or supports to the "
+                   "selected unit of this army"
+                   ).pack(side=tk.LEFT, padx=3)
+            ui.tip(ttk.Button(bar, text="Unjoin",
+                              command=lambda s=side: self._unjoin(s)),
+                   "Split the selected joined unit back into its parts"
+                   ).pack(side=tk.LEFT, padx=3)
 
         ok = ttk.Frame(self)
         ok.grid(row=2, column=0, pady=6)

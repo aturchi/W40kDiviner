@@ -39,8 +39,11 @@ def open_inspect(parent, unit_obj):
     # will play it, leader included and disabled abilities marked.
     bar = ttk.Frame(win)
     bar.pack(side=tk.BOTTOM, fill=tk.X, padx=6, pady=(0, 6))
-    ttk.Button(bar, text="Save cheat sheet...",
-               command=lambda: _save_sheet(win, unit_obj)).pack(side=tk.LEFT)
+    ui.tip(ttk.Button(bar, text="Save cheat sheet...",
+                      command=lambda: _save_sheet(win, unit_obj)),
+           "Write a printable one-page summary of this unit as the "
+           "program will play it (HTML, or text with a .txt name)"
+           ).pack(side=tk.LEFT)
     ttk.Button(bar, text="Close", command=win.destroy).pack(side=tk.RIGHT)
 
     body = ttk.Frame(win)

@@ -13,6 +13,8 @@
 - wrap_lines(): word-wrap a string to a pixel width using a font's metrics.
 - WrappedList(): a Listbox whose long rows wrap onto indented continuation
   lines while callers keep addressing whole records.
+- tip(): a fixed one-line explanation for a whole widget, returning the
+  widget so a button can be wrapped where it is built.
 - multi_select_hint(): the shared "Ctrl+click" reminder label used by every
   dialog holding a multi-selection list.
 - save_text(): the shared "ask for a file name and write this text"
@@ -40,6 +42,10 @@ MULTI_SELECT_HINT = (f"{_MULTI_KEY}+click to select more than one entry, "
 # imposed on every one of them.
 TOGGLE_SELECT_HINT = "Click to select, click again to deselect"
 HINT_COLOR = "#666666"
+# Used wherever the interface has to say "this is not right yet"
+# without refusing anything: a duplicate army name in the load
+# dialog, half of a rule ticked in the attack setup.
+WARN_COLOR = "#a03000"
 
 
 class _AutoScrollbar(ttk.Scrollbar):
@@ -375,6 +381,27 @@ def sync_bold_font():
             family=base.cget("family"), size=base.cget("size"))
     except tk.TclError:
         pass
+
+
+def tip(widget, text, wraplength=380):
+    """Attach a fixed explanation to 'widget' and RETURN THE WIDGET, so a
+    button can be wrapped where it is built:
+
+        ui.tip(ttk.Button(bar, text="Join", command=...),
+               "Merge the selected leader into the selected unit"
+               ).pack(side=tk.LEFT)
+
+    The text is also stored on the widget as ``_tip_text``. Tooltip binds
+    a callback and keeps nothing readable, so without this there is no
+    way to ASK a window which of its buttons explain themselves - and a
+    coverage claim that cannot be asked is one nobody can check.
+
+    For help that depends on WHERE the pointer is (a Treeview column
+    heading is not a widget of its own) use :class:`Tooltip` directly.
+    """
+    widget._tip_text = text
+    Tooltip(widget, lambda _event: text, wraplength=wraplength)
+    return widget
 
 
 def multi_select_hint(parent, extra=""):

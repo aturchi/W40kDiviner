@@ -87,7 +87,7 @@ FLAGS = [("half_range", "Within half range"),
          # that to 1-3; tick it only when the unit also Remained
          # Stationary, which the rule requires on top of the spotter).
          ("indirect", "Indirect fire"),
-         ("spotter", "  ...with spotter and stationary"),
+         ("spotter", "  ...with spotter (needs 'stationary' too)"),
          ("attacker_below_half", "Attacker below half strength"),
          ("defender_below_half", "Defender below half strength"),
          ("defender_below_full", "Defender below full strength"),
@@ -129,6 +129,12 @@ MOD_TARGETS = [("Hit roll", "rolls", "hit"),
 # target, and a hint spells the direction out. The direction itself is
 # not repeated here: modifier_engine.improving_sign owns it.
 _DEFENDER_ROLLS = ("save", "invuln", "fnp")
+
+# The checkbox whose tick a ticked 'spotter' is waiting for is drawn in
+# the warning colour. A ttk.Checkbutton has no -foreground option, so it
+# takes a named style; the plain "TCheckbutton" is the way back.
+WARN_CHECK_STYLE = "W40kWarn.TCheckbutton"
+PLAIN_CHECK_STYLE = "TCheckbutton"
 
 
 def mod_improving_sign(kind, key) -> int:
@@ -208,8 +214,13 @@ class SetupPanel(ttk.LabelFrame):
             self._flag_checks[key] = cb
         # The spotter clause only exists inside indirect fire, so its box
         # stays greyed out (and unticked) until 'indirect' is selected.
-        self.flag_vars["indirect"].trace_add(
-            "write", lambda *a: self._sync_spotter())
+        # All three ticks are watched, because the warning below depends
+        # on the three of them together.
+        ttk.Style(self).configure(WARN_CHECK_STYLE,
+                                  foreground=ui.WARN_COLOR)
+        for key in ("indirect", "spotter", "attacker_stationary"):
+            self.flag_vars[key].trace_add("write",
+                                          lambda *a: self._sync_spotter())
         self._sync_spotter()
 
         # Overwatch: a tick plus the unmodified roll it needs. The field
@@ -264,8 +275,10 @@ class SetupPanel(ttk.LabelFrame):
         self.mod_target.grid(row=0, column=0)
         self.mod_value = ttk.Entry(mrow, width=3)
         self.mod_value.grid(row=0, column=1, padx=3)
-        ttk.Button(mrow, text="Add", width=5,
-                   command=self.cmd_add_mod).grid(row=0, column=2)
+        ui.tip(ttk.Button(mrow, text="Add", width=5,
+                          command=self.cmd_add_mod),
+               "Add the modifier on the left to this attack; the caps of "
+               "the rules still apply").grid(row=0, column=2)
         self.mod_hint_label = ttk.Label(body, text="",
                                         foreground=ui.HINT_COLOR)
         self.mod_hint_label.pack(anchor=tk.W, padx=4)
@@ -276,8 +289,10 @@ class SetupPanel(ttk.LabelFrame):
         mod_frame, self.mod_list = scrollable_listbox(
             body, height=5, exportselection=False)
         mod_frame.pack(fill=tk.X, padx=4, pady=2)
-        ttk.Button(body, text="Remove",
-                   command=self.cmd_remove_mod).pack(anchor=tk.W, padx=4)
+        ui.tip(ttk.Button(body, text="Remove",
+                          command=self.cmd_remove_mod),
+               "Drop the selected manual modifiers"
+               ).pack(anchor=tk.W, padx=4)
 
         # Named bundles of the modifiers above, saved with the session.
         self.presets = mod_presets.PresetStore()
@@ -287,12 +302,17 @@ class SetupPanel(ttk.LabelFrame):
         self.preset_box = ttk.Combobox(prow, state="readonly", width=18,
                                        values=[])
         self.preset_box.pack(side=tk.LEFT, padx=3)
-        ttk.Button(prow, text="Apply", width=6,
-                   command=self.cmd_apply_preset).pack(side=tk.LEFT)
-        ttk.Button(prow, text="Save as...", width=10,
-                   command=self.cmd_save_preset).pack(side=tk.LEFT, padx=3)
-        ttk.Button(prow, text="Delete", width=7,
-                   command=self.cmd_delete_preset).pack(side=tk.LEFT)
+        ui.tip(ttk.Button(prow, text="Apply", width=6,
+                          command=self.cmd_apply_preset),
+               "Replace the manual modifiers with those of the chosen "
+               "preset").pack(side=tk.LEFT)
+        ui.tip(ttk.Button(prow, text="Save as...", width=10,
+                          command=self.cmd_save_preset),
+               "Store the current manual modifiers under a name"
+               ).pack(side=tk.LEFT, padx=3)
+        ui.tip(ttk.Button(prow, text="Delete", width=7,
+                          command=self.cmd_delete_preset),
+               "Delete the chosen preset").pack(side=tk.LEFT)
         self.preset_hint = ttk.Label(body, text="", foreground=ui.HINT_COLOR)
         self.preset_hint.pack(anchor=tk.W, padx=4)
         self.preset_box.bind("<<ComboboxSelected>>",
@@ -306,10 +326,15 @@ class SetupPanel(ttk.LabelFrame):
         self.optimise_abilities = tk.BooleanVar(value=True)
         arow = ttk.Frame(body)
         arow.pack(anchor=tk.W, padx=4, pady=2)
-        ttk.Button(arow, text="Attack abilities...",
-                   command=self.cmd_pick_abilities).pack(side=tk.LEFT)
-        ttk.Button(arow, text="Extra abilities...",
-                   command=self.cmd_pick_extra).pack(side=tk.LEFT, padx=4)
+        ui.tip(ttk.Button(arow, text="Attack abilities...",
+                          command=self.cmd_pick_abilities),
+               "Choose which of the attacker's optional abilities are used "
+               "in this attack").pack(side=tk.LEFT)
+        ui.tip(ttk.Button(arow, text="Extra abilities...",
+                          command=self.cmd_pick_extra),
+               "Abilities added to EVERY attack: stratagems, auras, "
+               "anything not on the datasheet"
+               ).pack(side=tk.LEFT, padx=4)
         self.ability_label = ttk.Label(body, text="all abilities used",
                                        foreground=ui.HINT_COLOR)
         self.ability_label.pack(anchor=tk.W, padx=4)
@@ -470,9 +495,31 @@ class SetupPanel(ttk.LabelFrame):
                    else tk.DISABLED))
 
     def _sync_spotter(self):
-        """Enable the spotter box only while indirect fire is selected."""
-        self.set_flag_enabled("spotter", bool(self.flag_vars["indirect"]
-                                              .get()))
+        """Gate the spotter box on indirect fire, and flag the half-ticked
+        rule.
+
+        10.07 drops the indirect floor to 4+ only when the attacker ALSO
+        Remained Stationary, and the engine applies that itself
+        (analyzer_core.spotter_ctx), so a spotter ticked on its own
+        quietly does nothing. The two boxes are deliberately NOT coupled -
+        'stationary' also feeds HEAVY and the ability conditions, so
+        ticking it as a side effect of the spotter would misreport the
+        attack - and the missing half is drawn in the warning colour
+        instead. No extra row: the panel is crowded enough, and the
+        colour says it where the tick is.
+        """
+        indirect = bool(self.flag_vars["indirect"].get())
+        self.set_flag_enabled("spotter", indirect)
+        # No 'and indirect' here: the line above has just cleared the
+        # spotter if indirect fire is off, so a ticked spotter already
+        # means indirect fire is on. The mutation battery is what showed
+        # the conjunct was redundant rather than protective.
+        unmet = (self.flag_vars["spotter"].get()
+                 and not self.flag_vars["attacker_stationary"].get())
+        cb = self._flag_checks.get("attacker_stationary")
+        if cb is not None:
+            cb.configure(style=(WARN_CHECK_STYLE if unmet
+                                else PLAIN_CHECK_STYLE))
 
     # ---------- ability selection ----------
 
@@ -560,7 +607,9 @@ class SetupPanel(ttk.LabelFrame):
         if cb is None:
             return
         cb.configure(state=(tk.NORMAL if enabled else tk.DISABLED))
-        if not enabled:
+        # Only written when it actually changes: a trace fires on every
+        # set(), same value or not, and this is called FROM one.
+        if not enabled and self.flag_vars[key].get():
             self.flag_vars[key].set(False)
 
     def get_mods(self) -> dict:
@@ -717,5 +766,6 @@ def show_options_dialog(parent, caps=True, charts=False):
             apply_font_scale(parent.winfo_toplevel(), scale)
         win.destroy()
 
-    ttk.Button(win, text="Apply", command=apply).grid(
-        row=row, column=0, columnspan=2, pady=8)
+    ui.tip(ttk.Button(win, text="Apply", command=apply),
+           "Apply these settings to the running session"
+           ).grid(row=row, column=0, columnspan=2, pady=8)
