@@ -46,7 +46,6 @@ class ArmyLoadDialog(tk.Toplevel):
         super().__init__(parent)
         self.title(title)
         self.transient(parent)
-        self.grab_set()
         self.state = ArmyLoadState(single_army_dicts)
         self.result = None
 
@@ -111,6 +110,7 @@ class ArmyLoadDialog(tk.Toplevel):
         ttk.Button(bar, text="Cancel",
                    command=self.destroy).pack(side=tk.LEFT, padx=4)
         self._refresh()
+        ui.modal_grab(self)
 
     # ---------- display ----------
 

@@ -70,7 +70,7 @@ class PickerDialog(tk.Toplevel):
                           "to choose it")
         self.tree.bind("<Double-Button-1>", lambda e: self.cmd_ok())
         self.refresh()
-        self.grab_set()
+        ui.modal_grab(self)
 
     def _is_bold(self, payload):
         """Identity test: payloads are often unhashable dicts."""

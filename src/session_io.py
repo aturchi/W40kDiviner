@@ -182,7 +182,7 @@ def ask_save_or_load(parent, title="Session"):
            ).pack(side=tk.LEFT, padx=6)
     ttk.Button(row, text="Cancel",
                command=dlg.destroy).pack(side=tk.LEFT, padx=6)
-    dlg.grab_set()
+    ui.modal_grab(dlg)
     parent.wait_window(dlg)
     return choice["value"]
 

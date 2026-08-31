@@ -60,7 +60,6 @@ class ArmySetupDialog(tk.Toplevel):
         super().__init__(parent)
         self.title("Army setup")
         self.transient(parent)
-        self.grab_set()
         self.result = None
         # picked[side] = list of (label, unit_dict), kept sorted by label.
         self.picked = {"A": [], "B": []}
@@ -124,6 +123,7 @@ class ArmySetupDialog(tk.Toplevel):
             side=tk.RIGHT, padx=3)
         ttk.Button(bar, text="Cancel", command=self.destroy).pack(
             side=tk.RIGHT)
+        ui.modal_grab(self)
 
     def _refresh(self, side):
         lb = self.dst_list[side]

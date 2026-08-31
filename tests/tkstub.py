@@ -293,6 +293,11 @@ class Tk(Misc):
     def transient(self, *a):
         pass
 
+    def wait_visibility(self, *a):
+        """No-op: the stub has no window that can be mapped, and
+        ui_utils.modal_grab waits for one before it grabs."""
+        return None
+
     def grab_set(self, *a):
         pass
 

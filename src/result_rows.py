@@ -200,6 +200,23 @@ def _stat_cells(src: dict, cols, stats) -> dict:
             for k in cols if k in STAT_PMF}
 
 
+def weapon_profile(profile):
+    """The weapon's printed characteristics on one line, for the chart
+    window. '' when there is no profile, which is what the TOTAL row
+    has: the totals are several weapons and have no single A or S.
+
+    The hit skill is named for the weapon type - a datasheet says BS on
+    a ranged profile and WS on a melee one, and a reader looking for
+    'BS 3+' does not find 'skill 3+'.
+    """
+    if not profile:
+        return ""
+    skill = "WS" if profile.get("type") == "Melee" else "BS"
+    return (f"A {profile.get('A')}  {skill} {profile.get('skill')}+  "
+            f"S {profile.get('S')}  AP {profile.get('AP')}  "
+            f"D {profile.get('D')}")
+
+
 def weapon_row(r: dict, cols=ALL_KEYS, stats=None) -> tuple:
     """One weapon. 'Inflicted' and 'Kills' are this weapon ALONE against
     a full-strength unit, so they do not add up to the totals; the

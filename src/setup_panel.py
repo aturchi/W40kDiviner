@@ -59,7 +59,7 @@ def _multi_select(parent, title, prompt, items, selected=(),
     ttk.Button(row, text="OK", command=ok).pack(side=tk.LEFT, padx=6)
     ttk.Button(row, text="Cancel",
                command=win.destroy).pack(side=tk.LEFT, padx=6)
-    win.grab_set()
+    ui.modal_grab(win)
     parent.wait_window(win)
     return out["value"]
 

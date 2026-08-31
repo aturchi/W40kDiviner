@@ -450,6 +450,34 @@ def save_text(parent, body, title="Export", defaultextension=".csv",
     return path
 
 
+def modal_grab(win):
+    """Make 'win' modal, once Tk has actually put it on screen.
+
+    grab_set() on a window that is not mapped yet fails outright with
+    "grab failed: window not viewable", and whether a brand new Toplevel
+    is mapped by the time its __init__ reaches the grab depends on what
+    the event loop happened to be doing. That is why the same dialog
+    could open from a button and fail from a double-click on a list: the
+    double-click destroys the window it was clicked in from inside that
+    window's own event handler, and the dialog that opens next is still
+    unmapped when it asks for the grab.
+
+    wait_visibility() re-enters the event loop, so this belongs at the
+    END of a dialog's __init__ and not at the top: the window has to be
+    finished before anything else is allowed to run against it.
+
+    The dialog can be closed while we wait - Escape on a window that is
+    already up is enough - and grabbing a destroyed widget raises. That
+    is a real path and not a defensive 'cannot happen'.
+    """
+    try:
+        win.wait_visibility()
+    except tk.TclError:
+        return
+    if win.winfo_exists():
+        win.grab_set()
+
+
 def wrap_lines(text, font, pixels, indent="      "):
     """Word-wrap 'text' to 'pixels' using 'font' metrics -> list of lines,
     continuation lines prefixed with 'indent' so a wrapped row still reads

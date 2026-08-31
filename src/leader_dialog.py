@@ -38,7 +38,6 @@ class JoinDialog(tk.Toplevel):
         title_word = mode.capitalize()
         self.title(f"{title_word} assignment - {army_name}")
         self.transient(parent)
-        self.grab_set()
         self.helpers = list(helpers)        # entries
         self.targets = list(targets)        # entries
         self.joined = []                    # [(helper_entry, target_entry)]
@@ -67,6 +66,7 @@ class JoinDialog(tk.Toplevel):
         ttk.Button(bar, text="OK",
                    command=self.cmd_ok).pack(side=tk.LEFT, padx=12)
         self._refresh()
+        ui.modal_grab(self)
 
     # ---- compatibility for the current mode ----
     def _can(self, helper_entry, target_entry):
@@ -172,7 +172,6 @@ class TwoArmyJoinDialog(tk.Toplevel):
         super().__init__(parent)
         self.title("Join leaders & supports")
         self.transient(parent)
-        self.grab_set()
         self.fmt = fmt
         self.states = {"A": lc.ArmyJoinState(data_a, fmt),
                        "B": lc.ArmyJoinState(data_b, fmt)}
@@ -230,6 +229,7 @@ class TwoArmyJoinDialog(tk.Toplevel):
         ttk.Button(ok, text="Cancel",
                    command=self.destroy).pack(side=tk.LEFT, padx=4)
         self._refresh()
+        ui.modal_grab(self)
 
     def _refresh(self):
         for side in ("A", "B"):

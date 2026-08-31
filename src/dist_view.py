@@ -383,9 +383,6 @@ class DistributionFrame(ttk.Frame):
                                                            padx=(2, 8))
         ttk.Checkbutton(top, text="cumulative", variable=self._cum,
                         command=self._refresh).pack(side=tk.LEFT, padx=8)
-        if note:
-            ttk.Label(self, text=note, foreground="#666666",
-                      wraplength=self._note_wrap).pack(anchor=tk.W, padx=6)
 
         self.canvas = HistogramCanvas(self, height=300)
         self.canvas.pack(fill=tk.BOTH, expand=True, padx=6, pady=4)
@@ -429,6 +426,39 @@ class DistributionFrame(ttk.Frame):
         self.xmax_spin.pack(side=tk.LEFT)
         for spin in (self.xmin_spin, self.xmax_spin):
             spin.bind("<KeyRelease>", lambda _e: self._refresh())
+        if note:
+            self._build_note(side, note)
+
+    #: The note box never grows past this many lines. It sits in the gap
+    #: under the X-axis row, and that gap is three rows tall: a fourth
+    #: would push the window past the height a 768-line screen has.
+    NOTE_LINES = 3
+
+    def _build_note(self, parent, note):
+        """What this chart is OF: the weapon's printed characteristics
+        and the target it was fired at.
+
+        Pre-wrapped rather than left to 'wraplength', because the height
+        has to be BOUNDED and a Label that wraps by itself grows as far
+        as the text asks. Half the chart's width, which is the room
+        beside the statistics table.
+        """
+        width = max(200, self._note_wrap // 2)
+        try:
+            font = tkfont.nametofont("TkDefaultFont")
+            lines = []
+            for para in note.split("\n"):
+                lines += ui.wrap_lines(para, font, width, indent="")
+        except tk.TclError:
+            lines = note.split("\n")
+        if len(lines) > self.NOTE_LINES:
+            lines = lines[:self.NOTE_LINES]
+            lines[-1] = lines[-1].rstrip(" .") + " ..."
+        box = ttk.LabelFrame(parent, text="This chart")
+        box.pack(anchor=tk.W, fill=tk.X, pady=(6, 0))
+        ttk.Label(box, text="\n".join(lines), justify=tk.LEFT,
+                  foreground=ui.HINT_COLOR).pack(anchor=tk.W, padx=4,
+                                                 pady=(0, 2))
 
     #: statistic key -> heading, in the order the table shows them.
     STAT_COLUMNS = (("mean", "\u03bc"), ("sd", "sd"), ("lo", None),

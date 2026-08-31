@@ -47,7 +47,7 @@ class MergeDialog(tk.Toplevel):
         self._work_unit = None       # working-copy dict of that unit
         self._build()
         self._reload_units()
-        self.grab_set()
+        ui.modal_grab(self)
 
     # ---------- construction ----------
 

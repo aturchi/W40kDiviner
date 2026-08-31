@@ -47,7 +47,7 @@ class HazardWindow(tk.Toplevel):
         self.buttons = {}
         self._build(name)
         self.protocol("WM_DELETE_WINDOW", self._skip)
-        self.grab_set()
+        ui.modal_grab(self)
 
     def _recompute(self):
         """Work the closing step out again from the items as they now

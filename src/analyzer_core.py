@@ -718,6 +718,14 @@ def run_analysis(aview, dview, ref: dict, flags: dict, mode: str,
         solo = (kc.resolve([res["alloc"]], ref["W"], ref.get("models"))
                 if kills else None)
         rows.append({"name": label, "count": w.count,
+                     # The characteristics as the datasheet prints them,
+                     # for the chart window to show beside its numbers.
+                     # Raw values, not the modified ones the chain used:
+                     # the reader wants to recognise the weapon, and the
+                     # audit panel is where the modified figures live.
+                     "profile": {"type": w.type, "A": str(w.A),
+                                 "skill": str(w._skill), "S": str(w.S),
+                                 "AP": str(w.AP), "D": str(w.D)},
                      "attacks": res["attacks"],
                      "wounds": res["wounds"],
                      "damage": res["damage"],

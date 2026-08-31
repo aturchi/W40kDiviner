@@ -731,9 +731,11 @@ class AnalyzerApp(tk.Tk):
 
         # The defensive profile and the target it describes are one
         # fact, not two: on separate lines they read as if the second
-        # qualified something other than the first.
-        note = (f"{label}  |  Target: {ref.get('models')} model(s) x "
-                f"W{ref.get('W')} = {unit_w} wounds on this profile.")
+        # qualified something other than the first. Shown in the box
+        # under the X-axis controls of the chart, which is why it is
+        # kept short: that box holds three lines.
+        note = (f"{label}, {ref.get('models')} model(s), "
+                f"{unit_w} wounds.")
         series = self._totals_block(parent, t, unit_w, heading, label,
                                     results, context, stats)
         # Every double-clickable row, weapons and the TOTAL alike: one
@@ -747,12 +749,14 @@ class AnalyzerApp(tk.Tk):
                            attacks_pmf=r.get("attacks_pmf"),
                            effective_pmf=r.get("wounds_pmf"),
                            self_pmf=r.get("self_damage_pmf")),
-                       f"{note}\nThis weapon alone, against a target "
-                       f"unit at full strength.")
+                       f"{result_rows.weapon_profile(r.get('profile'))}"
+                       f"\n{note}.")
                  for iid, r in pmfs.items()}
+        # No characteristics line on the TOTAL: it is several weapons
+        # and has no single A or S to print.
         dists[totals_iid] = (f"{heading} - all weapons", series,
                              f"{note}\nEvery unmasked weapon is summed "
-                             f"here: mask the ones not firing.")
+                             f"here.")
         tree.bind("<Double-1>",
                   lambda e: self._open_row_dist(e, tree, dists))
         if results["warnings"]:

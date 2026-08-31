@@ -53,7 +53,7 @@ class RosterPicker(tk.Toplevel):
         self._refresh_files()
         self._refresh_basket()
         self.bind("<Escape>", lambda _e: self.destroy())
-        self.grab_set()
+        ui.modal_grab(self)
 
     # ---------- construction ----------
 

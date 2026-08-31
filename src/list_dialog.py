@@ -18,7 +18,6 @@ class StringListDialog(tk.Toplevel):
         super().__init__(parent)
         self.title(title)
         self.transient(parent)
-        self.grab_set()
         self.result = None
         self.items = list(current or [])
 
@@ -48,6 +47,7 @@ class StringListDialog(tk.Toplevel):
                    command=self.destroy).grid(row=3, column=2, pady=8)
         self.entry.bind("<Return>", lambda e: self.cmd_add())
         self._refresh()
+        ui.modal_grab(self)
 
     def _refresh(self):
         self.listbox.delete(0, tk.END)
