@@ -281,11 +281,6 @@ class TwoArmyJoinDialog(tk.Toplevel):
                  f"{lc.free_slots(entry, 'leader', self.fmt)}   "
                  f"supports: {lc.free_slots(entry, 'support', self.fmt)}")
 
-    def _pool(self, side, which):
-        st = self.states[side]
-        return {"leaders": st.leaders, "others": st.others,
-                "supports": st.supports}.get(which, [])
-
     def _clear_grey(self, side):
         for which in ("leaders", "others", "supports"):
             lb = self.lb[(side, which)]
@@ -315,7 +310,7 @@ class TwoArmyJoinDialog(tk.Toplevel):
                            [st.can_lead(leader, u) for u in st.others])
             self._set_grey(side, "supports",
                            [st.can_lead(leader, u) for u in st.supports])
-        elif source_which == "supports" and source_which:
+        elif source_which == "supports":
             support = st.supports[i]
             # a support can (a) support units/other-supports, and (b) itself
             # be led by a leader. Grey by its support compatibility as helper.

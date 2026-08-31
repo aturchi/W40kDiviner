@@ -107,7 +107,7 @@ def _group_label(members, models):
             f"{save}{inv}{fnp})")
 
 
-def _member_order(members, models):
+def member_order(members, models):
     """Members of one group in the order they take damage.
 
     Four keys. The WOUNDED model goes FIRST: that is what the rules do
@@ -154,7 +154,7 @@ def build_groups(models) -> list:
             groups.append(g)
         g["members"].append(i)
     for g in groups:
-        g["members"] = _member_order(g["members"], models)
+        g["members"] = member_order(g["members"], models)
         m = models[g["members"][0]]
         g["ref"] = {"Sv": m.get("sv"), "invuln": m.get("invuln"),
                     "fnp": m.get("fnp"), "W": _int(m.get("max"), 1)}
@@ -218,13 +218,13 @@ def prefer_members(members, models, keys) -> list:
     Same shape as prefer_order one level down: a wounded model must
     still be taken first - that is the rules, not a heuristic - and the
     declaration only orders what is free. Models it never named fall
-    behind the ones it did, in the order _member_order would have given
+    behind the ones it did, in the order member_order would have given
     them.
     """
     rank = {}
     for n, i in enumerate(keys or ()):
         rank.setdefault(int(i), n)
-    default = {i: n for n, i in enumerate(_member_order(members, models))}
+    default = {i: n for n, i in enumerate(member_order(members, models))}
     big = len(rank) + len(members) + 1
     return sorted(members,
                   key=lambda i: (0 if _is_wounded(models[i]) else 1,
@@ -463,7 +463,7 @@ class Allocation:
     def _pref_order(self):
         """Every model, in the champion-heuristic order, ignoring the
         groups: the sequence mortal wounds are selected along."""
-        return _member_order(list(range(len(self.models))), self.models)
+        return member_order(list(range(len(self.models))), self.models)
 
     # ---------- applying damage ----------
 

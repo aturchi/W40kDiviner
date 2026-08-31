@@ -27,7 +27,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 import native_format          # noqa: E402
 import analyzer_core          # noqa: E402
-import attack_math            # noqa: E402
 import ability_ids                            # noqa: E402
 import leader_core as lc                      # noqa: E402
 import tree_ids                               # noqa: E402

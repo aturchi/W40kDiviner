@@ -5,7 +5,6 @@ outcome is in the session records, so everything here is a pure
 function of those records and the attacker's model list.
 """
 import testpaths                       # noqa: F401  (sets sys.path)
-import alloc_groups as ag
 import hazard_close as hc
 
 

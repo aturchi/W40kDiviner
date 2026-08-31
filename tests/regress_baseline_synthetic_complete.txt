@@ -75,6 +75,41 @@
   melee:Weapon 28 | A 6.0/6 | W 0.1667/0 | D 0.1667/0 | Dnet 0.1667/0 | R 0.1667/0
   melee:TOTAL | D 0.1667/0 | Dnet 0.1667/0 | R 0.1667/0 | K 0.0/0 | wipe 0.0 | warn=0
   melee:ORDER | Weapon 28 | gain 0.0 | spent 1.0
+## corners
+  dev.ward.ranged:Probe lance | D 6.0/6 | Dnet 3.2292/3 | R 3.2239/3
+  dev.ward.ranged:TOTAL | D 6.0/6 | R 3.2239/3 | K 1.0359/1 | wipe 0.0
+  dev.bare.ranged:Probe lance | D 6.6667/6 | Dnet 3.3333/3 | R 3.3333/3
+  dev.bare.ranged:TOTAL | D 6.6667/6 | R 3.3333/3 | K 1.1111/1 | wipe 0.0
+  dev.ward.melee:Probe siege fist | D 5.1111/4 | Dnet 3.9792/3 | R 3.9633/3
+  dev.ward.melee:TOTAL | D 5.1111/4 | R 3.9633/3 | K 1.2268/1 | wipe 0.0
+  dev.bare.melee:Probe siege fist | D 5.7778/4 | Dnet 4.3333/3 | R 4.3333/3
+  dev.bare.melee:TOTAL | D 5.7778/4 | R 4.3333/3 | K 1.4444/1 | wipe 0.0
+  storm.ward.ranged:Probe stormgun | D 16.6667/17 | Dnet 16.6667/17 | R 12.5215/13
+  storm.ward.ranged:TOTAL | D 16.6667/17 | R 12.5215/13 | K 3.9618/4 | wipe 0.3712
+  storm.bare.ranged:Probe stormgun | D 20.0/20 | Dnet 20.0/20 | R 13.5972/15
+  storm.bare.ranged:TOTAL | D 20.0/20 | R 13.5972/15 | K 4.3626/5 | wipe 0.5683
+  storm.ward.melee:Probe stormblade | D 13.3333/13 | Dnet 13.3333/13 | R 10.59/11
+  storm.ward.melee:TOTAL | D 13.3333/13 | R 10.59/11 | K 3.2593/3 | wipe 0.1459
+  melta.near.bare:Probe melta | D 4.1481/7 | Dnet 4.1481/7 | R 4.1481/7
+  melta.near.bare:TOTAL | D 4.1481/7 | R 4.1481/7 | K 0.0/0 | wipe 0.0
+  melta.far.bare:Probe melta | D 2.963/5 | Dnet 2.963/5 | R 2.963/5
+  melta.far.bare:TOTAL | D 2.963/5 | R 2.963/5 | K 0.0/0 | wipe 0.0
+  melta.near.blunt:Probe melta | D 3.5556/6 | Dnet 3.5556/6 | R 3.5556/6
+  melta.near.blunt:TOTAL | D 3.5556/6 | R 3.5556/6 | K 0.0/0 | wipe 0.0
+  melta.near.halve:Probe melta | D 2.3704/4 | Dnet 2.3704/4 | R 2.3704/4
+  melta.near.halve:TOTAL | D 2.3704/4 | R 2.3704/4 | K 0.0/0 | wipe 0.0
+  melta.near.both:Probe melta | D 1.7778/3 | Dnet 1.7778/3 | R 1.7778/3
+  melta.near.both:TOTAL | D 1.7778/3 | R 1.7778/3 | K 0.0/0 | wipe 0.0
+  melta.far.both:Probe melta | D 1.1852/2 | Dnet 1.1852/2 | R 1.1852/2
+  melta.far.both:TOTAL | D 1.1852/2 | R 1.1852/2 | K 0.0/0 | wipe 0.0
+  order.set.near:Probe melta | D 1.7778/3 | Dnet 1.7778/3 | R 1.7778/3
+  order.set.near:TOTAL | D 1.7778/3 | R 1.7778/3 | K 0.0/0 | wipe 0.0
+  order.set.far:Probe melta | D 0.5926/1 | Dnet 0.5926/1 | R 0.5926/1
+  order.set.far:TOTAL | D 0.5926/1 | R 0.5926/1 | K 0.0/0 | wipe 0.0
+  order.boost.near:Probe melta | D 2.3704/4 | Dnet 2.3704/4 | R 2.3704/4
+  order.boost.near:TOTAL | D 2.3704/4 | R 2.3704/4 | K 0.0/0 | wipe 0.0
+  order.boost.far:Probe melta | D 1.7778/3 | Dnet 1.7778/3 | R 1.7778/3
+  order.boost.far:TOTAL | D 1.7778/3 | R 1.7778/3 | K 0.0/0 | wipe 0.0
 ## profiles
   *Terminator Squad | Body D  (T5 Sv2+ W3 inv3+ fnp4+) | D 3.0/3
   *Riptide Battlesuit | Riptide Chassis  (T6 Sv2+ W14 inv4+) | D 9.0/9
@@ -343,4 +378,4 @@ SUPPORT Bladeguard Ancient -> Assault Intercessor Squad | models=6 | pts=140
   Terminator Squad | Warded Plate | invulnSave | def melee Probe Psyker | flags=off | 1.1852 -> 0.8889
 ## abilities inert (0 of 23)
 
-DIGEST f9f986b5e2f553f9  (344 lines)
+DIGEST 874aa9a6159a2244  (379 lines)

@@ -46,11 +46,12 @@ def _weapon(name, wtype, A, skill, S, AP, D, count=1, rng=None, kws=None,
     return w
 
 
-# A critical wound inflicting a real MORTAL WOUND. Since 11th ed.
-# DEVASTATING WOUNDS only bypasses the saving throw - its damage is
-# ordinary - this is what a mortal-wound-only Feel No Pain or
-# invulnerable save keys off, so a probe must carry it or those
-# abilities go untested.
+# A critical wound inflicting a SPILLING mortal wound. DEVASTATING
+# WOUNDS inflicts mortal wounds too, and the mortal-wound-only abilities
+# bite on both, so that is not what sets them apart: a devastating
+# mortal wound is allocated like ordinary damage and does NOT spill from
+# a destroyed model to the next, while this one does. The pool it builds
+# is the path Probe Lance cannot reach.
 CRIT_MORTAL = {
     "name": "Probe mortal spike",
     "description": "Each time an attack made with this weapon scores a "
@@ -72,9 +73,10 @@ def _model(name, count, T, Sv, W, weapons, invuln=None, fnp=None, kws=None):
             "keywords": list(kws or []), "abilities": [], "weapons": weapons}
 
 
-def _unit(name, points, models, keywords=None):
+def _unit(name, points, models, keywords=None, abilities=None):
     return {"name": name, "profile_name": name, "points": points,
-            "keywords": list(keywords or []) + [name], "abilities": [],
+            "keywords": list(keywords or []) + [name],
+            "abilities": list(abilities or []),
             "leader_effects": [], "models": models}
 
 
@@ -144,9 +146,10 @@ PROBE_ATTACKERS = [
                    _weapon("Probe combat blade", "Melee", 3, 3, 5, -1, 1,
                            count=10)])],
           keywords=["INFANTRY"]),
-    # DEVASTATING WOUNDS: damage that no saving throw can stop. Since
-    # 11th ed. it is NOT a mortal wound, so the mortal-wound-only
-    # abilities are probed on Probe Psyker instead (see CRIT_MORTAL).
+    # DEVASTATING WOUNDS: mortal wounds that no saving throw can stop
+    # and that do not spill. The mortal-wound-only abilities bite on
+    # them; the SPILLING kind is probed on Probe Psyker instead (see
+    # CRIT_MORTAL), since the two are allocated differently.
     _unit("Probe Lance", 170,
           [_model("Probe Gun Platform", 1, 9, 2, 10,
                   [_weapon("Probe lance", "Ranged", 2, 3, 14, -4, 6,
@@ -167,6 +170,225 @@ PROBE_ATTACKERS = [
                   invuln=4)],
           keywords=["INFANTRY", "PSYKER", "CHARACTER"]),
 ]
+
+
+# --- Corner probes: the paths the ROSTER fixture does not reach ----------
+
+# The digest is only a safety net over the paths its fixture walks, and
+# three of them the curated rosters never do. Measured on this fixture:
+# 894 allocations built, 26 of them joint, 3 with any mass on the
+# devastating axis - and all 3 against a single-model target, where the
+# allocation order cannot move a figure by construction; and 908 weapons
+# analysed, 901 carrying no damage modifier at all, the other 7 all the
+# same isolated 'add -1', with no halving and no melta bonus anywhere
+# near them. So a digest that did not change proved nothing about those
+# paths, and said so three times in a row without anyone able to tell.
+#
+# The units below exist to make those paths reachable. They are probes,
+# not plausible datasheets: each one carries the least that makes one
+# path observable, and nothing else.
+
+def _cond_defender():
+    return {"text": "Profile role", "type": "profileRole",
+            "data": {"profileRole": "Defender", "negate": False},
+            "preselected": False}
+
+
+# Feel No Pain that answers MORTAL WOUNDS only - the shape the real
+# rosters use (Recitation of Faith, Advanced Armour). Against a weapon
+# with DEVASTATING WOUNDS this is what gives the devastating events a
+# damage law of their own, which is what makes the allocation ORDER
+# observable: without it the two kinds of event are interchangeable and
+# the order cannot matter.
+MW_ONLY_FNP = {
+    "name": "Probe mortal ward",
+    "description": "Feel No Pain 4+, against mortal wounds only.",
+    "enabled": True, "share_with_unit": False,
+    "conditions": [_cond_defender(),
+                   {"text": "Wound type", "type": "woundType",
+                    "data": {"woundType": {"title": "Mortal wounds",
+                                           "key": "mortalWounds"},
+                             "negate": False}, "preselected": False}],
+    "effect": {"text": "Feel no pain", "type": "feelNoPain",
+               "data": {"operator": {"title": "Grant (best wins)",
+                                     "key": "grant"}, "value": "4"}},
+    "id": "probemortalward0000000000000001"}
+
+
+def _damage_mod(name, op_key, op_title, value, ident):
+    return {"name": name, "enabled": True, "share_with_unit": False,
+            "description": f"Damage modifier: {op_title} {value}.",
+            "conditions": [_cond_defender()],
+            "effect": {"text": "Damage modifier (defender)",
+                       "type": "damageReduction",
+                       "data": {"operator": {"title": op_title,
+                                             "key": op_key},
+                                "value": str(value)}},
+            "id": ident}
+
+
+# Halving and blunting, as two separate abilities so the digest can show
+# each alone and both together. Every damageReduction in the curated
+# rosters is the second one; the first, and the pair, are unreached.
+DMG_HALVE = _damage_mod("Probe halving", "mult", "Multiply", 0.5,
+                        "probedamagehalve000000000000001")
+DMG_BLUNT = _damage_mod("Probe blunting", "add", "Add (e.g. -1)", -1,
+                        "probedamageblunt000000000000001")
+# The two spellings that TELL THE FIVE-STEP ORDER APART. Halving with a
+# subtraction, and a melta bonus with a halving, give the same answer
+# under any ordering - ceil(x) + a == ceil(x + a) for integer a - so the
+# probes above walk the code without measuring it. These two do measure
+# it: a SET deletes a bonus applied before it but not one applied at
+# step 3, and a POSITIVE modifier lands on the far side of a division
+# depending on which step it belongs to.
+DMG_SET_ONE = _damage_mod("Probe damping", "set", "Set", 1,
+                          "probedamageset10000000000000001")
+DMG_BOOST = _damage_mod("Probe overload", "add", "Add (e.g. -1)", 1,
+                        "probedamageboost00000000000001")
+
+
+CORNER_DEFENDERS = [
+    # MULTI-MODEL, and with wounds to spare per model: the allocation
+    # order can only show up when a devastating event can be wasted on a
+    # model an ordinary one already hurt, which needs W > 1 and n > 1.
+    _unit("Probe Warden", 140,
+          [_model("Probe Sentinel", 5, 5, 3, 3,
+                  [_weapon("Probe carbine", "Ranged", 3, 3, 5, -1, 1,
+                           count=5, rng=24),
+                   _weapon("Probe glaive", "Melee", 3, 3, 6, -1, 2,
+                           count=5)])],
+          keywords=["INFANTRY"], abilities=[MW_ONLY_FNP]),
+    # Deep enough to survive several rounds of a melta, so the damage
+    # figures are not all clipped by the model's own wounds.
+    _unit("Probe Bulwark", 210,
+          [_model("Probe Redoubt", 1, 10, 2, 16,
+                  [_weapon("Probe mortar", "Ranged", 3, 4, 8, -1, 2,
+                           count=1, rng=48),
+                   _weapon("Probe fist", "Melee", 3, 4, 10, -2, 3,
+                           count=1)],
+                  invuln=5)],
+          keywords=["VEHICLE"], abilities=[DMG_HALVE, DMG_BLUNT]),
+    # Sets the incoming Damage to 1. Against a melta this is the case
+    # that separates "the bonus is convolved in before the chain" (the
+    # set deletes it, answer 1) from "the bonus is step 3" (it survives,
+    # answer 3).
+    _unit("Probe Nullifier", 190,
+          [_model("Probe Nullstone", 1, 10, 2, 16,
+                  [_weapon("Probe nullbeam", "Ranged", 3, 4, 8, -1, 2,
+                           count=1, rng=48),
+                   _weapon("Probe nullfist", "Melee", 3, 4, 10, -2, 3,
+                           count=1)],
+                  invuln=5)],
+          keywords=["VEHICLE"], abilities=[DMG_SET_ONE]),
+    # A POSITIVE Damage modifier and a halving on the same attack: the
+    # addition belongs to step 3 and the halving to step 4, so the
+    # addition happens FIRST. Doing it the other way round - halve, then
+    # add - is the only other reading, and the two disagree.
+    _unit("Probe Overloader", 200,
+          [_model("Probe Resonator", 1, 10, 2, 16,
+                  [_weapon("Probe resonance", "Ranged", 3, 4, 8, -1, 2,
+                           count=1, rng=48),
+                   _weapon("Probe resonant fist", "Melee", 3, 4, 10, -2, 3,
+                           count=1)],
+                  invuln=5)],
+          keywords=["VEHICLE"], abilities=[DMG_BOOST, DMG_HALVE]),
+]
+
+CORNER_ATTACKERS = [
+    # MELTA: the bonus lands on the Damage at half range, which is the
+    # one place the attacker's own damage arithmetic meets the
+    # defender's modifiers. The base Damage is deliberately ODD: with an
+    # even one the four-step and the five-step orders agree by accident
+    # on every case here, and the probe would watch the difference
+    # without ever seeing it.
+    _unit("Probe Melter", 160,
+          [_model("Probe Burner", 1, 8, 3, 8,
+                  [_weapon("Probe melta", "Ranged", 2, 3, 12, -4, 5,
+                           count=1, rng=12, kws=["MELTA 2"]),
+                   _weapon("Probe cutter", "Melee", 2, 3, 10, -3, 4,
+                           count=1)],
+                  invuln=5)],
+          keywords=["INFANTRY"]),
+    # Many small devastating events into a unit whose models take more
+    # than one to kill: that is where allocating them attack by attack
+    # instead of as a phase wastes a different amount, so this is the
+    # probe that actually MEASURES the order rather than merely touching
+    # the code path.
+    _unit("Probe Stormlance", 180,
+          [_model("Probe Gunhand", 10, 4, 3, 2,
+                  [_weapon("Probe stormgun", "Ranged", 3, 3, 6, -2, 2,
+                           count=10, rng=24, kws=["Devastating Wounds"]),
+                   _weapon("Probe stormblade", "Melee", 3, 3, 6, -1, 2,
+                           count=10, kws=["Devastating Wounds"])],
+                  )],
+          keywords=["INFANTRY"]),
+]
+
+# Half range on its own: the melta bonus without the dozen other
+# positional conditions FLAGS_ON would switch on at the same time.
+FLAGS_HALF = {"half_range": True}
+
+
+def _by_name(pool, name):
+    for unit in pool:
+        if unit["name"] == name:
+            return unit
+    raise KeyError(name)
+
+
+def corner_cases():
+    """[(label, attacker_native, defender_native, mode, flags)] for the
+    '## corners' digest section.
+
+    Each path is printed WITH the ability and without it, using the same
+    variant() machinery the ability probe uses, so the digest carries
+    the delta and not just a number: a line that moves is attributable
+    to the mechanic named in its label.
+    """
+    lance = _by_name(PROBE_ATTACKERS, "Probe Lance")
+    melter = _by_name(CORNER_ATTACKERS, "Probe Melter")
+    storm = _by_name(CORNER_ATTACKERS, "Probe Stormlance")
+    warden = _by_name(CORNER_DEFENDERS, "Probe Warden")
+    bulwark = _by_name(CORNER_DEFENDERS, "Probe Bulwark")
+    nuller = _by_name(CORNER_DEFENDERS, "Probe Nullifier")
+    overload = _by_name(CORNER_DEFENDERS, "Probe Overloader")
+    halve, blunt = ("abilities", 0), ("abilities", 1)
+    return [
+        # 1. DEVASTATING WOUNDS into a multi-model defender that
+        #    mitigates mortal wounds only. 'bare' is the same fight with
+        #    the ward switched off: the two lines differ only by the
+        #    devastating events having a damage law of their own, which
+        #    is the whole of the allocation-order question.
+        ("dev.ward.ranged", lance, warden, "ranged", FLAGS_OFF),
+        ("dev.bare.ranged", lance, variant(warden), "ranged", FLAGS_OFF),
+        ("dev.ward.melee", lance, warden, "melee", FLAGS_OFF),
+        ("dev.bare.melee", lance, variant(warden), "melee", FLAGS_OFF),
+        ("storm.ward.ranged", storm, warden, "ranged", FLAGS_OFF),
+        ("storm.bare.ranged", storm, variant(warden), "ranged", FLAGS_OFF),
+        ("storm.ward.melee", storm, warden, "melee", FLAGS_OFF),
+        # 2. MELTA at half range against a defender that modifies the
+        #    incoming Damage. 'far' is the same weapon out of melta
+        #    range, so the bonus itself is readable off the pair.
+        ("melta.near.bare", melter, variant(bulwark), "ranged", FLAGS_HALF),
+        ("melta.far.bare", melter, variant(bulwark), "ranged", FLAGS_OFF),
+        ("melta.near.blunt", melter, variant(bulwark, blunt), "ranged",
+         FLAGS_HALF),
+        ("melta.near.halve", melter, variant(bulwark, halve), "ranged",
+         FLAGS_HALF),
+        # 3. Halving and blunting TOGETHER, which is where their order
+        #    decides the answer: on a Damage of 8, halve-then-blunt
+        #    gives 3 and blunt-then-halve gives 4.
+        ("melta.near.both", melter, bulwark, "ranged", FLAGS_HALF),
+        ("melta.far.both", melter, bulwark, "ranged", FLAGS_OFF),
+        # 4. The order of the five steps itself: a set against a melta
+        #    bonus, and a positive modifier against a halving. Unlike
+        #    everything above, these two DISAGREE between the four-step
+        #    and the five-step model.
+        ("order.set.near", melter, nuller, "ranged", FLAGS_HALF),
+        ("order.set.far", melter, nuller, "ranged", FLAGS_OFF),
+        ("order.boost.near", melter, overload, "ranged", FLAGS_HALF),
+        ("order.boost.far", melter, overload, "ranged", FLAGS_OFF),
+    ]
 
 
 # --- Context flag sets ---------------------------------------------------

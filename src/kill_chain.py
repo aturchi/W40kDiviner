@@ -17,8 +17,14 @@ The chain is exact under the allocation the rules prescribe:
     mortal wounds applies to them, and attack_math thins them
     accordingly - but they are ALLOCATED like ordinary damage: onto one
     model, capped by its wounds, with no spill-over. They are counted
-    on their own axis only because those same abilities can give them a
-    different damage law from the ordinary events;
+    on their own axis because those same abilities can give them a
+    different damage law from the ordinary events, and because 06.02
+    puts them in a LATER PHASE: "when resolving attack dice, if those
+    attacks inflict a mixture of both mortal wounds and normal damage,
+    resolve all of the normal damage first, then resolve all of the
+    mortal wounds". "Those attacks" is the whole group of identical
+    attacks - one weapon profile against one target - so the phase runs
+    across the weapon and not inside a single attack. See _flush_dev;
   * mortal wounds that DO spill are pooled and applied at the END OF
     EACH WEAPON (11th ed. 4.3: "at the end of each group of identical
     attacks", not at the end of the unit's shooting), one point at a
@@ -36,6 +42,14 @@ models are already dead. The mortal pool M is carried alongside as the
 second half of the state, since it stays correlated with T through the
 attacks that produced both; it is spent at the end of the weapon that
 built it, which is also what leaves M at zero between weapons.
+
+Inside a weapon the state carries a THIRD number, D: how many
+devastating events the attacks so far still owe. They cannot be
+allocated as they are produced, because 06.02 puts them after every
+ordinary event of the same weapon, and they cannot be counted apart
+from T either, because how many of them one attack yields is
+correlated with how much ordinary damage that same attack did. So they
+are carried and spent at the end of the weapon, before the pool.
 
 The per-attack laws come from attack_math.analyze_weapon(alloc=True);
 everything here works on plain dicts and lists, so the module carries
@@ -73,14 +87,37 @@ def event_table(w: int, tmax: int, damage) -> list:
     return table
 
 
+def _merge(acc: dict, src: dict, weight: float = 1.0) -> None:
+    """acc += weight * src, in place, both in the grouped layout."""
+    for t, row in src.items():
+        dst = acc.get(t)
+        if dst is None:
+            acc[t] = (dict(row) if weight == 1.0 else
+                      {c: p * weight for c, p in row.items()})
+            continue
+        for c, p in row.items():
+            dst[c] = dst.get(c, 0.0) + p * weight
+
+
 def _apply_event(state: dict, table: list) -> dict:
-    """One damage event applied to the whole state distribution. Only
-    the wounds axis moves; the mortal pool is untouched."""
+    """One damage event applied to the whole state distribution.
+
+    GROUPED LAYOUT, used inside apply_weapon only: {t: {carried: p}},
+    where 'carried' is the mortal pool, or the (pool, owed) pair when
+    the devastating axis is alive. Only T moves, so a whole carried row
+    is scaled and merged as a block instead of one composite key at a
+    time - which is the point of the layout: the inner loop never
+    builds or hashes a tuple.
+    """
     out = {}
-    for (t, m), p in state.items():
+    for t, row in state.items():
         for t2, q in table[t].items():
-            key = (t2, m)
-            out[key] = out.get(key, 0.0) + p * q
+            dst = out.get(t2)
+            if dst is None:
+                out[t2] = {c: p * q for c, p in row.items()}
+                continue
+            for c, p in row.items():
+                dst[c] = dst.get(c, 0.0) + p * q
     return out
 
 
@@ -92,41 +129,119 @@ def _iterates(state: dict, table: list, upto: int) -> list:
     return out
 
 
-def _attack_op(state: dict, per_attack, joint: bool, tables, mcap: int):
+def _attack_op(state: dict, per_attack, joint: bool, tables, mcap: int,
+               dev: bool = False):
     """One attack: its damage events land on the models, the mortal
     wounds that spill go into the pool.
 
     'per_attack' is the PMF of the number of damage events, or - when
     'joint' - the joint PMF {(norm, dev, pool): p}. 'tables' is the
     ordinary event operator, or the (ordinary, devastating) pair.
+    'dev' says whether the state carries the owed-events axis; see
+    apply_weapon. States are in the grouped layout throughout.
     """
     if not joint:
         acc, cur = {}, state
         for k, p in enumerate(per_attack):
             if p:
-                for key, q in cur.items():
-                    acc[key] = acc.get(key, 0.0) + p * q
+                _merge(acc, cur, p)
             if k < len(per_attack) - 1:
                 cur = _apply_event(cur, tables)
         return acc
-    t_norm, t_dev = tables
-    # Ordinary events first, then the devastating ones: within a single
-    # attack the two only differ when a mortal-wound ability gives them
-    # different damage laws, and then their relative order changes just
-    # how much damage is wasted on the model that dies in between.
+    t_norm = tables[0]
+    # Only the ORDINARY events of this attack are allocated here. The
+    # devastating ones are counted onto the owed axis and spent at the
+    # end of the weapon by _flush_dev, because 06.02 resolves all the
+    # normal damage of a group of identical attacks before any of its
+    # mortal wounds - allocating them attack by attack lands them on a
+    # model the later attacks had not wounded yet, which changes how
+    # much of both is wasted.
+    #
+    # BOTH carried counters are capped at T, the wounds still standing.
+    # A pool point takes exactly one wound off and an allocation event
+    # at least one - the event damage law is conditioned on getting
+    # through - so T of either already leave nothing, and T only goes
+    # down between here and the readout. Uncapped they would run to the
+    # number of ATTACKS and the state would grow with them; capped, the
+    # (T, carried) rectangle is a triangle.
+    #
+    # The pool cap also ESTABLISHES the invariant pool <= T that
+    # _spend_pool and _read_state rely on. It used to be a flat cap and
+    # those two clamped with max(0, ...) instead - a clamp that hid,
+    # rather than reported, a pool the chain had let run past the unit.
+    # Now the bound is stated once, here, and checked where it is used.
     norm_steps = _iterates(state, t_norm, max(k[AX_NORM]
                                               for k in per_attack))
-    acc, cache = {}, {}
+    acc = {}
     for key, p in per_attack.items():
         kn, kd, m = key
-        got = cache.get((kn, kd))
-        if got is None:
-            got = _iterates(norm_steps[kn], t_dev, kd)[kd]
-            cache[(kn, kd)] = got
-        for (t, pool), q in got.items():
-            dest = (t, min(mcap, pool + m))
-            acc[dest] = acc.get(dest, 0.0) + p * q
+        for t, row in norm_steps[kn].items():
+            dst = acc.get(t)
+            if dst is None:
+                dst = acc[t] = {}
+            if not dev:
+                for pool, q in row.items():
+                    c = min(t, pool + m)
+                    dst[c] = dst.get(c, 0.0) + p * q
+                continue
+            for (pool, owed), q in row.items():
+                c = (min(t, pool + m), min(t, owed + kd))
+                dst[c] = dst.get(c, 0.0) + p * q
     return acc
+
+
+def _flush_dev(state: dict, table: list) -> dict:
+    """The devastating events a weapon owes, allocated after every
+    ordinary event of that same weapon (06.02), and the owed axis
+    dropped from the carried key.
+
+    Evaluated as a Horner scheme over the count: with f_d the slice of
+    the state owing exactly d events, the answer is sum_d DEV^d(f_d),
+    read as R_d = DEV(R_{d+1}) + f_d from the top down. That costs ONE
+    operator application per distinct count instead of one per (count,
+    state) pair, which matters because the count reaches the wounds the
+    unit still has.
+    """
+    slices = {}
+    for t, row in state.items():
+        for (pool, owed), p in row.items():
+            dst = slices.setdefault(owed, {}).setdefault(t, {})
+            dst[pool] = dst.get(pool, 0.0) + p
+    out = {}
+    for owed in range(max(slices) if slices else 0, -1, -1):
+        if out:
+            out = _apply_event(out, table)
+        _merge(out, slices.get(owed, {}))
+    return out
+
+
+def _group(state: dict, dev: bool) -> dict:
+    """{(t, pool): p} -> the grouped layout {t: {carried: p}}."""
+    out = {}
+    for (t, pool), p in state.items():
+        c = (pool, 0) if dev else pool
+        row = out.setdefault(t, {})
+        row[c] = row.get(c, 0.0) + p
+    return out
+
+
+def _ungroup(state: dict) -> dict:
+    """The grouped layout back to {(t, pool): p}, with the pool capped
+    at T on the way out.
+
+    _attack_op sets that cap, but _flush_dev then takes T DOWN while the
+    pool rides along, so the last place the invariant can break is here
+    - and here is where it is restored, before any caller sees the
+    state. Capping is exact for the same reason it was in _attack_op: a
+    pool bigger than the wounds left spends the same as one exactly as
+    big.
+    """
+    out = {}
+    for t, row in state.items():
+        for pool, p in row.items():
+            key = (t, min(t, pool))
+            out[key] = out.get(key, 0.0) + p
+    return out
 
 
 def apply_weapon(state: dict, alloc: dict, w: int, tmax: int) -> dict:
@@ -134,50 +249,76 @@ def apply_weapon(state: dict, alloc: dict, w: int, tmax: int) -> dict:
 
     alloc = {'per_attack', 'joint', 'event_damage', 'attacks_pmf',
     'single'} as produced by attack_math.analyze_weapon(alloc=True).
+
+    In and out the state is the plain {(t, pool): p} the rest of the
+    module reads. The grouped layout lives INSIDE this function only:
+    it is what makes the joint chain affordable, and confining it here
+    is what keeps _spend_pool, _read_state and resolve unaware of it.
     """
     joint = bool(alloc.get("joint"))
     tables = event_table(w, tmax, alloc["event_damage"])
+    per_attack = alloc["per_attack"]
+    # The joint law is also built for a weapon whose only mortal wounds
+    # SPILL - those go to the pool, never to the owed axis - so the
+    # axis is carried only when some attack can actually owe an event.
+    # Without this guard the spilling weapons, which are the expensive
+    # ones already, would pay for a counter that is always zero.
+    dev = joint and any(k[AX_DEV] for k in per_attack)
     if joint:
         tables = (tables, event_table(w, tmax,
                                       alloc.get("event_damage_dev")
                                       or alloc["event_damage"]))
-    attacks, per_attack = alloc["attacks_pmf"], alloc["per_attack"]
+    # The owed axis enters at zero and does not survive the weapon:
+    # 06.02 scopes the phase to one group of identical attacks.
+    state = _group(state, dev)
+    attacks = alloc["attacks_pmf"]
 
     def step(st, law):
-        return _attack_op(st, law, joint, tables, tmax)
+        return _attack_op(st, law, joint, tables, tmax, dev)
 
+    # ONE re-roll for the whole activation: with probability
+    # (1-p_fail)^k none of the k attacks failed and there is nothing to
+    # re-roll; the rest of the mass gets one extra attack. Both branches
+    # are tracked, exactly as the damage chain does, so the extra never
+    # lands on a sequence where nothing failed.
+    #
+    # All four names are bound unconditionally, even though only the
+    # 'single' path reads them: a name that exists only inside an 'if'
+    # and is read outside it works right up until a guard is edited, and
+    # then fails as a NameError rather than as a wrong number.
     single = alloc.get("single")
-    if single:
-        # ONE re-roll for the whole activation: with probability
-        # (1-p_fail)^k none of the k attacks failed and there is nothing
-        # to re-roll; the rest of the mass gets one extra attack. Both
-        # branches are tracked, exactly as the damage chain does, so the
-        # extra never lands on a sequence where nothing failed.
-        pf, ok_law, x_law = (single["p_fail"], single["per_attack_ok"],
-                             single["extra"])
-        cur_ok = dict(state)
-    acc, cur = {}, dict(state)
+    pf = single["p_fail"] if single else 0.0
+    ok_law = single["per_attack_ok"] if single else per_attack
+    x_law = single["extra"] if single else per_attack
+    cur_ok = {t: dict(row) for t, row in state.items()} if single else {}
+    acc, cur = {}, {t: dict(row) for t, row in state.items()}
     for k, pk in enumerate(attacks):
         if pk:
             if single and k:
                 w0 = (1.0 - pf) ** k
                 rest = {}
-                for key, p in cur.items():
-                    v = p - w0 * cur_ok.get(key, 0.0)
-                    if v > 0.0:
-                        rest[key] = v
+                for t, row in cur.items():
+                    ok_row = cur_ok.get(t) or {}
+                    keep = {}
+                    for c, p in row.items():
+                        v = p - w0 * ok_row.get(c, 0.0)
+                        if v > 0.0:
+                            keep[c] = v
+                    if keep:
+                        rest[t] = keep
                 part = step(rest, x_law)
-                for key, p in cur_ok.items():
-                    part[key] = part.get(key, 0.0) + w0 * p
+                _merge(part, cur_ok, w0)
             else:
                 part = cur
-            for key, p in part.items():
-                acc[key] = acc.get(key, 0.0) + pk * p
+            _merge(acc, part, pk)
         if k < len(attacks) - 1:
             cur = step(cur, per_attack)
             if single:
                 cur_ok = step(cur_ok, ok_law)
-    return acc
+    # After the attack counts are mixed, not inside the loop: the phase
+    # ends with the WEAPON, so a sequence of six attacks owes its six
+    # possible devastating events all at once and not two at a time.
+    return _ungroup(_flush_dev(acc, tables[1]) if dev else acc)
 
 
 def _spend_pool(state: dict) -> dict:
@@ -197,10 +338,17 @@ def _spend_pool(state: dict) -> dict:
     the TIMING changes is the model the NEXT weapon's damage events land
     on, and therefore how much of that damage is wasted - which is why
     doing it here rather than at the readout is not cosmetic.
+
+    A pool can never be bigger than the wounds still standing: every
+    state the chain hands out has been through the cap in _attack_op and
+    the one in _ungroup. So the subtraction needs no floor, and the
+    assertion below says so out loud - a clamp here would have turned a
+    broken cap into a plausible number instead of an error.
     """
     out = {}
     for (t, pool), p in state.items():
-        key = (max(0, t - pool), 0)
+        assert pool <= t, f"pool {pool} past the {t} wounds still standing"
+        key = (t - pool, 0)
         out[key] = out.get(key, 0.0) + p
     return out
 
@@ -212,11 +360,17 @@ def _read_state(state: dict, w: int, n: int, tmax: int):
     an intermediate state, which is what makes the per-prefix wipe
     probability cost a pass over the state instead of a re-run of the
     whole chain.
+
+    Same invariant as _spend_pool, and the same reason for asserting it
+    rather than clamping: this readout is the last thing between the
+    chain and the figures the user reads.
     """
     kills, removed = [0.0] * (n + 1), [0.0] * (tmax + 1)
     for (t, pool), p in state.items():
         if p:
-            left = max(0, t - pool)
+            assert pool <= t, (f"pool {pool} past the {t} wounds "
+                               "still standing")
+            left = t - pool
             kills[kills_from_total(left, w, n)] += p
             removed[tmax - left] += p
     # The joint convolutions drop masses below their epsilon, so the

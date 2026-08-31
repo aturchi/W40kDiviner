@@ -19,7 +19,6 @@ should be. The view decides the formatting, so a change of wording or
 column order cannot break a test about the rules.
 """
 
-import alloc_groups as ag
 
 # Weapon states, left panel.
 QUEUED = "queued"        # waiting its turn

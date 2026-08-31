@@ -352,7 +352,7 @@ assert ag.prefer_members(members, hurt, [0, 1, 2])[0] == 2, \
 whole = squad(3, sv=3, cap=2)
 assert ag.prefer_members(members, whole, [2, 0, 1]) == [2, 0, 1]
 assert ag.prefer_members(members, whole, []) == \
-    ag._member_order(members, whole)
+    ag.member_order(members, whole)
 assert ag.prefer_members(members, whole, [1])[0] == 1
 
 # And an Allocation built with the declaration reproduces it.

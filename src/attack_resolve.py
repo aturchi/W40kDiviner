@@ -110,11 +110,14 @@ def _roll_damage(rng, d_char, mech, half: bool, budget=None) -> int:
             v = (_d6(rng) if d_char.sides == 6
                  else rng.randint(1, d_char.sides))
         total += v
-    if half and am.x_active(mech.melta):
-        total += am.x_value(mech.melta, rng)
+    # MELTA is step 3 of the modifier chain, not a bonus applied before
+    # it: it has to survive a 'set' and land ahead of a division. Handed
+    # to apply_damage_modifiers rather than added here.
+    melta = (am.x_value(mech.melta, rng)
+             if half and am.x_active(mech.melta) else 0)
     if am.has_damage_modifiers(mech):
-        total = am.apply_damage_modifiers(total, mech)
-    return total
+        return am.apply_damage_modifiers(total, mech, melta)
+    return total + melta
 
 
 def _mw_save_keep(rng, dmg: int, mech) -> int:

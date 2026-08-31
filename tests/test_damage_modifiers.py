@@ -15,7 +15,6 @@ Covers, in order:
 
 Self-contained: builds tiny synthetic weapons/defenders, no roster data.
 """
-import math
 import unittest
 
 import testpaths                      # sets up sys.path to the engine src/
@@ -23,7 +22,6 @@ import testpaths                      # sets up sys.path to the engine src/
 import attack_math as am
 import mc_support as mcs
 from unit_model import Weapon
-from characteristics import Characteristic
 
 
 def _mech(**kw):
@@ -86,6 +84,62 @@ class TestApplyDamageModifiers(unittest.TestCase):
         self.assertEqual(am.apply_damage_modifiers(4, m2), 0)
 
 
+class TestFiveStepOrder(unittest.TestCase):
+    """The three places the five-step order of Rules Appendix 02.02.01
+    disagrees with the four-step model that preceded it. Every value is
+    worked out by hand from the rulebook order:
+
+        set -> multiply -> add -> divide -> subtract -> round up once
+    """
+
+    @staticmethod
+    def _mech(**kw):
+        m = am.WeaponMechanics()
+        for name, value in kw.items():
+            setattr(m, name, value)
+        return m
+
+    def _row(self, mech, melta=0):
+        return [am.apply_damage_modifiers(d, mech, melta)
+                for d in range(1, 9)]
+
+    def test_melta_survives_a_set(self):
+        # MELTA is an addition (step 3) and the set is step 1, so the
+        # bonus is added to the value the set left: 1 + 2 = 3, at every
+        # base Damage. Convolving the bonus in before the chain deleted
+        # it and gave 1.
+        self.assertEqual(self._row(self._mech(dmg_set=1), melta=2), [3] * 8)
+
+    def test_a_positive_modifier_lands_before_the_halving(self):
+        # +2 at step 3, halve at step 4: ceil((D + 2) / 2). Halving
+        # first and adding afterwards gives one MORE at every D.
+        self.assertEqual(self._row(self._mech(dmg_div=0.5, dmg_add=2)),
+                         [2, 2, 3, 3, 4, 4, 5, 5])
+
+    def test_rounding_happens_once_at_the_end(self):
+        # halve then subtract 1 on D = 5: 2.5 - 1 = 1.5 -> 2. Rounding
+        # after the halving would give 3 - 1 = 2 as well, which is why
+        # this pair alone never exposed the difference; the assertion is
+        # here so a future reader does not mistake that for luck.
+        self.assertEqual(self._row(self._mech(dmg_div=0.5, dmg_sub=-1)),
+                         [1, 1, 1, 1, 2, 2, 3, 3])
+
+    def test_the_old_shapes_are_unmoved(self):
+        # Everything the shipped rosters contain: a halving, a -1, and a
+        # melta into either. All identical to the four-step answers.
+        self.assertEqual(self._row(self._mech(dmg_div=0.5), melta=2),
+                         [2, 2, 3, 3, 4, 4, 5, 5])
+        self.assertEqual(self._row(self._mech(dmg_sub=-1)),
+                         [1, 1, 2, 3, 4, 5, 6, 7])
+
+    def test_a_set_to_zero_stops_the_chain(self):
+        # 02.02.01: a characteristic set to 0 cannot be modified by
+        # anything else, so neither the melta nor the addition revives
+        # it.
+        self.assertEqual(
+            self._row(self._mech(dmg_set=0, dmg_add=5), melta=3), [0] * 8)
+
+
 class TestEffectStringParsing(unittest.TestCase):
     def _parse(self, s):
         m = am.WeaponMechanics()
@@ -93,14 +147,30 @@ class TestEffectStringParsing(unittest.TestCase):
         return m
 
     def test_add_default_and_explicit(self):
+        # 'add -1' is the datasheet's "reduce the Damage by 1", which the
+        # rules resolve at step 5, not step 3: the sign picks the step.
         m = self._parse("DMGREDUX add -1")
-        self.assertEqual(m.dmg_add, -1)
+        self.assertEqual(m.dmg_sub, -1)
+        self.assertEqual(m.dmg_add, 0)
         self.assertIsNone(m.dmg_set)
         self.assertEqual(m.dmg_mult, 1.0)
+        self.assertEqual(m.dmg_div, 1.0)
+
+    def test_add_positive_is_a_real_addition(self):
+        m = self._parse("DMGREDUX add 2")
+        self.assertEqual(m.dmg_add, 2)
+        self.assertEqual(m.dmg_sub, 0)
 
     def test_mult_factor(self):
+        # 'mult 0.5' is "halve the Damage", a DIVISION (step 4).
         m = self._parse("DMGREDUX mult 0.5")
-        self.assertEqual(m.dmg_mult, 0.5)
+        self.assertEqual(m.dmg_div, 0.5)
+        self.assertEqual(m.dmg_mult, 1.0)
+
+    def test_mult_above_one_is_a_real_multiplication(self):
+        m = self._parse("DMGREDUX mult 2")
+        self.assertEqual(m.dmg_mult, 2.0)
+        self.assertEqual(m.dmg_div, 1.0)
 
     def test_set_keeps_best_lowest(self):
         m = am.WeaponMechanics()
@@ -112,7 +182,16 @@ class TestEffectStringParsing(unittest.TestCase):
         m = am.WeaponMechanics()
         am.parse_effect_strings(["DMGREDUX mult 0.5", "DMGREDUX mult 0.5"],
                                 "Ranged", m, weapon=None)
-        self.assertEqual(m.dmg_mult, 0.25)
+        self.assertEqual(m.dmg_div, 0.25)
+
+    def test_incoming_damage_modifier_splits_by_sign(self):
+        # A modifier on the incoming D reaches the same two steps, so the
+        # sign rule cannot be dodged by writing it as a characteristic
+        # modifier instead of a DMGREDUX.
+        worse = self._parse("CHARMOD D 1")
+        self.assertEqual((worse.dmg_add, worse.dmg_sub), (1, 0))
+        better = self._parse("CHARMOD D -1")
+        self.assertEqual((better.dmg_add, better.dmg_sub), (0, -1))
 
     def test_set_zero_token(self):
         m = self._parse("DMGSETZERO")

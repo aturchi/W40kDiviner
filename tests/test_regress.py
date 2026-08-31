@@ -176,6 +176,41 @@ def _damage_section(units, lines):
                                 else f" | spent {_num(tot['spent'])}"))
 
 
+# --- Section: corner probes ---------------------------------------------
+
+def _corners_section(lines):
+    """Engine paths the roster fixture leaves untouched: the allocation
+    order of devastating wounds against a multi-model target, the melta
+    bonus meeting a defender's damage modifiers, and a halving and a
+    subtraction applied to the same attack.
+
+    Source-independent by construction - the units are code-defined - so
+    the section reads identically in all four digests. That is the
+    point: a path the rosters do not walk is unreached whichever roster
+    is loaded, and the net has to be woven out of something other than
+    the rosters.
+    """
+    lines.append("## corners")
+    for label, att_native, dfn_native, mode, flags in rp.corner_cases():
+        res = rp.analyse(rp.as_unit(att_native), rp.as_unit(dfn_native),
+                         flags, mode)
+        if res is None:
+            lines.append(f"  {label}: (nothing to fire)")
+            continue
+        for row in res["weapons"]:
+            removed = row.get("removed")
+            lines.append(
+                f"  {label}:{row['name']} | D {_fmt(row['damage'])}"
+                f" | Dnet {_fmt(row['damage_net'])}"
+                + ("" if not removed else f" | R {_fmt(removed)}"))
+        tot = res["totals"]
+        lines.append(f"  {label}:TOTAL | D {_fmt(tot['damage'])}"
+                     + ("" if not tot.get("removed") else
+                        f" | R {_fmt(tot['removed'])}"
+                        f" | K {_fmt(tot['kills'])}"
+                        f" | wipe {_num(tot.get('p_wipe'))}"))
+
+
 # --- Section: defensive profiles ----------------------------------------
 
 def _profiles_section(units, lines):
@@ -454,6 +489,7 @@ def build_digest(complete=False):
     lines = [f"# source={_SOURCE} "
              f"scope={'complete' if complete else 'curated'}"]
     _damage_section(units, lines)
+    _corners_section(lines)
     _profiles_section(units, lines)
     _flags_section(units, lines)
     _selection_section(units, lines)

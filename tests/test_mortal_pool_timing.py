@@ -214,25 +214,55 @@ close(mean(old_removed), 3.0, "...and took one wound fewer off")
 print("a weapon that spills AND damages moves the kill count by a model")
 
 
-# --- _read_state on a state that still carries a pool -----------------
+# --- the pool never outruns the wounds still standing -----------------
 # resolve() flushes after every weapon, so the pool reaching the readout
 # is always zero and the subtraction there looks like dead code. It is
 # not: _read_state is the general reader (resolve_no_flush above is one
-# caller, and the intermediate 'spent' reads are another), and it has to
-# survive a pool BIGGER than the wounds still standing. Getting there
-# takes a weapon that damages AND spills: the pool alone is capped at
-# the unit's full wounds by _attack_op, so only the ordinary events -
-# which bring the remaining wounds DOWN while the pool climbs - can put
-# the two on the wrong side of each other. Without the floor at zero the
-# remaining wounds go negative and both output vectors are indexed out
-# of range, which is a crash rather than a wrong number.
+# caller, and the intermediate 'spent' reads are another).
+#
+# It used to CLAMP that subtraction at zero, because a weapon that
+# damages AND spills could put the two on the wrong side of each other:
+# the ordinary events bring the remaining wounds down while the pool
+# climbs. _attack_op now caps the pool at the wounds still standing
+# instead, which is exact - a pool bigger than what is left spends the
+# same as one exactly as big - and halves the state the joint chain
+# carries. The clamp is gone and an assertion stands in its place, so a
+# cap that ever stopped holding would be an error and not a plausible
+# figure.
 big = {"per_attack": {(1, 0, 3): 1.0}, "joint": True,
        "event_damage": [0.0, 0.0, 1.0], "event_damage_dev": [0.0, 0.0, 1.0],
        "attacks_pmf": [0.0, 0.0, 1.0], "single": None}
 k, r = resolve_no_flush([big], 2, 3)
 close(mean(k), 3.0, "an over-killing pool wipes the unit")
 close(mean(r), 6.0, "and never removes more wounds than the unit had")
-print("_read_state survives a pool larger than the unit")
+
+# The invariant itself, on the state that used to break it: this is the
+# weapon that produced pool > T before the cap, so if the assertion is
+# ever going to be needed it is needed here.
+tmax = 2 * 3
+state = {(tmax, 0): 1.0}
+for _ in range(2):
+    state = kc.apply_weapon(state, big, 2, tmax)
+assert state, "the probe state is empty - the invariant check proves nothing"
+for (t, pool), p in state.items():
+    assert pool <= t, f"pool {pool} past the {t} wounds still standing"
+
+# ...and the assertion bites: a state built by hand past the cap must be
+# refused, not clamped. An invariant nothing can violate is one nothing
+# can check.
+try:
+    kc._read_state({(2, 5): 1.0}, 2, 3, tmax)
+except AssertionError:
+    pass
+else:
+    raise AssertionError("_read_state accepted a pool past the wounds left")
+try:
+    kc._spend_pool({(2, 5): 1.0})
+except AssertionError:
+    pass
+else:
+    raise AssertionError("_spend_pool accepted a pool past the wounds left")
+print("the pool never outruns the wounds still standing")
 
 
 # --- a weapon that does nothing was still fired ------------------------

@@ -81,9 +81,19 @@ def allocate(events, w, n, want="kills"):
     one model at a time, capped by the wounds left; mortal wounds that
     SPILL pooled to the end and spent one point at a time. Devastating
     Wounds are mortal wounds that do not spill, so the resolver marks
-    them and they are allocated like ordinary damage."""
+    them and they are allocated like ordinary damage.
+
+    In THREE phases, and not in roll order (06.02: "resolve all of the
+    normal damage first, then resolve all of the mortal wounds"). The
+    resolver emits the events of a non-deferred sequence attack by
+    attack, so the phase split has to be made here - which is the point
+    of the oracle: it states the rule itself instead of inheriting it
+    from the code under test. sorted() is stable, so roll order
+    survives inside each phase, and the spilling mortals are the third
+    phase already, being pooled below whatever order they arrive in.
+    """
     wounds, pool = [w] * n, 0
-    for e in events:
+    for e in sorted(events, key=lambda ev: ev["kind"] == "mortal"):
         if e["kind"] == "mortal" and e.get("spills", True):
             pool += e["amount"]
             continue
@@ -230,6 +240,89 @@ mixed = {"per_attack": {(1, 0, 1): 1.0}, "joint": True,
 # ordinary first -> A takes 2, then 2 (destroyed, 1 wasted): T = 3.
 # Pool of 2 then takes B to 1 wound. One model dies.
 assert kc.kills_pmf([mixed], 3, 2) == [0.0, 1.0, 0.0]
+
+
+# ---- 4b. the devastating phase runs across the WEAPON (06.02) ---------
+# 06.02: "resolve all of the normal damage first, then resolve all of
+# the mortal wounds", and "those attacks" is the group of identical
+# attacks - one weapon profile against one target - so the phase spans
+# the whole weapon and not one attack.
+#
+# The smallest case that separates the two orders, worked out by hand.
+# Three models of W2 (T = 6), two attacks, each producing one ordinary
+# event of 1 damage and one devastating event of 2:
+#
+#   06.02        6 -(1)- 5 -(1)- 4 | dev 2 on a full model -> 2 -> 0
+#                THREE kills, SIX wounds off, nothing wasted.
+#   attack order 6 -(1)- 5 | dev 2 capped by the 1 wound left -> 4
+#                  -(1)- 3 | dev 2 capped by 1 -> 2
+#                TWO kills, FOUR wounds off.
+#
+# A whole model and two wounds apart, and a statistical parity check
+# cannot see it: the gap is about 1 sigma against a 4 sigma band.
+def dev_law(n_attacks):
+    return {"per_attack": {(1, 1, 0): 1.0}, "joint": True,
+            "event_damage": am.delta(1), "event_damage_dev": am.delta(2),
+            "attacks_pmf": n_attacks, "single": None}
+
+
+assert kc.kills_pmf([dev_law(am.delta(2))], 2, 3) == [0.0, 0.0, 0.0, 1.0]
+close(ds.stats(kc.resolve([dev_law(am.delta(2))], 2, 3)["removed"])["mean"],
+      6.0)
+
+# ... and the flush happens once the attack COUNT has been mixed in, not
+# per branch of it. One attack alone leaves 6 -(1)- 5, dev 2 capped by
+# the single wound left -> 4: one kill, two wounds off. Half and half
+# with the two-attack branch above gives 2.0 kills and 4.0 wounds; a
+# flush done inside the attack loop would give 1.5 and 3.0.
+half = dev_law([0.0, 0.5, 0.5])
+close(ds.stats(kc.kills_pmf([half], 2, 3))["mean"], 2.0)
+close(ds.stats(kc.resolve([half], 2, 3)["removed"])["mean"], 4.0)
+
+# The counter is capped at the unit's full wounds, and that cap must be
+# unreachable in effect: ten devastating events of 2 into three W2
+# models destroy the unit exactly as six would.
+assert kc.kills_pmf([dev_law(am.delta(10))], 2, 3) == [0.0, 0.0, 0.0, 1.0]
+
+# BOTH axes at once - a weapon that owes devastating events AND spills
+# - which is the state the two guards in apply_weapon have to keep
+# apart. Four models of W2 (T = 8), two attacks, each producing one
+# ordinary event of 1, one devastating event of 2, and one spilling
+# mortal point. Three phases, in order (06.02):
+#
+#   normal   8 -(1)- 7 -(1)- 6
+#   dev      6 -(2)- 4 -(2)- 2      each capped by a FULL model
+#   pool     2 -(1)- 1 -(1)- 0      spilling, so nothing is wasted
+#   FOUR kills, EIGHT wounds off.
+#
+# Attack order would give three kills (the devastating 2 caps against
+# the single wound the ordinary event left), and dropping the owed axis
+# altogether gives two. The three answers are distinct, so this one
+# case pins the phase order and both guards.
+both = {"per_attack": {(1, 1, 1): 1.0}, "joint": True,
+        "event_damage": am.delta(1), "event_damage_dev": am.delta(2),
+        "attacks_pmf": am.delta(2), "single": None}
+assert kc.kills_pmf([both], 2, 4) == [0.0] * 4 + [1.0]
+close(ds.stats(kc.resolve([both], 2, 4)["removed"])["mean"], 8.0)
+
+# The one shape that makes the devastating flush BREAK the pool
+# invariant: _attack_op caps the pool at the wounds still standing, but
+# the flush then takes those wounds down while the pool rides along. Two
+# attacks, each 1 devastating event of 2 and 3 spilling points, no
+# ordinary damage, into four models of W2 (T = 8):
+#
+#   dev   8 -(2)- 6 -(2)- 4      each capped by a full model
+#   pool  6 points against the 4 left -> the unit is wiped, 2 wasted
+#
+# Four kills and eight wounds. The pool of 6 outruns the 4 wounds left,
+# which is exactly what _ungroup has to cap on the way out: without it
+# the readout subtracts into negative wounds and indexes its own output
+# vector out of range.
+spill_after_dev = {"per_attack": {(0, 1, 3): 1.0}, "joint": True,
+                   "event_damage": am.delta(1), "event_damage_dev": am.delta(2),
+                   "attacks_pmf": am.delta(2), "single": None}
+assert kc.kills_pmf([spill_after_dev], 2, 4) == [0.0] * 4 + [1.0]
+close(ds.stats(kc.resolve([spill_after_dev], 2, 4)["removed"])["mean"], 8.0)
 
 # ---- 5. wounds inflicted vs the old 'net damage' estimate -------------
 # Capping every event at W (what damage_net does) cannot see that the

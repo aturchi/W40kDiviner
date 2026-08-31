@@ -742,14 +742,6 @@ def _classify(div, bitmap=None):
 
 
 # --------------------------------------------------------------- collect
-def _fetch_soup(src, slug):
-    """Parsed BeautifulSoup for datasheet 'slug' from source 'src' (either a
-    local dump or a live fetch)."""
-    # src.get returns a BeautifulSoup already (fetch_armies.PageSource does),
-    # so just request the datasheets page.
-    return src.get(BASE + f"{_PREFIX}{slug}/datasheets.html")
-
-
 _DS_MARKER = '<div class="dsOuterFrame datasheet'
 
 

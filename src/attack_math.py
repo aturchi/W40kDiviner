@@ -396,11 +396,35 @@ def save_fail_prob(sv, ap, invuln,
 
 # Characteristics of an INCOMING attack a defender ability may modify,
 # mapped to the WeaponMechanics field holding the modifier. "SKILL" is
-# what modifier_engine calls the BS/WS pair; a modifier to the Damage
-# characteristic reuses dmg_add, which already models the fixed
-# set/multiply/add order of the damage chain.
+# what modifier_engine calls the BS/WS pair. The Damage entry is a
+# placeholder: a modifier to D does not go straight to a field, because
+# its SIGN decides which step of the damage chain it belongs to - see
+# add_damage_delta.
 _INCOMING_CHAR_MODS = {"AP": "ap_mod", "S": "str_mod", "A": "attacks_mod",
                        "SKILL": "skill_mod", "D": "dmg_add"}
+
+
+def add_damage_delta(mech, n: int) -> None:
+    """Route a flat Damage modifier to its step: the rules add before
+    they divide and subtract after, so +1 and -1 are not the same step
+    run twice and cannot share an accumulator."""
+    if n >= 0:
+        mech.dmg_add += n
+    else:
+        mech.dmg_sub += n
+
+
+def takes_cover(weapon) -> bool:
+    """True when the Benefit of Cover can apply to this weapon's attacks.
+
+    One spelling, because there were two: the maths asked whether the
+    type WAS "Ranged" and the audit whether it was NOT "Melee". Both
+    answer the same for the two types in use, which is exactly what
+    makes a second spelling dangerous - it agrees until someone adds a
+    third type, and then it disagrees silently. Cover modifies the
+    shooter's Ballistic Skill (13.08), so the rule is about shooting.
+    """
+    return weapon.type == "Ranged"
 
 
 def _effective_ap(base_ap: int, mech) -> int:
@@ -630,18 +654,29 @@ class WeaponMechanics:
         #                              engaged with, and is exempt from
         #                              the close-quarters -1 to hit
         # Per-attack Damage-characteristic modifiers from DMGREDUX /
-        # DMGSETZERO effect strings (defender abilities, evaluated against
-        # the attacking weapon). They are applied to the Damage D of each
-        # attack in this FIXED order, regardless of declaration order
-        # (see apply_damage_modifiers):
+        # DMGSETZERO effect strings and from a modifier on the incoming
+        # D. They are applied to the Damage of each attack in the FIXED
+        # order of Rules Appendix 02.02.01, regardless of declaration
+        # order (see apply_damage_modifiers):
         #   Step 1  dmg_set      set D to a fixed value (None = no set)
-        #   Step 2  dmg_mult     multiply D cumulatively (GW: round UP)
-        #   Step 3  dmg_add      add to D (a reduction is a negative add)
-        #   Step 4  floor at 1, UNLESS dmg_set_zero forces D to 0
+        #   Step 2  dmg_mult     multiplications, cumulative
+        #   Step 3  dmg_add      additions - MELTA is one of them
+        #   Step 4  dmg_div      divisions, cumulative (0.5 = halve)
+        #   Step 5  dmg_sub      subtractions
+        #   then    round UP once, and floor at 1 unless dmg_set_zero
+        #
+        # The ability editor offers three operators where the rules have
+        # five, so the two are read by SIGN, which is how a datasheet
+        # reads them too: "multiply by 2" is a multiplication and "halve"
+        # is a division, "improve by 1" is an addition and "reduce by 1"
+        # is a subtraction. That keeps the stored data untouched - every
+        # modifier in the shipped rosters is one of those two spellings.
         self.dmg_set = None         # Step 1: fixed override (int or None)
-        self.dmg_mult = 1.0         # Step 2: cumulative factor (0.5 = halve)
-        self.dmg_add = 0            # Step 3: net additive modifier
-        self.dmg_set_zero = False   # Step 4: force D to 0 (bypass the floor)
+        self.dmg_mult = 1.0         # Step 2: cumulative factor >= 1
+        self.dmg_add = 0            # Step 3: positive additive modifier
+        self.dmg_div = 1.0          # Step 4: cumulative factor < 1
+        self.dmg_sub = 0            # Step 5: negative additive modifier
+        self.dmg_set_zero = False   # force D to 0 (bypasses the floor)
         self.hazardous = False      # dual-profile reporting
         self.hit_mod = 0            # net roll modifiers (capped later)
         self.wound_mod = 0
@@ -1060,8 +1095,11 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             # that attack by N". Sign convention follows the datasheet:
             # +1 on AP or on the BS/WS modifier makes the attack worse,
             # +1 on S / A / D makes it better.
-            attr = _INCOMING_CHAR_MODS[tok[1]]
-            setattr(mech, attr, getattr(mech, attr) + int(tok[2]))
+            if tok[1] == "D":
+                add_damage_delta(mech, int(tok[2]))
+            else:
+                attr = _INCOMING_CHAR_MODS[tok[1]]
+                setattr(mech, attr, getattr(mech, attr) + int(tok[2]))
         elif tok[0] == "BENEFITOFCOVER":
             # An ability granting the Benefit of Cover (11th-ed. Stealth).
             # Boolean, so it can never stack with terrain cover.
@@ -1072,17 +1110,21 @@ def _dispatch(dyn, s, tok, mech) -> bool:
             # already applied). Folded into the four-step model on 'mech';
             # the ordered application happens in apply_damage_modifiers.
             #   set N    -> Step 1: fix Damage to N (best/lowest wins)
-            #   mult f   -> Step 2: multiply cumulatively (0.5 = halve)
-            #   add N    -> Step 3: additive (a reduction of k is 'add -k')
+            #   mult f   -> Step 2 if f >= 1, Step 4 (a division) if not
+            #   add N    -> Step 3 if N >= 0, Step 5 (a subtraction) if not
             mode = tok[1]
             if mode == "mult":
-                mech.dmg_mult *= float(tok[2])
+                f = float(tok[2])
+                if f >= 1.0:
+                    mech.dmg_mult *= f
+                else:
+                    mech.dmg_div *= f
             elif mode == "set":
                 n = int(tok[2])
                 mech.dmg_set = n if mech.dmg_set is None \
                     else min(mech.dmg_set, n)
             else:                       # 'add' (default / back-compatible)
-                mech.dmg_add += int(tok[2])
+                add_damage_delta(mech, int(tok[2]))
         elif tok[0] == "DMGSETZERO":
             # Step 4 special case: force the final Damage to 0, bypassing
             # the "always at least 1" floor (e.g. an ability that negates
@@ -1242,61 +1284,70 @@ def has_damage_modifiers(mech) -> bool:
     """True if any defender Damage modifier is active on 'mech' (lets the
     callers skip the transform entirely in the common no-modifier case)."""
     return (mech.dmg_set is not None or mech.dmg_mult != 1.0
-            or mech.dmg_add != 0 or mech.dmg_set_zero)
+            or mech.dmg_add != 0 or mech.dmg_div != 1.0
+            or mech.dmg_sub != 0 or mech.dmg_set_zero)
 
 
-def apply_damage_modifiers(d: int, mech) -> int:
-    """Apply the defender's per-attack Damage modifiers to a single
-    Damage value 'd'.
+def apply_damage_modifiers(d: int, mech, melta: int = 0) -> int:
+    """Apply the defender's per-attack Damage modifiers, and the
+    attacker's MELTA bonus, to a single Damage value 'd'.
 
-    The 11th-ed. order (Rules Appendix, Modifiers) is:
+    The 11th-ed. order (Rules Appendix 02.02.01, Modifiers) is:
 
-        set/replace -> MULTIPLY -> ADD -> DIVIDE -> SUBTRACT -> round up
+        set/replace -> MULTIPLY -> ADD -> DIVIDE -> SUBTRACT
+        -> round fractions UP, once, after all five
 
     and note that this is NOT the 9th/10th-ed. order, which put division
-    FIRST and had no addition step between the two: 11th swapped
-    multiplication and division around and slid addition in between.
-
-    What this function does:
+    first and had no addition step between the two.
 
       Step 1  set    : replace D by a fixed value (mech.dmg_set)
-      Step 2  mult   : multiply cumulatively, rounding UP (mech.dmg_mult)
-      Step 3  add    : additive modifier, e.g. -1 (mech.dmg_add)
-      Step 4  floor  : D is at least 1, UNLESS mech.dmg_set_zero forces 0
+      Step 2  mult   : multiply cumulatively (mech.dmg_mult, >= 1)
+      Step 3  add    : MELTA, and any positive modifier (mech.dmg_add)
+      Step 4  divide : divide cumulatively (mech.dmg_div, < 1)
+      Step 5  sub    : any negative modifier (mech.dmg_sub)
+      then           : round up, then floor at 1 unless dmg_set_zero
 
-    DECLARED APPROXIMATION. mech.dmg_mult carries BOTH a genuine
-    multiplication (step 2, in the right place) and a halving, which
-    the rules count as a division (step 4, after the addition). The two
-    orders give the same answer everywhere except when a halving meets
-    a POSITIVE addition - 12 of the 80 combinations of D 1..8 against
-    halve x add -2..+2, all of them with add > 0.
+    Three things this order decides, none of which the old four-step
+    model got right, all measured on D = 1..8:
 
-    That case is not reachable. A positive dmg_add would be a defender
-    ability that INCREASES the damage of the attack coming at it, and
-    the shipped rosters carry no damage modifier of any kind (no
-    CHARMOD D, CHARMULT D or CHARSET D at all). The one addition that
-    does occur in quantity is MELTA, on 607 weapons, and _finish_damage
-    convolves it into the Damage BEFORE calling this function - so a
-    melta shot into a halving ability is computed as ceil((D+X)/2),
-    which is exactly what the rules ask for.
+      * MELTA is an ADDITION, so it survives a set. 'set D to 1' against
+        MELTA 2 gives 3, where folding the bonus in before the set gave
+        1 - the bonus was simply deleted.
+      * a POSITIVE modifier lands before a halving, not after. '+2 Damage
+        then halve' gives 2 on D = 1, not 3. Positive modifiers are
+        reachable: a defender ability may worsen the incoming D, and an
+        attacker ability may improve it, both through the same field.
+      * rounding happens ONCE, at the end. Rounding after the
+        multiplication was harmless only while nothing divided after an
+        addition, which the five-step order now does by construction.
 
-    Rounding up early is safe for the same reason it always was:
-    ceil(x) + a == ceil(x + a) for integer a, and every additive
-    modifier here is an integer.
+    Halving and subtracting still agree with the old model - ceil(x) + a
+    == ceil(x + a) for integer a - and that pair is every damage
+    modifier the shipped rosters actually contain, so the correction
+    moves no figure they produce. It moves the ones they could.
 
-    A 0-Damage input (no attack) stays 0. Used by the exact maths (via
-    transform over the Damage PMF) and mirrored by the dice resolver."""
+    A characteristic set to 0 cannot be modified further (02.02.01), so
+    a set of 0 short-circuits. A 0-Damage input (no attack) stays 0.
+    Used by the exact maths (via transform over the Damage PMF) and
+    mirrored by the dice resolver.
+    """
     from math import ceil
     if d <= 0:
         return 0
+    value = float(d)
     if mech.dmg_set is not None:                       # Step 1
-        d = mech.dmg_set
-    if mech.dmg_mult != 1.0:                           # Step 2 (round up)
-        d = ceil(d * mech.dmg_mult)
-    d += mech.dmg_add                                  # Step 3
-    if mech.dmg_set_zero:                              # Step 4 (special)
+        if mech.dmg_set <= 0:
+            return 0
+        value = float(mech.dmg_set)
+    if mech.dmg_mult != 1.0:                           # Step 2
+        value *= mech.dmg_mult
+    value += melta + mech.dmg_add                      # Step 3
+    if mech.dmg_div != 1.0:                            # Step 4
+        value *= mech.dmg_div
+    value += mech.dmg_sub                              # Step 5
+    if mech.dmg_set_zero:
         return 0
-    return max(1, d)                                   # Step 4 (floor)
+    return max(1, ceil(value))
 
 
 # ---------------- per-weapon analysis ----------------
@@ -1538,7 +1589,7 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
         unmod_min = 4 if ctx.get("spotter") else 6
         reroll_hit = None
     skill_mod = 0
-    if weapon.type == "Ranged":
+    if takes_cover(weapon):
         if (ctx.get("cover") or mech.cover or indirect) \
                 and not mech.ignores_cover:
             skill_mod -= 1
@@ -1733,14 +1784,33 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
 
     def _finish_damage(pmf):
         """MELTA and the defender's Damage modifiers, applied the same
-        way to every variant so the three stay comparable."""
+        way to every variant so the three stay comparable.
+
+        MELTA is an ADDITION (step 3), so it cannot be convolved into
+        the Damage before the chain runs: a 'set' would delete it and a
+        division would apply to it in the wrong place. When both are
+        present the bonus is carried INTO the chain, which means walking
+        the joint of the two laws - the bonus law is a handful of
+        outcomes wide, so this stays cheap.
+        """
         if pmf is None:
             return None
-        if half and x_active(mech.melta):
-            pmf = convolve(pmf, x_pmf(mech.melta))
-        if has_damage_modifiers(mech):
-            pmf = transform(pmf, lambda v: apply_damage_modifiers(v, mech))
-        return pmf
+        bonus = (x_pmf(mech.melta)
+                 if half and x_active(mech.melta) else None)
+        if not has_damage_modifiers(mech):
+            return convolve(pmf, bonus) if bonus else pmf
+        if bonus is None:
+            return transform(pmf, lambda v: apply_damage_modifiers(v, mech))
+        out = [0.0] * (len(pmf) + len(bonus))
+        for v, p in enumerate(pmf):
+            if not p:
+                continue
+            for b, q in enumerate(bonus):
+                if q:
+                    out[apply_damage_modifiers(v, mech, b)] += p * q
+        while len(out) > 1 and not out[-1]:
+            out.pop()
+        return out
 
     # Defender Damage modifiers (set / multiply / add / floor, in that
     # fixed order - see apply_damage_modifiers): applied to the final
@@ -2002,7 +2072,7 @@ def analyze_weapon(weapon, defender_ref: dict, ctx: dict,
                 "crit_on": crit_hit_on, "reroll": reroll_hit,
                 "overwatch": ow, "cover": bool(
                     (ctx.get("cover") or mech.cover or indirect)
-                    and not mech.ignores_cover and weapon.type != "Melee"),
+                    and not mech.ignores_cover and takes_cover(weapon)),
                 "p": p_hit, "p_crit": p_crit_hit, "p_mw": p_mw_hit},
         "wound": {"S": s, "T": t, "target": wt, "mod": wound_mod,
                   "crit_on": crit_wound_on, "reroll": reroll_wound,

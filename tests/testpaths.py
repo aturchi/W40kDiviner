@@ -172,15 +172,3 @@ def load_roster(name):
         return json.load(fh)
 
 
-# --- Backwards-compatible helpers (kept for any external caller) ---------
-
-def data_path(*parts):
-    """Join *parts* onto the active data root. Prefer :func:`roster`."""
-    return os.path.join(DATA_DIR, *parts)
-
-
-def load_native(relpath):
-    """Load a roster by relative path under the data root. Prefer
-    :func:`load_roster`."""
-    with open(data_path(relpath), encoding="utf-8") as fh:
-        return json.load(fh)

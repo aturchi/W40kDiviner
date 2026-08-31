@@ -79,7 +79,7 @@ def _first_alive(models, mi):
                if m.get("entry") == mi and int(m.get("wounds") or 0) > 0]
     if not members:
         return None
-    return ag._member_order(members, models)[0]
+    return ag.member_order(members, models)[0]
 
 
 def owed(records, weapons, bearer_of, models):

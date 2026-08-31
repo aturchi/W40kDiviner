@@ -170,6 +170,8 @@ def hunter_skip_reason(mech, dview):
         return None
     return ("HUNTER-" + "/".join(mech.hunter)
             + ": the target does not have that keyword")
+
+
 CQ_KEYWORDS = {"MONSTER", "VEHICLE"}
 # PISTOL is the 10th-ed. spelling of CLOSE-QUARTERS: rosters fetched
 # before the rename still carry it, so both are accepted everywhere.
@@ -252,23 +254,6 @@ def ability_selection(flags: dict) -> dict:
     return {"extra": list(flags.get("extra_abilities") or []),
             "disabled": list(flags.get("disabled_abilities") or []),
             "optimise": flags.get("optimise_abilities", True)}
-
-
-def select_weapons(aview, mode: str, melee_name: str = None,
-                   indirect: bool = False):
-    """Weapons taking part in the attack.
-    mode 'ranged'        : every Ranged weapon, minus the CLOSE-QUARTERS
-                           ones unless the unit is a MONSTER/VEHICLE;
-    mode 'close_quarters': shooting at a unit the attacker is engaged
-                           with (11th ed.) - see select_weapons_split;
-    mode 'melee'         : the chosen weapon plus EXTRA ATTACKS melee
-                           weapons.
-
-    With indirect=True the unit is using the 11th-ed. indirect shooting
-    mode: ONLY weapons with the INDIRECT FIRE keyword are fired. The
-    others are not silently dropped - see select_weapons_split."""
-    kept, _skipped = select_weapons_split(aview, mode, melee_name, indirect)
-    return kept
 
 
 def select_weapons_split(aview, mode: str, melee_name: str = None,
