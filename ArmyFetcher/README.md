@@ -126,16 +126,6 @@ and then re-parse offline as many times as you like without hammering the site.
 
 ---
 
-## Cross-check / QA
-
-`QA_CROSSCHECK.md` documents an offline cross-check of the two sources used for
-testing (T'au and Space Marines): a per-unit comparison of model stats, weapons,
-keywords and core/faction abilities. The T'au set aligns perfectly; the residual
-Space-Marines differences are traced to genuine **data discrepancies between the
-two sites**, not parsing bugs (details in that file).
-These problems may or may not be solved in the future. Please just note that
-sometimes the sources are wrong on some unit's stats.
-
 ## Tests
 
 `test_army_parse.py` is an offline self-test that runs the pure
