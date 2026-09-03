@@ -18,10 +18,14 @@ child is skipped, so the gesture cannot half-undo itself.
 Every row still says how many of its rows are switched off, because an
 ability disabled three analyses ago must not be invisible.
 
-The units of two panels can share their weapon and ability objects (a
-joined unit is built on the same objects as the plain one), so after any
-change the caller is handed on_change() and is expected to refresh the
-OTHER trees too.
+The units of two panels can share their weapon and ability objects when
+the same plain unit is picked in both (e.g. the same army loaded on both
+sides), so after any change the caller is handed on_change() and is
+expected to refresh the OTHER trees too. A [JOINED] entry does NOT share
+with anything else, plain row or other entry: it is built from its own
+independent copies (see Unit._attach), because a unit is never removed
+from the pool when it joins and the same bodyguard or leader can end up
+in several entries at once.
 """
 
 import tkinter as tk

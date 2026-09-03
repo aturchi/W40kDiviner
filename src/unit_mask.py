@@ -34,13 +34,23 @@ not kept: the row is a bulk action, not a saved state, and remembering
 it would mean two consecutive unmasks giving different answers. Each
 weapon does come back at the COUNT it had (see set_weapon_count).
 
-Both act on the objects the engine reads, and a Unit joined to a leader
-SHARES those objects with the plain unit it was built from (see
-Unit._attach). Masking a weapon in one row therefore masks it in every
-row showing the same weapon - which is correct, and the reason the
-caller must refresh every tree after a change rather than only the one
-that was clicked.
+Both act on the objects the engine reads. A [JOINED] entry is now built
+from its OWN independent copies of everything it combines - bodyguard,
+leader and support alike (see Unit._attach) - so masking a row inside
+one [JOINED] entry never reaches another entry, nor the same unit's own
+still-listed plain row: a unit is never removed from the analyzer's pool
+when it joins (see attack_analyzer.cmd_join), so the identical Crisis
+Fireknife team can sit in its own plain row AND inside several different
+[JOINED] entries (one per Commander it is tried under) at the same time,
+each independently maskable.
 
+One kind of sharing DOES remain, and is unrelated to joins: the two
+analyzer panels (attacker/defender) read from the SAME loaded roster, so
+a plain unit picked in both panels at once (e.g. the same army loaded on
+both sides) is the identical object in both trees, and masking it in one
+panel is correctly seen in the other. That is why the caller must
+refresh every tree after a change rather than only the one that was
+clicked.
 No tkinter here: the row plan and the masking rules are testable
 headless, and the widget file stays a renderer.
 """

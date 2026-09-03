@@ -4,22 +4,22 @@
 Exact mean/median statistics of one attacking unit against one or more
 defender units (multiple result popups can stay open for comparison).
 
-Each army panel is split into a small "Leaders & joined" list and the
-unit TREE. Selecting a leader greys out the units it cannot lead;
-with a leader and a compatible unit selected, "Join" replaces them
-with the combined unit (shown as [JOINED], shared abilities active).
-Re-clicking a selected row deselects it.
+Each army panel is split into a small "Leaders & supports" TREE and the
+unit TREE, both the same editable widget. Selecting a leader greys out
+the units it cannot lead; with a leader and a compatible unit selected,
+"Join" replaces them with the combined unit (shown as [JOINED], shared
+abilities active). Re-clicking a selected row deselects it.
 
-A unit row expands into its models, their weapons and its abilities:
-"Mask / unmask selected" switches a weapon (count 0, not fired) or an
-ability off for the next analysis, and a weapon count is edited by
-double-clicking it - the same gesture as the game assistant's table.
-A MODEL row or a UNIT row switches every weapon below it at once (the
-sergeant who does not shoot, the unit that stays silent this phase);
-they leave the abilities alone. Note that this SILENCES models, it does
-not remove them: the unit still fields them, and as a defender it is
-still that many models. Any row shows how many of its rows are
-switched off.
+A unit row - standalone leader/support included - expands into its
+models, their weapons and its abilities: "Mask / unmask selected"
+switches a weapon (count 0, not fired) or an ability off for the next
+analysis, and a weapon count is edited by double-clicking it - the same
+gesture as the game assistant's table. A MODEL row or a UNIT row
+switches every weapon below it at once (the sergeant who does not
+shoot, the unit that stays silent this phase); they leave the abilities
+alone. Note that this SILENCES models, it does not remove them: the
+unit still fields them, and as a defender it is still that many models.
+Any row shows how many of its rows are switched off.
 "Inspect" shows the full profile of the last selected unit, read-only.
 
 Run:  python3 attack_analyzer.py
@@ -48,8 +48,7 @@ from unit_model import units_from_native  # noqa: E402
 from setup_panel import SetupPanel, show_options_dialog  # noqa: E402
 from search_widget import attach_search    # noqa: E402
 import ui_utils as ui          # noqa: E402
-from ui_utils import (scrollable_listbox, multi_select_hint,  # noqa: E402
-                      save_text)
+from ui_utils import multi_select_hint, save_text  # noqa: E402
 from army_load_dialog import ArmyLoadDialog  # noqa: E402
 from roster_picker import ask_roster_files   # noqa: E402
 from unit_tree import UnitTree              # noqa: E402
@@ -67,7 +66,6 @@ class AnalyzerApp(tk.Tk):
         self.units = []              # Unit objects from the loaded file
         # per-panel state: leaders/others/joined Unit lists + widgets
         self.panels = {}
-        self._pre_click = {}         # (listbox, index) for click-toggle
         self._last_panel = None      # last panel clicked (for Inspect)
         # Result pages pinned for comparison. They live for the session
         # only: a pin is a frozen copy of the numbers, not a document.
@@ -131,12 +129,16 @@ class AnalyzerApp(tk.Tk):
                       lambda e, k=key: self._rebuild_panel(k))
             ttk.Label(col, text="Leaders & supports:").pack(
                 anchor=tk.W, padx=4)
-            lead_frame, lead_lb = scrollable_listbox(
-                col, height=6, exportselection=False,
-                selectmode=tk.EXTENDED)
-            lead_frame.pack(fill=tk.X, padx=4)
-            # The helper list takes several selections at once (a unit
-            # with two Leader slots can be filled in one Join).
+            # A tree, not a list: a standalone leader/support gets the same
+            # editable view as a regular unit (mask/unmask its own weapons
+            # and abilities, edit a weapon count) instead of a flat label
+            # that only supports picking it for Join. Always multi-select:
+            # a unit with two Leader slots can be filled in one Join.
+            lead_tree = UnitTree(
+                col, multi=True, height=6,
+                on_select=lambda k=key: self._tree_select(k),
+                on_change=self._refresh_tree_states)
+            lead_tree.pack(fill=tk.X, padx=4)
             multi_select_hint(col).pack(anchor=tk.W, padx=4)
             btn_row = ttk.Frame(col)
             btn_row.pack(anchor=tk.W, padx=4, pady=2)
@@ -168,21 +170,14 @@ class AnalyzerApp(tk.Tk):
                 on_select=lambda k=key: self._tree_select(k),
                 on_change=self._refresh_tree_states)
             unit_tree.pack(fill=tk.BOTH, expand=True, padx=4, pady=2)
-            p = {"army": army, "lead_lb": lead_lb, "unit_tree": unit_tree,
+            p = {"army": army, "lead_tree": lead_tree, "unit_tree": unit_tree,
                  "join_btn": join_btn, "split_btn": split_btn,
                  "slots_lbl": slots_lbl,
                  "leaders": [], "supports": [], "others": [], "joined": []}
             self.panels[key] = p
-            # Only the helper LIST needs these: the unit tree brings its
-            # own click-toggle and selection callback.
-            lead_lb.bind("<Button-1>",
-                         lambda e, b=lead_lb: self._click_press(e, b),
-                         add="+")
-            lead_lb.bind("<ButtonRelease-1>",
-                         lambda e, b=lead_lb, k=key:
-                         self._click_release(e, b, k), add="+")
-            lead_lb.bind("<<ListboxSelect>>",
-                         lambda e, k=key: self._on_select(k))
+            # Click-toggle (second click deselects) and the selection
+            # callback are both already wired inside UnitTree itself, for
+            # lead_tree exactly as for unit_tree - no extra bindings needed.
 
         self.setup = SetupPanel(main,
                                 on_mode_change=self._refresh_melee_choices)
@@ -190,21 +185,8 @@ class AnalyzerApp(tk.Tk):
         self.setup.set_flag_enabled("damaged", False)
         self.setup.pack(side=tk.LEFT, fill=tk.Y, padx=4, pady=4)
         attach_search(self, lambda: [w for p in self.panels.values()
-                                     for w in (p["lead_lb"],
+                                     for w in (p["lead_tree"].tree,
                                                p["unit_tree"].tree)])
-
-    # ---------- click-toggle (second click deselects) ----------
-
-    def _click_press(self, event, lb):
-        i = lb.nearest(event.y)
-        self._pre_click[str(lb)] = i if i in lb.curselection() else None
-
-    def _click_release(self, event, lb, key):
-        self._last_panel = key
-        i = lb.nearest(event.y)
-        if i >= 0 and i == self._pre_click.get(str(lb)):
-            lb.selection_clear(i)
-            self._on_select(key)
 
     # ---------- data ----------
 
@@ -264,17 +246,16 @@ class AnalyzerApp(tk.Tk):
         self._refresh_lists(key)
 
     def _refresh_lists(self, key):
-        """lead_lb holds only leaders [L] and supports [S] (persistent,
-        reusable). the unit TREE holds the joined entries [JOINED] first, then
-        plain units. A join reads a helper from lead_lb and a target (unit
-        OR joined entry) from the tree - nothing is consumed (exploratory
+        """lead_tree holds only leaders [L] and supports [S] (persistent,
+        reusable), each expandable into its own models/weapons/abilities.
+        The unit TREE holds the joined entries [JOINED] first, then plain
+        units. A join reads a helper from lead_tree and a target (unit OR
+        joined entry) from the tree - nothing is consumed (exploratory
         analyzer)."""
         p = self.panels[key]
-        p["lead_lb"].delete(0, tk.END)
-        for u in p["leaders"]:
-            p["lead_lb"].insert(tk.END, f"[L] {u.name}")
-        for u in p["supports"]:
-            p["lead_lb"].insert(tk.END, f"[S] {u.name}")
+        lead_rows = [(f"[L] {u.name}", u) for u in p["leaders"]]
+        lead_rows += [(f"[S] {u.name}", u) for u in p["supports"]]
+        p["lead_tree"].set_units(lead_rows)
         rows = [(f"[JOINED] {combined.name}", combined)
                 for combined, _lds, _u, _sps in p["joined"]]
         rows += [(u.name, u) for u in p["others"]]
@@ -284,12 +265,14 @@ class AnalyzerApp(tk.Tk):
     # ---------- selection, greying, join ----------
 
     def _lead_picks(self, p):
-        """lead_lb selections as [(kind, obj, idx), ...]; kind is 'leader'
-        or 'support', idx is the index within that pool. Stack order:
-        leaders then supports."""
+        """lead_tree top-level selections as [(kind, obj, idx), ...]; kind
+        is 'leader' or 'support', idx is the index within that pool. Stack
+        order: leaders then supports (selecting a child row - a leader's
+        own weapon or ability - counts as selecting that leader, exactly
+        as in the unit tree)."""
         out = []
         nl = len(p["leaders"])
-        for i in p["lead_lb"].curselection():
+        for i in p["lead_tree"].selected_indices():
             if i < nl:
                 out.append(("leader", p["leaders"][i], i))
             else:
@@ -297,7 +280,7 @@ class AnalyzerApp(tk.Tk):
         return out
 
     def _lead_pick(self, p):
-        """First lead_lb selection (kind, obj, idx) or (None, None, None)."""
+        """First lead_tree selection (kind, obj, idx) or (None, None, None)."""
         picks = self._lead_picks(p)
         return picks[0] if picks else (None, None, None)
 
@@ -373,7 +356,7 @@ class AnalyzerApp(tk.Tk):
             self._refresh_melee_choices()
 
     def cmd_join(self, key):
-        """Join the selected helpers (leaders/supports in lead_lb, several
+        """Join the selected helpers (leaders/supports in lead_tree, several
         at once) onto the selected target in the unit tree. It may be a
         plain unit (-> a new joined entry) or an existing joined entry
         with a free slot (-> the helpers are added to it), so a unit with
@@ -427,7 +410,7 @@ class AnalyzerApp(tk.Tk):
         selected in the unit tree (joined combined units and plain units
         alike). The defender panel is multi-select, so more than one may
         come back; the attacker panel is BROWSE and yields at most one.
-        The lead_lb helper is only an ingredient for joining, so it is
+        The lead_tree helper is only an ingredient for joining, so it is
         used only as a fallback when no tree row is selected."""
         p = self.panels[key]
         sel = p["unit_tree"].selected_indices()
@@ -456,8 +439,9 @@ class AnalyzerApp(tk.Tk):
         masked is a weapon not fired (count 0); an ability masked is
         switched off for the next analysis; a model or unit row does
         every weapon below it in one go, abilities excluded."""
-        moved = sum(p["unit_tree"].toggle_selected()
-                    for p in self.panels.values())
+        moved = sum(p[w].toggle_selected()
+                    for p in self.panels.values()
+                    for w in ("unit_tree", "lead_tree"))
         if not moved:
             messagebox.showinfo(
                 "Mask", "Nothing to switch off in the selected rows.\n\n"
@@ -466,12 +450,16 @@ class AnalyzerApp(tk.Tk):
                         "row to switch all its weapons at once.")
 
     def _refresh_tree_states(self):
-        """After any masking, refresh BOTH panels: a joined unit is built
-        on the very same weapon and ability objects as the plain unit it
-        came from, so one change can show up in several rows - and the
-        two panels may well hold the same army."""
+        """After any masking, refresh BOTH panels: the two panels may well
+        hold the same army, so a plain unit picked in both is the same
+        object in both trees and one change can show up in several rows.
+        A [JOINED] entry does not need this for its OWN sake (it holds
+        independent copies, see Unit._attach), but refreshing everything
+        unconditionally is simpler and cheap enough to call after every
+        change."""
         for p in self.panels.values():
             p["unit_tree"].refresh_states()
+            p["lead_tree"].refresh_states()
 
     def _tree_select(self, key):
         """A unit tree changed selection: remember the panel (Inspect

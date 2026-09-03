@@ -132,7 +132,12 @@ both = squad_u.attach_leader(b1)
 assert both.can_attach(b2), "the second Leader must fit"
 both = both.attach_leader(b2)
 assert [u.name for u in both.attached_leaders] == ["boss1", "boss2"]
-assert both.attached_leader is b1, "the single-slot accessor is the first one"
+# attach_leader clones the helper (see Unit._attach), so the combined
+# unit's own copy of boss1 is never the same object as b1 - but it is
+# still the FIRST one, which is what the single-slot accessor promises.
+assert both.attached_leader is not b1
+assert both.attached_leader.name == b1.name, \
+    "the single-slot accessor is the first one"
 assert not both.can_attach(b2), "a third Leader must be refused"
 assert sum(m.model_count for m in both.models()) == 12, "10 + 1 + 1"
 assert sum(m.model_count for m in both.bodyguard_models()) == 10, \

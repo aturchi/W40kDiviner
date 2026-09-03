@@ -11,6 +11,7 @@ Conventions:
 
 from characteristics import Characteristic
 
+import copy as _copy
 import re as _re
 import weakref as _weakref
 
@@ -216,6 +217,44 @@ def combined_name(base, leaders, supports) -> str:
     return " + ".join(parts)
 
 
+def _clone_unit(unit: "Unit") -> "Unit":
+    """Independent deep copy of a Unit about to become part of a
+    [JOINED] entry - either side, target/bodyguard or leader/support
+    (see Unit._attach).
+
+    Nothing is ever consumed by a join in the analyzer (see
+    leader_core.ArmyJoinState and attack_analyzer.cmd_join: "nothing is
+    consumed, exploratory analyzer") - not the leader/support pool, and
+    not the target either: a joined unit stays listed in its own plain
+    row too. So the SAME Captain can end up leading several different
+    units at once, and the SAME bodyguard unit (say, a Crisis Fireknife
+    team) can end up inside several different [JOINED] entries built
+    from it (one per Commander it is tried under), or inside a [JOINED]
+    entry AND its own still-listed plain row, all at the same time.
+    Without this copy every one of those would share the identical
+    Model/Weapon/ability objects, so masking a weapon or disabling an
+    ability on ANY of them would silently change every other one showing
+    the same unit - which is not how the tabletop works (one model can
+    only ever be part of one unit at a time). The game assistant never
+    hits this: it rebuilds a brand new Unit per roster entry straight
+    from the native dict at attack time (see leader_core.build_entry_unit),
+    so its entries are independent from the start. This gives the
+    analyzer the same guarantee by copying at the one place every
+    attachment goes through, Unit._attach - both the base unit and the
+    helper being attached to it.
+
+    A deep copy carries no link back to the native dict the original was
+    built from (the Weapon -> dict backref is an external weak map keyed
+    on object identity, see native_weapon_dict): editing the copy inside
+    a joined unit therefore does not write back into the roster and is
+    not part of a saved session, which only remembers WHICH leader/unit
+    were joined and re-attaches fresh instances on load (see
+    session_io.rebuild_joins). That already held before this function
+    existed for anything the session save/load round-trip touches, so it
+    is not a new limitation."""
+    return _copy.deepcopy(unit)
+
+
 class Unit:
     """A datasheet unit: one or more :class:`Model` groups plus unit-level
     data. Profiles are immutable by convention. Two independent attachment
@@ -392,33 +431,37 @@ class Unit:
                 and _any_entry_matches(support.support, self.keywords))
 
     def _attach(self, helper: "Unit", slot: str) -> "Unit":
-        """Return a NEW combined unit (originals untouched) with 'helper'
-        joined in 'slot' ('leader' or 'support'). helper.leader_effects
-        become active on the whole combined unit. A helper already attached
-        in the OTHER slot is preserved, so a unit can carry one leader AND
-        one support at once. Effects from both helpers are merged."""
-        base_models = self._models
-        base_keywords = set(self.keywords)
-        base_abilities = list(self.abilities)
-        base_effects = list(self.leader_effects)
-        kept_leaders = list(self.attached_leaders)
-        kept_supports = list(self.attached_supports)
+        """Return a NEW combined unit built from independent copies of
+        BOTH 'self' (the target/bodyguard) and 'helper' (see
+        _clone_unit for why both sides need it). helper.leader_effects
+        become active on the whole combined unit. A helper already
+        attached in the OTHER slot is preserved, so a unit can carry one
+        leader AND one support at once. Effects from both helpers are
+        merged."""
+        base = _clone_unit(self)
+        helper = _clone_unit(helper)
+        base_models = base._models
+        base_keywords = set(base.keywords)
+        base_abilities = list(base.abilities)
+        base_effects = list(base.leader_effects)
+        kept_leaders = list(base.attached_leaders)
+        kept_supports = list(base.attached_supports)
         (kept_leaders if slot == "leader" else kept_supports).append(helper)
         combined = Unit(
-            name=combined_name(self.base_name, kept_leaders, kept_supports),
+            name=combined_name(base.base_name, kept_leaders, kept_supports),
             models=base_models,
             keywords=sorted(base_keywords | set(helper.keywords)),
             abilities=base_abilities + helper.abilities,
-            points=self.points + helper.points,
+            points=base.points + helper.points,
             leader_effects=base_effects + helper.leader_effects,
             apply_leader_effects_to_self=True,
-            profile_name=self.profile_name,
-            damageable=self.damageable,
-            leadership=self.leadership or helper.leadership,
-            support=self.support or helper.support,
-            leader_slots=self.leader_slots,
-            support_slots=self.support_slots)
-        combined.base_name = self.base_name
+            profile_name=base.profile_name,
+            damageable=base.damageable,
+            leadership=base.leadership or helper.leadership,
+            support=base.support or helper.support,
+            leader_slots=base.leader_slots,
+            support_slots=base.support_slots)
+        combined.base_name = base.base_name
         combined.attached_leaders = kept_leaders
         combined.attached_supports = kept_supports
         return combined

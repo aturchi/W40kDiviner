@@ -24,7 +24,13 @@ n_comb = sum(m.model_count for m in combined.models())
 print(f"attach_support: {tgt.name}({n_base}) + {s.name} -> {n_comb} models, "
       f"{combined.points} pts")
 assert n_comb == n_base + sum(m.model_count for m in s.models())
-assert combined.attached_support is s
+# attach_support clones the helper (see Unit._attach / _clone_helper): the
+# combined unit carries its OWN copy, so it is equal in every value that
+# matters but never the identical pool object - two different joins of
+# the same support must be free to diverge (see test_joined_leader_copy
+# in test_unit_mask.py for the isolation itself).
+assert combined.attached_support is not s
+assert combined.attached_support.name == s.name
 assert combined.attached_leader is None
 
 # Leader + support compose: attach a leader too.
@@ -35,11 +41,15 @@ if leaders:
     both = combined.attach_leader(ld)
     n_both = sum(m.model_count for m in both.models())
     print(f"leader+support: +{ld.name} -> {n_both} models, {both.points} pts")
-    assert both.attached_support is s, "support slot must survive leader attach"
-    assert both.attached_leader is ld, "leader slot must be set"
+    assert both.attached_support.name == s.name, \
+        "support slot must survive leader attach"
+    assert both.attached_leader is not ld, "leader slot must hold a copy"
+    assert both.attached_leader.name == ld.name, "leader slot must be set"
     assert n_both == n_comb + sum(m.model_count for m in ld.models())
-    # Effects from both helpers present
-    assert set(id(e) for e in ld.leader_effects) <= set(id(e) for e in both.leader_effects)
+    # Effects from both helpers present (by VALUE: the leader slot holds
+    # a clone of ld, so the effect dicts are equal but not the same
+    # objects - see Unit._attach).
+    assert all(e in both.leader_effects for e in ld.leader_effects)
     print("PASS: leader+support compose, both slots retained, effects merged")
 else:
     print("(no compatible leader found for compose test)")

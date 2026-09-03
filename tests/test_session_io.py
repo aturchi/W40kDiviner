@@ -78,7 +78,10 @@ assert not missing and len(back) == 1
 # at most one still reads back correctly, and is written the same way)
 combined, l2, u2, s2 = back[0]
 assert l2 == [leader] and u2 is unit and s2 == []
-assert combined.attached_leader is leader
+# attach_leader clones the helper (see Unit._attach): the rebuilt combined
+# unit carries its own copy of 'leader', not the pool object itself.
+assert combined.attached_leader is not leader
+assert combined.attached_leader.name == leader.name
 assert sum(m.model_count for m in combined.models()) == \
     sum(m.model_count for m in joined[0][0].models())
 print("joins rebuild from names alone")
