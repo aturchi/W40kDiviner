@@ -1,6 +1,6 @@
 # W40kDiviner
 
-A small suite of Python tools for **Warhammer 40,000 (11th edition)** that let
+A small suite of Python tools for **Warhammer 40,000 (11th edition)** that lets
 you build and edit army rosters, compute **exact** attack statistics (mean,
 median) of one unit against another, and resolve attacks with real dice during a
 game while tracking some variables.
@@ -672,7 +672,7 @@ so nothing you are meant to touch can live inside it. Two things are looked for
 UPX is disabled on purpose (compressed one-file bootloaders trip some antivirus
 heuristics).
 
-Please consider that I do now have a PC with windows, so this section is totally
+Please consider that I do not have a PC with windows, so this section is totally
 untested and I just made the .spec file with Claude AI just for your convenience.
 :-)
 
